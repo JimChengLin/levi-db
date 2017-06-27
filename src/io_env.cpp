@@ -1,7 +1,9 @@
 #include "env.h"
 #include "exception.h"
 #include <cerrno>
+#include <dirent.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <thread>
 
@@ -55,8 +57,8 @@ namespace LeviDB {
         doWriteStringToFile<true>(data, fname);
     };
 
-    void ReadFileToString(const std::string & fname, std::string & data) {
-        data.clear();
+    std::string ReadFileToString(const std::string & fname) {
+        std::string data;
         auto file = IOEnv::newSequentialFile(fname);
 
         static constexpr int buffer_size = 8192;
@@ -69,6 +71,7 @@ namespace LeviDB {
                 break;
             }
         }
+        return data;
     };
 
     Slice SequentialFile::read(size_t n, char * scratch) {
@@ -144,17 +147,6 @@ namespace LeviDB {
         }
     }
 
-    static int lockOrUnlock(int fd, bool lock) noexcept {
-        errno = 0;
-        struct flock f;
-        memset(&f, 0, sizeof(f));
-        f.l_type = static_cast<short>(lock ? F_WRLCK : F_UNLCK);
-        f.l_whence = SEEK_SET;
-        f.l_start = 0;
-        f.l_len = 0; // lock/unlock entire file
-        return fcntl(fd, F_SETLK, &f);
-    }
-
     void Logger::logv(const char * format, va_list ap) noexcept {
         uint64_t thread_id = ThreadEnv::gettid();
 
@@ -215,5 +207,130 @@ namespace LeviDB {
             fflush(_file);
             break;
         }
+    }
+
+    template<bool LOCK>
+    static int lockOrUnlock(int fd) noexcept {
+        errno = 0;
+        struct flock f;
+        memset(&f, 0, sizeof(f));
+        f.l_type = static_cast<short>(LOCK ? F_WRLCK : F_UNLCK);
+        f.l_whence = SEEK_SET;
+        f.l_start = 0;
+        f.l_len = 0;
+        return fcntl(fd, F_SETLK, &f);
+    }
+
+    namespace IOEnv {
+        std::unique_ptr<SequentialFile> newSequentialFile(const std::string & fname) {
+            FILE * f = fopen(fname.c_str(), "r");
+            if (f == NULL) {
+                throw Exception::IOErrorException(fname, error_msg);
+            }
+            return std::make_unique<SequentialFile>(fname, f);
+        };
+
+        std::unique_ptr<RandomAccessFile> newRandomAccessFile(const std::string & fname) {
+            int fd = open(fname.c_str(), O_RDONLY);
+            if (fd < 0) {
+                throw Exception::IOErrorException(fname, error_msg);
+            }
+            return std::make_unique<RandomAccessFile>(fname, fd);
+        };
+
+        std::unique_ptr<WritableFile> newWritableFile(const std::string & fname) {
+            FILE * f = fopen(fname.c_str(), "w");
+            if (f == NULL) {
+                throw Exception::IOErrorException(fname, error_msg);
+            }
+            return std::make_unique<WritableFile>(fname, f);
+        };
+
+        std::unique_ptr<WritableFile> newAppendableFile(const std::string & fname) {
+            FILE * f = fopen(fname.c_str(), "a");
+            if (f == NULL) {
+                throw Exception::IOErrorException(fname, error_msg);
+            }
+            return std::make_unique<WritableFile>(fname, f);
+        };
+
+        std::unique_ptr<Logger> newLogger(const std::string & fname) {
+            FILE * f = fopen(fname.c_str(), "w");
+            if (f == NULL) {
+                throw Exception::IOErrorException(fname.c_str(), error_msg);
+            }
+            return std::make_unique<Logger>(f);
+        };
+
+        bool fileExists(const std::string & fname) noexcept {
+            return access(fname.c_str(), F_OK) == 0;
+        };
+
+        std::vector<std::string> getChildren(const std::string & dir) {
+            std::vector<std::string> res;
+
+            DIR * d = opendir(dir.c_str());
+            if (d == NULL) {
+                throw Exception::IOErrorException(dir, error_msg);
+            }
+
+            struct dirent * entry;
+            while ((entry = readdir(d)) != NULL) {
+                res.push_back(std::string(entry->d_name));
+            }
+            closedir(d);
+
+            return res;
+        };
+
+        void deleteFile(const std::string & fname) {
+            if (unlink(fname.c_str()) != 0) {
+                throw Exception::IOErrorException(fname, error_msg);
+            }
+        };
+
+        void createDir(const std::string & dirname) {
+            if (mkdir(dirname.c_str(), 0755) != 0) {
+                throw Exception::IOErrorException(dirname, error_msg);
+            }
+        };
+
+        void deleteDir(const std::string & dirname) {
+            if (rmdir(dirname.c_str()) != 0) {
+                throw Exception::IOErrorException(dirname, error_msg);
+            }
+        };
+
+        uint64_t getFileSize(const std::string & fname) {
+            struct stat sbuf;
+            if (stat(fname.c_str(), &sbuf) != 0) {
+                throw Exception::IOErrorException(fname, error_msg);
+            }
+            return static_cast<uint64_t>(sbuf.st_size);
+        };
+
+        void renameFile(const std::string & src, const std::string & target) {
+            if (rename(src.c_str(), target.c_str()) != 0) {
+                throw Exception::IOErrorException(src, error_msg);
+            }
+        };
+
+        std::unique_ptr<FileLock> lockFile(const std::string & fname) {
+            int fd = open(fname.c_str(), O_RDWR | O_CREAT, 0644);
+            if (fd < 0) {
+                throw Exception::IOErrorException(fname, error_msg);
+            } else if (lockOrUnlock<true>(fd) == -1) {
+                close(fd);
+                throw Exception::IOErrorException("lock " + fname, error_msg);
+            } else {
+                return std::make_unique<FileLock>(fname, fd);
+            }
+        };
+
+        void unlockFile(FileLock * lock) {
+            if (lockOrUnlock<false>(lock->_fd) == -1) {
+                throw Exception::IOErrorException("unlock", error_msg);
+            }
+        };
     }
 }

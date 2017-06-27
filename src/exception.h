@@ -17,7 +17,9 @@ namespace LeviDB {
 
         ~Exception() noexcept {}
 
-        virtual const char * what() const override {
+        static constexpr char _what[] = "LeviDBException";
+
+        virtual const char * what() const noexcept override {
             return Exception::_what;
         }
 
@@ -59,7 +61,6 @@ namespace LeviDB {
         std::string toString() const noexcept;
 
     private:
-        static constexpr char _what[] = "LeviDBException";
         std::unique_ptr<char[]> _state;
 
         enum Code {

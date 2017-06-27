@@ -8,9 +8,9 @@
 
 #include "slice.h"
 #include <cstdio>
-#include <unistd.h>
 #include <memory>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 namespace LeviDB {
@@ -35,8 +35,6 @@ namespace LeviDB {
 
         std::unique_ptr<Logger> newLogger(const std::string & fname);
 
-        std::unique_ptr<FileLock> newlockFile(const std::string & fname);
-
         bool fileExists(const std::string & fname) noexcept;
 
         std::vector<std::string> getChildren(const std::string & dir);
@@ -50,6 +48,8 @@ namespace LeviDB {
         uint64_t getFileSize(const std::string & fname);
 
         void renameFile(const std::string & src, const std::string & target);
+
+        std::unique_ptr<FileLock> lockFile(const std::string & fname);
 
         void unlockFile(FileLock * lock);
     }; //namespace IOEnv
@@ -146,9 +146,10 @@ namespace LeviDB {
         int _fd;
 
     public:
-        FileLock() noexcept {};
+        FileLock(const std::string & fname, int fd) noexcept
+                : _filename(fname), _fd(fd) {};
 
-        ~FileLock() noexcept {};
+        ~FileLock() noexcept { close(_fd); };
 
     private:
         // 禁止复制
@@ -164,7 +165,7 @@ namespace LeviDB {
 
     void writeStringToFileSync(const Slice & data, const std::string & fname);
 
-    void ReadFileToString(const std::string & fname, std::string & data);
+    std::string ReadFileToString(const std::string & fname);
 
     namespace ThreadEnv {
         uint64_t gettid() noexcept;
