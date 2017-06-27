@@ -1,6 +1,11 @@
 #ifndef LEVIDB_SLICE_H
 #define LEVIDB_SLICE_H
 
+/*
+ * borrow from leveldb
+ * 数据简单封装类
+ */
+
 #include <cassert>
 #include <cstring>
 #include <string>
@@ -56,8 +61,8 @@ namespace LeviDB {
         const size_t min_len = std::min(_size, b._size);
         int r = memcmp(_data, b._data, min_len);
         if (r == 0) {
-            if (_size < b._size) r = -1;
-            else if (_size > b._size) r = +1;
+            if (_size < b._size) { r = -1; }
+            else if (_size > b._size) { r = +1; }
         }
         return r;
     }
