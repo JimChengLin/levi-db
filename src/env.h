@@ -1,6 +1,11 @@
 #ifndef LEVIDB_ENV_H
 #define LEVIDB_ENV_H
 
+/*
+ * borrow from leveldb
+ * 负责所有的系统交互
+ */
+
 #include "slice.h"
 #include <cstdio>
 #include <unistd.h>
@@ -15,9 +20,9 @@ namespace LeviDB {
 
     class WritableFile;
 
-    class FileLock;
-
     class Logger;
+
+    class FileLock;
 
     namespace IOEnv {
         std::unique_ptr<SequentialFile> newSequentialFile(const std::string & fname);
@@ -27,6 +32,10 @@ namespace LeviDB {
         std::unique_ptr<WritableFile> newWritableFile(const std::string & fname);
 
         std::unique_ptr<WritableFile> newAppendableFile(const std::string & fname);
+
+        std::unique_ptr<Logger> newLogger(const std::string & fname);
+
+        std::unique_ptr<FileLock> newlockFile(const std::string & fname);
 
         bool fileExists(const std::string & fname) noexcept;
 
@@ -42,11 +51,7 @@ namespace LeviDB {
 
         void renameFile(const std::string & src, const std::string & target);
 
-        std::unique_ptr<FileLock> lockFile(const std::string & fname);
-
         void unlockFile(FileLock * lock);
-
-        std::unique_ptr<Logger> newLogger(const std::string & fname);
     }; //namespace IOEnv
 
     class SequentialFile {
@@ -65,6 +70,7 @@ namespace LeviDB {
         void skip(uint64_t n);
 
     private:
+        // 禁止复制
         SequentialFile(const SequentialFile &);
 
         void operator=(const SequentialFile &);
@@ -84,6 +90,7 @@ namespace LeviDB {
         Slice read(uint64_t offset, size_t n, char * scratch);
 
     private:
+        // 禁止复制
         RandomAccessFile(const RandomAccessFile &);
 
         void operator=(const RandomAccessFile &);
@@ -107,22 +114,27 @@ namespace LeviDB {
         void sync();
 
     private:
+        // 禁止复制
         WritableFile(const WritableFile &);
 
         void operator=(const WritableFile &);
 
-        void SyncDirIfManifest();
+        void syncDirIfManifest();
     };
 
     class Logger {
-    public:
-        Logger() noexcept {};
+    private:
+        FILE * _file;
 
-        ~Logger() noexcept;
+    public:
+        Logger(FILE * f) noexcept : _file(f) {};
+
+        ~Logger() noexcept { fclose(_file); };
 
         void logv(const char * format, va_list ap) noexcept;
 
     private:
+        // 禁止复制
         Logger(const Logger &);
 
         void operator=(const Logger &);
@@ -130,17 +142,22 @@ namespace LeviDB {
 
     class FileLock {
     public:
-        FileLock() {};
+        std::string _filename;
+        int _fd;
 
-        ~FileLock();
+    public:
+        FileLock() noexcept {};
+
+        ~FileLock() noexcept {};
 
     private:
+        // 禁止复制
         FileLock(const FileLock &);
 
         void operator=(const FileLock &);
     };
 
-    void log4Man(Logger & info_log, const char * format, ...) noexcept
+    void log4Man(Logger * info_log, const char * format, ...) noexcept
     __attribute__((__format__ (__printf__, 2, 3)));
 
     void writeStringToFile(const Slice & data, const std::string & fname);
@@ -148,6 +165,10 @@ namespace LeviDB {
     void writeStringToFileSync(const Slice & data, const std::string & fname);
 
     void ReadFileToString(const std::string & fname, std::string & data);
+
+    namespace ThreadEnv {
+
+    }
 } //namespace LeviDB
 
 #endif //LEVIDB_ENV_H

@@ -26,6 +26,7 @@ namespace LeviDB {
             res[6 + len] = ' ';
             memcpy(res.get() + 7 + len, msg2.data(), len2);
         }
+
         _state = move(res);
     }
 
@@ -51,16 +52,15 @@ namespace LeviDB {
                 type = "IO error: ";
                 break;
             default:
-                snprintf(tmp, sizeof(tmp), "Unknown code(%d): ",
-                         static_cast<int>(code()));
+                snprintf(tmp, sizeof(tmp), "Unknown code(%d): ", static_cast<int>(code()));
                 type = tmp;
                 break;
         }
 
-        std::string result(type);
+        std::string res(type);
         uint32_t len;
         memcpy(&len, _state.get(), sizeof(len));
-        result.append(_state.get() + 5, len);
-        return result;
+        res.append(_state.get() + 5, len);
+        return res;
     }
 }

@@ -1,7 +1,8 @@
 #include "env.h"
 #include "exception.h"
-#include <fcntl.h>
 #include <cerrno>
+#include <fcntl.h>
+#include <thread>
 
 #if defined(OS_MACOSX) || defined(OS_SOLARIS) || defined(OS_FREEBSD) || \
     defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLYBSD) || \
@@ -16,11 +17,15 @@
 #define fdatasync fsync
 #endif
 
+#define error_msg strerror(errno)
+
 namespace LeviDB {
-    void log4Man(Logger & info_log, const char * format, ...) noexcept {
+    void log4Man(Logger * info_log, const char * format, ...) noexcept {
+        assert(info_log != nullptr);
+
         va_list ap;
         va_start(ap, format);
-        info_log.logv(format, ap);
+        info_log->logv(format, ap);
         va_end(ap);
     };
 
@@ -71,7 +76,7 @@ namespace LeviDB {
             if (feof(_file)) {
                 return Slice(scratch, r);
             } else {
-                throw Exception::IOErrorException(_filename, strerror(errno));
+                throw Exception::IOErrorException(_filename, error_msg);
             }
         }
         return Slice(scratch, r);
@@ -79,16 +84,16 @@ namespace LeviDB {
 
     void SequentialFile::skip(uint64_t n) {
         if (fseek(_file, static_cast<long>(n), SEEK_CUR)) {
-            throw Exception::IOErrorException(_filename, strerror(errno));
+            throw Exception::IOErrorException(_filename, error_msg);
         }
     }
 
     Slice RandomAccessFile::read(uint64_t offset, size_t n, char * scratch) {
-        ssize_t r = pread(_fd, scratch, n, static_cast<off_t >(offset));
-        Slice res = Slice(scratch, static_cast<size_t >((r < 0) ? 0 : r));
+        ssize_t r = pread(_fd, scratch, n, static_cast<off_t>(offset));
+        Slice res(scratch, static_cast<size_t>((r < 0) ? 0 : r));
 
         if (r < 0) {
-            throw Exception::IOErrorException(_filename, strerror(errno));
+            throw Exception::IOErrorException(_filename, error_msg);
         }
         return res;
     }
@@ -96,24 +101,24 @@ namespace LeviDB {
     void WritableFile::append(const Slice & data) {
         size_t r = fwrite_unlocked(data.data(), 1, data.size(), _file);
         if (r != data.size()) {
-            throw Exception::IOErrorException(_filename, strerror(errno));
+            throw Exception::IOErrorException(_filename, error_msg);
         }
     }
 
     void WritableFile::flush() {
         if (fflush_unlocked(_file) != 0) {
-            throw Exception::IOErrorException(_filename, strerror(errno));
+            throw Exception::IOErrorException(_filename, error_msg);
         }
     }
 
     void WritableFile::sync() {
-        SyncDirIfManifest();
+        syncDirIfManifest();
         if (fflush_unlocked(_file) != 0 || fdatasync(fileno(_file)) != 0) {
-            throw Exception::IOErrorException(_filename, strerror(errno));
+            throw Exception::IOErrorException(_filename, error_msg);
         }
     }
 
-    void WritableFile::SyncDirIfManifest() {
+    void WritableFile::syncDirIfManifest() {
         const char * f = _filename.c_str();
         const char * sep = strrchr(f, '/');
         Slice basename;
@@ -128,10 +133,10 @@ namespace LeviDB {
         if (basename.startsWith("MANIFEST")) {
             int fd = open(dir.c_str(), O_RDONLY);
             if (fd < 0) {
-                throw Exception::IOErrorException(dir, strerror(errno));
+                throw Exception::IOErrorException(dir, error_msg);
             } else {
                 if (fsync(fd) < 0) {
-                    throw Exception::IOErrorException(dir, strerror(errno));
+                    throw Exception::IOErrorException(dir, error_msg);
                 }
                 close(fd);
             }
@@ -145,7 +150,11 @@ namespace LeviDB {
         f.l_type = static_cast<short>(lock ? F_WRLCK : F_UNLCK);
         f.l_whence = SEEK_SET;
         f.l_start = 0;
-        f.l_len = 0;        // Lock/unlock entire file
+        f.l_len = 0; // Lock/unlock entire file
         return fcntl(fd, F_SETLK, &f);
+    }
+
+    void Logger::logv(const char * format, va_list ap) noexcept {
+
     }
 }

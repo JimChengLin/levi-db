@@ -1,6 +1,11 @@
 #ifndef LEVIDB_EXCEPTION_H
 #define LEVIDB_EXCEPTION_H
 
+/*
+ * 从 leveldb 的 Status 改写而来
+ * 全项目所有会抛的异常(不包含 STL)都在这里
+ */
+
 #include "slice.h"
 #include <exception>
 #include <memory>
@@ -11,6 +16,10 @@ namespace LeviDB {
         Exception() noexcept : _state(nullptr) {}
 
         ~Exception() noexcept {}
+
+        virtual const char * what() const override {
+            return Exception::_what;
+        }
 
         // 允许复制
         Exception(const Exception & e) noexcept;
@@ -50,6 +59,7 @@ namespace LeviDB {
         std::string toString() const noexcept;
 
     private:
+        static constexpr char _what[] = "LeviDBException";
         std::unique_ptr<char[]> _state;
 
         enum Code {
@@ -71,8 +81,8 @@ namespace LeviDB {
     };
 
     // 复制构造
-    inline Exception::Exception(const Exception & e) noexcept {
-        this->operator=(e);
+    Exception::Exception(const Exception & e) noexcept
+            : _state((e._state == nullptr) ? nullptr : copyState(e._state.get())) {
     }
 
     inline void Exception::operator=(const Exception & e) noexcept {
