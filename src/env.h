@@ -3,7 +3,7 @@
 
 /*
  * borrow from leveldb
- * 负责所有的系统交互
+ * 负责所有系统底层交互
  */
 
 #include "slice.h"
@@ -167,7 +167,7 @@ namespace LeviDB {
     void ReadFileToString(const std::string & fname, std::string & data);
 
     namespace ThreadEnv {
-
+        uint64_t gettid() noexcept;
     }
 } //namespace LeviDB
 

@@ -3,7 +3,7 @@
 
 /*
  * 从 leveldb 的 Status 改写而来
- * 全项目所有会抛的异常(不包含 STL)都在这里
+ * 全项目的异常(不包含 STL)都在这里
  */
 
 #include "slice.h"
