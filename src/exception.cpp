@@ -26,7 +26,7 @@ namespace LeviDB {
             res[6 + len] = ' ';
             memcpy(res.get() + 7 + len, msg2.data(), len2);
         }
-        _state = res;
+        _state = move(res);
     }
 
     std::string Exception::toString() const noexcept {

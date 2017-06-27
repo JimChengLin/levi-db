@@ -2,11 +2,23 @@
 #define LEVIDB_ENV_H
 
 #include "slice.h"
+#include <cstdio>
+#include <unistd.h>
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace LeviDB {
+    class SequentialFile;
+
+    class RandomAccessFile;
+
+    class WritableFile;
+
+    class FileLock;
+
+    class Logger;
+
     namespace IOEnv {
         std::unique_ptr<SequentialFile> newSequentialFile(const std::string & fname);
 
@@ -38,10 +50,15 @@ namespace LeviDB {
     }; //namespace IOEnv
 
     class SequentialFile {
-    public:
-        SequentialFile() noexcept {};
+    private:
+        std::string _filename;
+        FILE * _file;
 
-        ~SequentialFile() noexcept;
+    public:
+        SequentialFile(const std::string & fname, FILE * f) noexcept
+                : _filename(fname), _file(f) {};
+
+        ~SequentialFile() noexcept { fclose(_file); };
 
         Slice read(size_t n, char * scratch);
 
@@ -54,9 +71,15 @@ namespace LeviDB {
     };
 
     class RandomAccessFile {
-        RandomAccessFile() noexcept {};
+    private:
+        std::string _filename;
+        int _fd;
 
-        ~RandomAccessFile() noexcept;
+    public:
+        RandomAccessFile(const std::string & fname, int fd) noexcept
+                : _filename(fname), _fd(fd) {};
+
+        ~RandomAccessFile() noexcept { close(_fd); };
 
         Slice read(uint64_t offset, size_t n, char * scratch);
 
@@ -67,10 +90,15 @@ namespace LeviDB {
     };
 
     class WritableFile {
-    public:
-        WritableFile() noexcept {};
+    private:
+        std::string _filename;
+        FILE * _file;
 
-        ~WritableFile();
+    public:
+        WritableFile(const std::string & fname, FILE * f) noexcept
+                : _filename(fname), _file(f) {};
+
+        ~WritableFile() noexcept { fclose(_file); };
 
         void append(const Slice & data);
 
@@ -82,6 +110,8 @@ namespace LeviDB {
         WritableFile(const WritableFile &);
 
         void operator=(const WritableFile &);
+
+        void SyncDirIfManifest();
     };
 
     class Logger {

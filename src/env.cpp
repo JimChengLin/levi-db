@@ -1,4 +1,20 @@
 #include "env.h"
+#include "exception.h"
+#include <fcntl.h>
+#include <cerrno>
+
+#if defined(OS_MACOSX) || defined(OS_SOLARIS) || defined(OS_FREEBSD) || \
+    defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLYBSD) || \
+    defined(OS_ANDROID) || defined(OS_HPUX) || defined(CYGWIN)
+#define fread_unlocked fread
+#define fwrite_unlocked fwrite
+#define fflush_unlocked fflush
+#endif
+
+#if defined(OS_MACOSX) || defined(OS_FREEBSD) || \
+    defined(OS_OPENBSD) || defined(OS_DRAGONFLYBSD)
+#define fdatasync fsync
+#endif
 
 namespace LeviDB {
     void log4Man(Logger & info_log, const char * format, ...) noexcept {
@@ -8,13 +24,12 @@ namespace LeviDB {
         va_end(ap);
     };
 
-    template<bool should_sync>
-    static void doWriteStringToFile(const Slice & data, const std::string & fname,
-                                    bool should_sync) {
+    template<bool SYNC>
+    static void doWriteStringToFile(const Slice & data, const std::string & fname) {
         try {
             auto file = IOEnv::newWritableFile(fname);
             file->append(data);
-            if (should_sync) {
+            if (SYNC) {
                 file->sync();
             }
         } catch (const std::exception & e) {
@@ -27,11 +42,11 @@ namespace LeviDB {
     }
 
     void writeStringToFile(const Slice & data, const std::string & fname) {
-        doWriteStringToFile(data, fname, false);
+        doWriteStringToFile<false>(data, fname);
     };
 
     void writeStringToFileSync(const Slice & data, const std::string & fname) {
-        doWriteStringToFile(data, fname, true);
+        doWriteStringToFile<true>(data, fname);
     };
 
     void ReadFileToString(const std::string & fname, std::string & data) {
@@ -50,4 +65,87 @@ namespace LeviDB {
         }
     };
 
+    Slice SequentialFile::read(size_t n, char * scratch) {
+        size_t r = fread_unlocked(scratch, 1, n, _file);
+        if (r < n) {
+            if (feof(_file)) {
+                return Slice(scratch, r);
+            } else {
+                throw Exception::IOErrorException(_filename, strerror(errno));
+            }
+        }
+        return Slice(scratch, r);
+    }
+
+    void SequentialFile::skip(uint64_t n) {
+        if (fseek(_file, static_cast<long>(n), SEEK_CUR)) {
+            throw Exception::IOErrorException(_filename, strerror(errno));
+        }
+    }
+
+    Slice RandomAccessFile::read(uint64_t offset, size_t n, char * scratch) {
+        ssize_t r = pread(_fd, scratch, n, static_cast<off_t >(offset));
+        Slice res = Slice(scratch, static_cast<size_t >((r < 0) ? 0 : r));
+
+        if (r < 0) {
+            throw Exception::IOErrorException(_filename, strerror(errno));
+        }
+        return res;
+    }
+
+    void WritableFile::append(const Slice & data) {
+        size_t r = fwrite_unlocked(data.data(), 1, data.size(), _file);
+        if (r != data.size()) {
+            throw Exception::IOErrorException(_filename, strerror(errno));
+        }
+    }
+
+    void WritableFile::flush() {
+        if (fflush_unlocked(_file) != 0) {
+            throw Exception::IOErrorException(_filename, strerror(errno));
+        }
+    }
+
+    void WritableFile::sync() {
+        SyncDirIfManifest();
+        if (fflush_unlocked(_file) != 0 || fdatasync(fileno(_file)) != 0) {
+            throw Exception::IOErrorException(_filename, strerror(errno));
+        }
+    }
+
+    void WritableFile::SyncDirIfManifest() {
+        const char * f = _filename.c_str();
+        const char * sep = strrchr(f, '/');
+        Slice basename;
+        std::string dir;
+        if (sep == NULL) {
+            dir = ".";
+            basename = f;
+        } else {
+            dir = std::string(f, sep - f);
+            basename = sep + 1;
+        }
+        if (basename.startsWith("MANIFEST")) {
+            int fd = open(dir.c_str(), O_RDONLY);
+            if (fd < 0) {
+                throw Exception::IOErrorException(dir, strerror(errno));
+            } else {
+                if (fsync(fd) < 0) {
+                    throw Exception::IOErrorException(dir, strerror(errno));
+                }
+                close(fd);
+            }
+        }
+    }
+
+    static int lockOrUnlock(int fd, bool lock) {
+        errno = 0;
+        struct flock f;
+        memset(&f, 0, sizeof(f));
+        f.l_type = static_cast<short>(lock ? F_WRLCK : F_UNLCK);
+        f.l_whence = SEEK_SET;
+        f.l_start = 0;
+        f.l_len = 0;        // Lock/unlock entire file
+        return fcntl(fd, F_SETLK, &f);
+    }
 }
