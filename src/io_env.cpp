@@ -20,7 +20,7 @@
 #define fdatasync fsync
 #endif
 
-#define error_msg strerror(errno)
+#define str_error strerror(errno)
 
 namespace LeviDB {
     void log4Man(Logger * info_log, const char * format, ...) noexcept {
@@ -80,7 +80,7 @@ namespace LeviDB {
             if (feof(_file)) {
                 return Slice(scratch, r);
             } else {
-                throw Exception::IOErrorException(_filename, error_msg);
+                throw Exception::IOErrorException(_filename, str_error);
             }
         }
         return Slice(scratch, r);
@@ -88,7 +88,7 @@ namespace LeviDB {
 
     void SequentialFile::skip(uint64_t n) {
         if (fseek(_file, static_cast<long>(n), SEEK_CUR)) {
-            throw Exception::IOErrorException(_filename, error_msg);
+            throw Exception::IOErrorException(_filename, str_error);
         }
     }
 
@@ -97,7 +97,7 @@ namespace LeviDB {
         Slice res(scratch, static_cast<size_t>((r < 0) ? 0 : r));
 
         if (r < 0) {
-            throw Exception::IOErrorException(_filename, error_msg);
+            throw Exception::IOErrorException(_filename, str_error);
         }
         return res;
     }
@@ -105,20 +105,20 @@ namespace LeviDB {
     void WritableFile::append(const Slice & data) {
         size_t r = fwrite_unlocked(data.data(), 1, data.size(), _file);
         if (r != data.size()) {
-            throw Exception::IOErrorException(_filename, error_msg);
+            throw Exception::IOErrorException(_filename, str_error);
         }
     }
 
     void WritableFile::flush() {
         if (fflush_unlocked(_file) != 0) {
-            throw Exception::IOErrorException(_filename, error_msg);
+            throw Exception::IOErrorException(_filename, str_error);
         }
     }
 
     void WritableFile::sync() {
         syncDirIfManifest();
         if (fflush_unlocked(_file) != 0 || fdatasync(fileno(_file)) != 0) {
-            throw Exception::IOErrorException(_filename, error_msg);
+            throw Exception::IOErrorException(_filename, str_error);
         }
     }
 
@@ -137,10 +137,10 @@ namespace LeviDB {
         if (basename.startsWith("MANIFEST")) {
             int fd = open(dir.c_str(), O_RDONLY);
             if (fd < 0) {
-                throw Exception::IOErrorException(dir, error_msg);
+                throw Exception::IOErrorException(dir, str_error);
             } else {
                 if (fsync(fd) < 0) {
-                    throw Exception::IOErrorException(dir, error_msg);
+                    throw Exception::IOErrorException(dir, str_error);
                 }
                 close(fd);
             }
@@ -152,7 +152,7 @@ namespace LeviDB {
 
         char buffer[500];
         std::unique_ptr<char[]> tmp;
-        for (int iter :{0, 1}) {
+        for (const int iter :{0, 1}) {
             char * base;
             int buff_size;
             if (iter == 0) {
@@ -225,7 +225,7 @@ namespace LeviDB {
         std::unique_ptr<SequentialFile> newSequentialFile(const std::string & fname) {
             FILE * f = fopen(fname.c_str(), "r");
             if (f == NULL) {
-                throw Exception::IOErrorException(fname, error_msg);
+                throw Exception::IOErrorException(fname, str_error);
             }
             return std::make_unique<SequentialFile>(fname, f);
         };
@@ -233,7 +233,7 @@ namespace LeviDB {
         std::unique_ptr<RandomAccessFile> newRandomAccessFile(const std::string & fname) {
             int fd = open(fname.c_str(), O_RDONLY);
             if (fd < 0) {
-                throw Exception::IOErrorException(fname, error_msg);
+                throw Exception::IOErrorException(fname, str_error);
             }
             return std::make_unique<RandomAccessFile>(fname, fd);
         };
@@ -241,7 +241,7 @@ namespace LeviDB {
         std::unique_ptr<WritableFile> newWritableFile(const std::string & fname) {
             FILE * f = fopen(fname.c_str(), "w");
             if (f == NULL) {
-                throw Exception::IOErrorException(fname, error_msg);
+                throw Exception::IOErrorException(fname, str_error);
             }
             return std::make_unique<WritableFile>(fname, f);
         };
@@ -249,7 +249,7 @@ namespace LeviDB {
         std::unique_ptr<WritableFile> newAppendableFile(const std::string & fname) {
             FILE * f = fopen(fname.c_str(), "a");
             if (f == NULL) {
-                throw Exception::IOErrorException(fname, error_msg);
+                throw Exception::IOErrorException(fname, str_error);
             }
             return std::make_unique<WritableFile>(fname, f);
         };
@@ -257,7 +257,7 @@ namespace LeviDB {
         std::unique_ptr<Logger> newLogger(const std::string & fname) {
             FILE * f = fopen(fname.c_str(), "w");
             if (f == NULL) {
-                throw Exception::IOErrorException(fname.c_str(), error_msg);
+                throw Exception::IOErrorException(fname.c_str(), str_error);
             }
             return std::make_unique<Logger>(f);
         };
@@ -271,7 +271,7 @@ namespace LeviDB {
 
             DIR * d = opendir(dir.c_str());
             if (d == NULL) {
-                throw Exception::IOErrorException(dir, error_msg);
+                throw Exception::IOErrorException(dir, str_error);
             }
 
             struct dirent * entry;
@@ -285,43 +285,43 @@ namespace LeviDB {
 
         void deleteFile(const std::string & fname) {
             if (unlink(fname.c_str()) != 0) {
-                throw Exception::IOErrorException(fname, error_msg);
+                throw Exception::IOErrorException(fname, str_error);
             }
         };
 
         void createDir(const std::string & dirname) {
             if (mkdir(dirname.c_str(), 0755) != 0) {
-                throw Exception::IOErrorException(dirname, error_msg);
+                throw Exception::IOErrorException(dirname, str_error);
             }
         };
 
         void deleteDir(const std::string & dirname) {
             if (rmdir(dirname.c_str()) != 0) {
-                throw Exception::IOErrorException(dirname, error_msg);
+                throw Exception::IOErrorException(dirname, str_error);
             }
         };
 
         uint64_t getFileSize(const std::string & fname) {
             struct stat sbuf;
             if (stat(fname.c_str(), &sbuf) != 0) {
-                throw Exception::IOErrorException(fname, error_msg);
+                throw Exception::IOErrorException(fname, str_error);
             }
             return static_cast<uint64_t>(sbuf.st_size);
         };
 
         void renameFile(const std::string & src, const std::string & target) {
             if (rename(src.c_str(), target.c_str()) != 0) {
-                throw Exception::IOErrorException(src, error_msg);
+                throw Exception::IOErrorException(src, str_error);
             }
         };
 
         std::unique_ptr<FileLock> lockFile(const std::string & fname) {
             int fd = open(fname.c_str(), O_RDWR | O_CREAT, 0644);
             if (fd < 0) {
-                throw Exception::IOErrorException(fname, error_msg);
+                throw Exception::IOErrorException(fname, str_error);
             } else if (lockOrUnlock<true>(fd) == -1) {
                 close(fd);
-                throw Exception::IOErrorException("lock " + fname, error_msg);
+                throw Exception::IOErrorException("lock " + fname, str_error);
             } else {
                 return std::make_unique<FileLock>(fname, fd);
             }
@@ -329,7 +329,7 @@ namespace LeviDB {
 
         void unlockFile(FileLock * lock) {
             if (lockOrUnlock<false>(lock->_fd) == -1) {
-                throw Exception::IOErrorException("unlock", error_msg);
+                throw Exception::IOErrorException("unlock", str_error);
             }
         };
     }

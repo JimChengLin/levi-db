@@ -17,14 +17,22 @@ namespace LeviDB {
 
         ~Exception() noexcept {}
 
+        static const char * _what;
+
         virtual const char * what() const noexcept override {
             return Exception::_what;
         }
 
         // 允许复制
-        Exception(const Exception & e) noexcept;
+        Exception(const Exception & e) noexcept
+                : _state((e._state == nullptr) ? nullptr : copyState(e._state.get())) {
+        }
 
-        inline void operator=(const Exception & e) noexcept;
+        inline void operator=(const Exception & e) noexcept {
+            if (_state != e._state) {
+                _state = (e._state == nullptr) ? nullptr : copyState(e._state.get());
+            }
+        }
 
         static Exception notFoundException(const Slice & msg, const Slice & msg2 = Slice()) noexcept {
             return Exception(NOT_FOUND, msg, msg2);
@@ -59,7 +67,6 @@ namespace LeviDB {
         std::string toString() const noexcept;
 
     private:
-        static const char * _what;
         std::unique_ptr<char[]> _state;
 
         enum Code {
@@ -79,17 +86,6 @@ namespace LeviDB {
 
         static std::unique_ptr<char[]> copyState(const char * s) noexcept;
     };
-
-    // 复制构造
-    Exception::Exception(const Exception & e) noexcept
-            : _state((e._state == nullptr) ? nullptr : copyState(e._state.get())) {
-    }
-
-    inline void Exception::operator=(const Exception & e) noexcept {
-        if (_state != e._state) {
-            _state = (e._state == nullptr) ? nullptr : copyState(e._state.get());
-        }
-    }
 }
 
 #endif //LEVIDB_EXCEPTION_H

@@ -1,0 +1,4 @@
+#ifndef LEVIDB_LOG_FORMAT_H
+#define LEVIDB_LOG_FORMAT_H
+
+#endif //LEVIDB_LOG_FORMAT_H
