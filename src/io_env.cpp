@@ -2,6 +2,7 @@
 #include "exception.h"
 #include <cerrno>
 #include <fcntl.h>
+#include <sys/time.h>
 #include <thread>
 
 #if defined(OS_MACOSX) || defined(OS_SOLARIS) || defined(OS_FREEBSD) || \
@@ -143,18 +144,39 @@ namespace LeviDB {
         }
     }
 
-    static int lockOrUnlock(int fd, bool lock) {
+    static int lockOrUnlock(int fd, bool lock) noexcept {
         errno = 0;
         struct flock f;
         memset(&f, 0, sizeof(f));
         f.l_type = static_cast<short>(lock ? F_WRLCK : F_UNLCK);
         f.l_whence = SEEK_SET;
         f.l_start = 0;
-        f.l_len = 0; // Lock/unlock entire file
+        f.l_len = 0; // lock/unlock entire file
         return fcntl(fd, F_SETLK, &f);
     }
 
     void Logger::logv(const char * format, va_list ap) noexcept {
+        const auto thread_id = std::this_thread::get_id();
 
+        char buffer[500];
+        for (int iter = 0; iter < 2; ++iter) {
+            char * base;
+            int buff_size;
+            std::unique_ptr<char[]> tmp;
+
+            if (iter == 0) {
+                buff_size = sizeof(buffer);
+                base = buffer;
+            } else {
+                assert(iter == 1);
+                buff_size = 30000;
+                tmp = std::unique_ptr<char[]>(new char[buff_size]);
+                base = tmp.get();
+            }
+            char * p = base;
+            char * limit = base + buff_size;
+
+
+        }
     }
 }

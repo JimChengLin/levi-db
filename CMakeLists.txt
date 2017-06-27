@@ -6,7 +6,7 @@ add_compile_options(-DOS_MACOSX)
 
 set(SOURCE_FILES
         main.cpp
-        src/env.cpp src/env.h
+        src/io_env.cpp src/thread_env.cpp src/env.h
         src/slice.h
         src/exception.cpp src/exception.h)
 
