@@ -2,7 +2,7 @@
 #define LEVIDB_ITERATOR_H
 
 /*
- * 自定义迭代器接口
+ * 自定义迭代器
  */
 
 #include "slice.h"
@@ -112,9 +112,9 @@ namespace LeviDB {
         }
 
         std::unique_ptr<Iterator> _iter;
-        bool _valid;
         Slice _key;
         Slice _value;
+        bool _valid;
     };
 }
 

@@ -2,7 +2,7 @@
 #define LEVIDB_ENV_H
 
 /*
- * 负责所有系统底层交互
+ * 系统底层交互
  */
 
 #include "slice.h"
@@ -36,7 +36,7 @@ namespace LeviDB {
 
         bool fileExists(const std::string & fname) noexcept;
 
-        std::vector<std::string> getChildren(const std::string & dir);
+        std::vector<std::string> getChildren(const std::string & dirname);
 
         void deleteFile(const std::string & fname);
 

@@ -2,7 +2,7 @@
 #define LEVIDB_EXCEPTION_H
 
 /*
- * 全项目的异常(不包含 STL)都在这里
+ * 全项目的异常
  */
 
 #include "slice.h"

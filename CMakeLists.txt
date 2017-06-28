@@ -10,6 +10,9 @@ set(SOURCE_FILES
         src/slice.h
         src/exception.cpp src/exception.h src/iterator.h
         src/arena.cpp src/arena.h
-        src/log_format.h)
+        src/log_format.h
+        src/coder.cpp src/coder.h
+        src/compressor.cpp src/compressor.h
+        src/repeat_detector.cpp src/repeat_detector.h)
 
 add_executable(LeviDB ${SOURCE_FILES})

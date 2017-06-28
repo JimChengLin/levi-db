@@ -57,4 +57,10 @@ namespace LeviDB {
         _blocks.push_back(move(smart_ptr));
         return res;
     }
+
+    void Arena::reset() noexcept {
+        _alloc_ptr = nullptr;
+        _alloc_bytes_remaining = 0;
+        _blocks.clear();
+    };
 }

@@ -266,12 +266,12 @@ namespace LeviDB {
             return access(fname.c_str(), F_OK) == 0;
         };
 
-        std::vector<std::string> getChildren(const std::string & dir) {
+        std::vector<std::string> getChildren(const std::string & dirname) {
             std::vector<std::string> res;
 
-            DIR * d = opendir(dir.c_str());
+            DIR * d = opendir(dirname.c_str());
             if (d == NULL) {
-                throw Exception::IOErrorException(dir, str_error);
+                throw Exception::IOErrorException(dirname, str_error);
             }
 
             struct dirent * entry;

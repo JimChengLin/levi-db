@@ -1,6 +1,10 @@
 #ifndef LEVIDB_ARENA_H
 #define LEVIDB_ARENA_H
 
+/*
+ * 内存池
+ */
+
 #include <cstddef>
 #include <vector>
 
@@ -15,10 +19,12 @@ namespace LeviDB {
 
         char * allocateAligned(size_t bytes) noexcept;
 
+        void reset() noexcept;
+
     private:
-        char * _alloc_ptr;
-        size_t _alloc_bytes_remaining;
         std::vector<std::unique_ptr<char[]>> _blocks;
+        size_t _alloc_bytes_remaining;
+        char * _alloc_ptr;
 
         char * allocateFallback(size_t bytes) noexcept;
 
