@@ -61,7 +61,7 @@ namespace LeviDB {
         std::string data;
         auto file = IOEnv::newSequentialFile(fname);
 
-        static constexpr int buffer_size = 8192;
+        static constexpr int buffer_size = 4096 * 2;
         char space[buffer_size];
 
         while (true) {
