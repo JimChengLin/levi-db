@@ -2,7 +2,6 @@
 #define LEVIDB_EXCEPTION_H
 
 /*
- * 从 leveldb 的 Status 改写而来
  * 全项目的异常(不包含 STL)都在这里
  */
 

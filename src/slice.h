@@ -2,7 +2,6 @@
 #define LEVIDB_SLICE_H
 
 /*
- * borrow from leveldb
  * 数据简单封装类
  */
 
@@ -75,6 +74,6 @@ namespace LeviDB {
     inline bool operator!=(const Slice & x, const Slice & y) noexcept {
         return !(x == y);
     }
-} //namespace LeviDB
+}
 
 #endif //LEVIDB_SLICE_H

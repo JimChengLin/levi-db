@@ -2,7 +2,6 @@
 #define LEVIDB_ENV_H
 
 /*
- * borrow from leveldb
  * 负责所有系统底层交互
  */
 
@@ -52,7 +51,7 @@ namespace LeviDB {
         std::unique_ptr<FileLock> lockFile(const std::string & fname);
 
         void unlockFile(FileLock * lock);
-    }; //namespace IOEnv
+    };
 
     class SequentialFile {
     private:
@@ -170,6 +169,6 @@ namespace LeviDB {
     namespace ThreadEnv {
         uint64_t gettid() noexcept;
     }
-} //namespace LeviDB
+}
 
 #endif //LEVIDB_ENV_H
