@@ -158,7 +158,7 @@ namespace LeviDB {
         void operator=(const FileLock &);
     };
 
-    void log4Man(Logger * info_log, const char * format, ...) noexcept
+    void logForMan(Logger * info_log, const char * format, ...) noexcept
     __attribute__((__format__ (__printf__, 2, 3)));
 
     void writeStringToFile(const Slice & data, const std::string & fname);

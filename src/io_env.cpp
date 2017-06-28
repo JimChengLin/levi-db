@@ -23,7 +23,7 @@
 #define str_error strerror(errno)
 
 namespace LeviDB {
-    void log4Man(Logger * info_log, const char * format, ...) noexcept {
+    void logForMan(Logger * info_log, const char * format, ...) noexcept {
         assert(info_log != nullptr);
 
         va_list ap;
