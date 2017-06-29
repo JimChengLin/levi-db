@@ -1,13 +1,11 @@
 #include "coder.h"
 
 namespace LeviDB {
-    static constexpr int table_size = FN + 1 + 1;
-
     void Holder::plus(int idx, int val) noexcept {
         while (true) {
             cum_cnt[idx] += val;
             idx += (idx & (-idx));
-            if (idx > table_size - 1) {
+            if (idx > length - 1) {
                 break;
             }
         }
@@ -30,7 +28,7 @@ namespace LeviDB {
                 while (true) {
                     cum_cnt[idx] += val;
                     idx += (idx & (-idx));
-                    if (idx > table_size - 1) {
+                    if (idx > length - 1) {
                         break;
                     }
                 }
@@ -44,9 +42,17 @@ namespace LeviDB {
         while (true) {
             cum_cnt[idx] += val;
             idx += (idx & (-idx));
-            if (idx > table_size - 1) {
+            if (idx > length - 1) {
                 break;
             }
         }
+    }
+
+    std::vector<uint8_t> ArithmeticCoder::encode(const Slice & source) noexcept {
+
+    }
+
+    std::vector<uint8_t> ArithmeticCoder::decode(const Slice & source) {
+
     }
 }
