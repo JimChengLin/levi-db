@@ -24,7 +24,7 @@
  */
 
 namespace LeviDB {
-    namespace log {
+    namespace LogConst {
         enum ConcatType {
             FULL = 0,
 
