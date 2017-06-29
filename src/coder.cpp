@@ -33,20 +33,18 @@ namespace LeviDB {
     }
 
     template<bool _>
-    void ArithmeticSubCoder<_>::pushBit(const bool bit, std::vector<uint8_t> & output, size_t & nth_byte_out,
-                                        int & nth_bit_out) noexcept {
+    void ArithmeticSubCoder<_>::pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
         if (bit) {
-            output[nth_byte_out] |= (1 << nth_bit_out);
+            output.back() |= (1 << nth_bit_out);
         }
         if (--nth_bit_out < 0) {
-            ++nth_byte_out;
             nth_bit_out = CHAR_BIT - 1;
+            output.push_back(0);
         }
     }
 
     template<bool _>
-    void ArithmeticSubCoder<_>::encode(const int symbol, std::vector<uint8_t> & output, size_t & nth_byte_out,
-                                       int & nth_bit_out) noexcept {
+    void ArithmeticSubCoder<_>::encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
         assert(symbol >= 0);
         assert(nth_bit_out >= 0 && nth_bit_out < CHAR_BIT);
 
@@ -59,7 +57,7 @@ namespace LeviDB {
         while (condition_12() || condition_3()) {
             if (condition_12()) {
                 bool bit = static_cast<bool>(_lower & mask_a);
-                pushBit(bit, output, nth_byte_out, nth_bit_out);
+                pushBit(bit, output, nth_bit_out);
 
                 _lower <<= 1;
                 _upper <<= 1;
@@ -67,7 +65,7 @@ namespace LeviDB {
 
                 bit = !bit;
                 while (_cnt_3) {
-                    pushBit(bit, output, nth_byte_out, nth_bit_out);
+                    pushBit(bit, output, nth_bit_out);
                     --_cnt_3;
                 }
             }
@@ -85,19 +83,18 @@ namespace LeviDB {
     };
 
     template<bool _>
-    void ArithmeticSubCoder<_>::finishEncode(std::vector<uint8_t> & output, size_t & nth_byte_out,
-                                             int & nth_bit_out) noexcept {
+    void ArithmeticSubCoder<_>::finishEncode(std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
         auto residual = std::bitset<sizeof(_lower) * CHAR_BIT>(_lower);
-        pushBit(residual[residual.size() - 1], output, nth_byte_out, nth_bit_out);
+        pushBit(residual[residual.size() - 1], output, nth_bit_out);
 
         bool bit = !residual[residual.size() - 1];
         while (_cnt_3) {
-            pushBit(bit, output, nth_byte_out, nth_bit_out);
+            pushBit(bit, output, nth_bit_out);
             --_cnt_3;
         }
 
         for (int i = static_cast<int>(residual.size() - 1 - 1); i >= 0; --i) {
-            pushBit(residual[i], output, nth_byte_out, nth_bit_out);
+            pushBit(residual[i], output, nth_bit_out);
         }
         return;
     }

@@ -100,9 +100,9 @@ namespace LeviDB {
         ~ArithmeticSubCoder() noexcept {}
 
         // 0-based nth
-        void encode(const int symbol, std::vector<uint8_t> & output, size_t & nth_byte_out, int & nth_bit_out) noexcept;
+        void encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
 
-        void finishEncode(std::vector<uint8_t> & output, size_t & nth_byte_out, int & nth_bit_out) noexcept;
+        void finishEncode(std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
 
         // NYT 与 normal 在 decode 时有差异: normal 从前往后, NYT 相反
         int decode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
@@ -110,7 +110,7 @@ namespace LeviDB {
         void initDecode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
 
     private:
-        void pushBit(const bool bit, std::vector<uint8_t> & output, size_t & nth_byte_out, int & nth_bit_out) noexcept;
+        void pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
 
         bool fetchBit(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
 
