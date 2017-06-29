@@ -1,5 +1,5 @@
 #include "coder.h"
-#include <bitset>
+#include "exception.h"
 
 namespace LeviDB {
     void Holder::plus(int idx, int val) noexcept {
@@ -48,6 +48,7 @@ namespace LeviDB {
     void ArithmeticSubCoder<_>::encode(const int symbol, std::vector<uint8_t> & output, size_t & nth_byte_out,
                                        int & nth_bit_out) noexcept {
         assert(symbol >= 0);
+        assert(nth_bit_out >= 0 && nth_bit_out < CHAR_BIT);
 
         uint16_t o_lower = _lower;
         uint32_t o_range = static_cast<uint32_t>(_upper) - _lower + 1;
@@ -99,5 +100,55 @@ namespace LeviDB {
             pushBit(residual[i], output, nth_byte_out, nth_bit_out);
         }
         return;
+    }
+
+    template<bool TRUE_NYT_FALSE_NORMAL>
+    bool ArithmeticSubCoder<TRUE_NYT_FALSE_NORMAL>::fetchBit(const Slice & input, size_t & nth_byte_in,
+                                                             int & nth_bit_in) {
+        bool bit = 0;
+        if (!TRUE_NYT_FALSE_NORMAL) { // normal forward
+            if (nth_byte_in > input.size() - 1) {
+                throw Exception::corruptionException("bad record length");
+            }
+
+            bit = static_cast<bool>(input.data()[nth_byte_in] & (1 << nth_bit_in));
+            if (--nth_bit_in < 0) {
+                ++nth_byte_in;
+                nth_bit_in = CHAR_BIT - 1;
+            }
+        } else { // NYT backward
+            if (nth_bit_in > CHAR_BIT - 1) {
+                throw Exception::corruptionException("bad record length");
+            }
+
+            bit = static_cast<bool>(input.data()[nth_byte_in] & (1 << nth_bit_in));
+            if (++nth_bit_in > CHAR_BIT - 1) {
+                if (nth_byte_in >= 1) {
+                    --nth_byte_in;
+                    nth_bit_in = 0;
+                }
+            }
+        }
+        return bit;
+    }
+
+    template<bool _>
+    int ArithmeticSubCoder<_>::decode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in) {
+    }
+
+    template<bool TRUE_NYT_FALSE_NORMAL>
+    void ArithmeticSubCoder<TRUE_NYT_FALSE_NORMAL>::initDecode(const Slice & input, size_t & nth_byte_in,
+                                                               int & nth_bit_in) {
+        if (!TRUE_NYT_FALSE_NORMAL) { // normal forward
+            if (input.size() < 2) {
+                throw Exception::corruptionException("bad record length");
+            }
+
+            _bit_q = *reinterpret_cast<const uint16_t *>(input.data());
+        } else { // NYT backward
+            for (int i = static_cast<int>(_bit_q.size() - 1); i >= 0; --i) {
+                _bit_q[i] = fetchBit(input, nth_byte_in, nth_bit_in);
+            }
+        }
     }
 }

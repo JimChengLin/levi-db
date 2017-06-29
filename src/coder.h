@@ -6,6 +6,7 @@
  */
 
 #include "slice.h"
+#include <bitset>
 #include <climits>
 #include <cstdint>
 #include <vector>
@@ -82,7 +83,7 @@ namespace LeviDB {
     class ArithmeticSubCoder {
     private:
         Holder _holder;
-
+        std::bitset<sizeof(uint16_t) * CHAR_BIT> _bit_q;
         int _cnt_3;
         uint16_t _lower;
         uint16_t _upper;
@@ -92,9 +93,9 @@ namespace LeviDB {
 
     public:
         ArithmeticSubCoder() noexcept
-                : _holder(TRUE_NYT_FALSE_NORMAL ? *reinterpret_cast<Holder *>(const_cast<HolderNYT *>(&holderNYT))
-                                                : *reinterpret_cast<Holder *>(const_cast<HolderNormal *>(&holderNormal))),
-                  _cnt_3(0), _lower(0), _upper(UINT16_MAX) {}
+                : _holder(TRUE_NYT_FALSE_NORMAL ? *reinterpret_cast<const Holder *>(&holderNYT)
+                                                : *reinterpret_cast<const Holder *>(&holderNormal)),
+                  _bit_q(), _cnt_3(0), _lower(0), _upper(UINT16_MAX) {}
 
         ~ArithmeticSubCoder() noexcept {}
 
@@ -103,8 +104,15 @@ namespace LeviDB {
 
         void finishEncode(std::vector<uint8_t> & output, size_t & nth_byte_out, int & nth_bit_out) noexcept;
 
+        // NYT 与 normal 在 decode 时有差异: normal 从前往后, NYT 相反
+        int decode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
+
+        void initDecode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
+
     private:
         void pushBit(const bool bit, std::vector<uint8_t> & output, size_t & nth_byte_out, int & nth_bit_out) noexcept;
+
+        bool fetchBit(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
 
         inline bool condition_12() const noexcept {
             return static_cast<bool>(~(_lower ^ _upper) & mask_a);
