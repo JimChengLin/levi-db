@@ -45,6 +45,7 @@ namespace LeviDB {
 
     template<bool _>
     void ArithmeticSubCoder<_>::encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
+        assert(output.size() >= 1);
         assert(symbol >= 0 && symbol <= CoderConst::FN);
         assert(nth_bit_out >= 0 && nth_bit_out <= CHAR_BIT - 1);
 

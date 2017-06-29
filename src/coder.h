@@ -99,7 +99,7 @@ namespace LeviDB {
 
         ~ArithmeticSubCoder() noexcept {}
 
-        // 0-based nth
+        // 0-based nth, 开始时 output.size() == 1
         void encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
 
         void finishEncode(std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
