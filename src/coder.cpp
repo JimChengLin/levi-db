@@ -45,8 +45,8 @@ namespace LeviDB {
 
     template<bool _>
     void ArithmeticSubCoder<_>::encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
-        assert(symbol >= 0);
-        assert(nth_bit_out >= 0 && nth_bit_out < CHAR_BIT);
+        assert(symbol >= 0 && symbol <= CoderConst::FN);
+        assert(nth_bit_out >= 0 && nth_bit_out <= CHAR_BIT - 1);
 
         uint16_t o_lower = _lower;
         uint32_t o_range = static_cast<uint32_t>(_upper) - _lower + 1;
@@ -84,17 +84,17 @@ namespace LeviDB {
 
     template<bool _>
     void ArithmeticSubCoder<_>::finishEncode(std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
-        auto residual = std::bitset<sizeof(_lower) * CHAR_BIT>(_lower);
-        pushBit(residual[residual.size() - 1], output, nth_bit_out);
+        _bit_q = _lower;
+        pushBit(_bit_q[_bit_q.size() - 1], output, nth_bit_out);
 
-        bool bit = !residual[residual.size() - 1];
+        bool bit = !_bit_q[_bit_q.size() - 1];
         while (_cnt_3) {
             pushBit(bit, output, nth_bit_out);
             --_cnt_3;
         }
 
-        for (int i = static_cast<int>(residual.size() - 1 - 1); i >= 0; --i) {
-            pushBit(residual[i], output, nth_bit_out);
+        for (int i = static_cast<int>(_bit_q.size() - 1 - 1); i >= 0; --i) {
+            pushBit(_bit_q[i], output, nth_bit_out);
         }
         return;
     }
