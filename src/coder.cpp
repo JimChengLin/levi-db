@@ -137,11 +137,13 @@ namespace LeviDB {
     void ArithmeticSubCoder<TRUE_NYT_FALSE_NORMAL>::initDecode(const Slice & input, size_t & nth_byte_in,
                                                                int & nth_bit_in) {
         if (!TRUE_NYT_FALSE_NORMAL) { // normal forward
-            if (input.size() < 2) {
+            if (input.size() < sizeof(uint16_t)) {
                 throw Exception::corruptionException("bad record length");
             }
 
             _bit_q = *reinterpret_cast<const uint16_t *>(input.data());
+            nth_byte_in = sizeof(uint16_t);
+            nth_bit_in = CHAR_BIT - 1;
         } else { // NYT backward
             for (int i = static_cast<int>(_bit_q.size() - 1); i >= 0; --i) {
                 _bit_q[i] = fetchBit(input, nth_byte_in, nth_bit_in);
