@@ -10,9 +10,9 @@
 namespace LeviDB {
     class Iterator {
     public:
-        Iterator() {};
+        Iterator() noexcept {};
 
-        virtual ~Iterator() {};
+        virtual ~Iterator() noexcept {};
 
         virtual bool valid() const = 0;
 

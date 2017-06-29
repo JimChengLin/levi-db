@@ -9,8 +9,4 @@
  * 长度缩短12.5%以上才接受压缩后的编码
  */
 
-class compressor {
-
-};
-
 #endif //LEVIDB_COMPRESSOR_H

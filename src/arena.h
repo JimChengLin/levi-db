@@ -11,7 +11,7 @@
 namespace LeviDB {
     class Arena {
     public:
-        Arena() noexcept: _alloc_ptr(nullptr), _alloc_bytes_remaining(0) {};
+        Arena() noexcept : _alloc_ptr(nullptr), _alloc_bytes_remaining(0) {};
 
         ~Arena() noexcept {};
 
