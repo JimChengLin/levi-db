@@ -34,6 +34,21 @@ void coder_test() {
         decode_res += decode_char;
     }
     assert(decode_res == src);
+    // ---
+
+    LeviDB::Holder holder;
+    for (int i = 0; i < 10; ++i) {
+        holder.plus(i + 1, 2);
+    }
+    for (int i = 0; i < 10; ++i) {
+        assert(holder.getCum(i + 1) == (i + 1) * 2);
+    }
+    assert(holder.total == 20);
+    holder.halve();
+    for (int i = 0; i < 10; ++i) {
+        assert(holder.getCum(i + 1) == i + 1);
+    }
+    assert(holder.total == 10);
 
     std::cout << __FUNCTION__ << std::endl;
 }
