@@ -72,13 +72,14 @@ namespace LeviDB {
         int cum_cnt[CoderConst::holder_size];
         int total;
 
+        Holder() noexcept : cum_cnt(), total(0) {}
+
         int getCum(int idx) const noexcept;
 
         void plus(int idx, int val) noexcept;
 
         int firstGreater(int cum) const noexcept;
 
-    private:
         void halve() noexcept;
     };
 
@@ -113,9 +114,9 @@ namespace LeviDB {
         void initDecode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
 
     private:
-        void pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
+        void pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept;
 
-        bool fetchBit(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
+        bool fetchBit(const Slice & input, size_t & nth_byte_in, int & nth_bit_in) const;
 
         inline bool condition_12() const noexcept {
             return static_cast<bool>(~(_lower ^ _upper) & mask_a);

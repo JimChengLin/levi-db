@@ -26,10 +26,21 @@ namespace LeviDB {
     }
 
     void Holder::halve() noexcept {
-        for (int i = 1; i < CoderConst::holder_size; ++i) {
-            cum_cnt[i] /= 2;
+        int gap[CoderConst::FN + 1];
+        int lo = 0;
+        for (int i = 0; i <= CoderConst::FN; ++i) {
+            int hi = getCum(i + 1);
+            gap[i] = hi - lo;
+            lo = hi;
         }
-        total = getCum(CoderConst::FN + 1);
+
+        total = 0;
+        memset(cum_cnt, 0, sizeof(cum_cnt));
+        for (int i = 0; i <= CoderConst::FN; ++i) {
+            if (gap[i] >= 1) {
+                plus(i + 1, std::max(1, gap[i] / 2));
+            }
+        }
     }
 
     int Holder::firstGreater(int cum) const noexcept {
@@ -47,7 +58,7 @@ namespace LeviDB {
     }
 
     template<bool _>
-    void SubCoder<_>::pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
+    void SubCoder<_>::pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept {
         if (bit) {
             output.back() |= (1 << nth_bit_out);
         }
@@ -116,7 +127,7 @@ namespace LeviDB {
 
     template<bool TRUE_NYT_FALSE_NORMAL>
     bool SubCoder<TRUE_NYT_FALSE_NORMAL>::fetchBit(const Slice & input, size_t & nth_byte_in,
-                                                   int & nth_bit_in) {
+                                                   int & nth_bit_in) const {
         bool bit = 0;
         if (!TRUE_NYT_FALSE_NORMAL) { // normal forward
             if (nth_byte_in > input.size() - 1) {
