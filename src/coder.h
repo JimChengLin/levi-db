@@ -18,6 +18,7 @@ namespace LeviDB {
             FN = UINT8_MAX + 2,
         };
         static constexpr int holder_size = FN + 1 + 1;
+        static constexpr int decode_exit = -1;
     }
 
     struct HolderNYT {
@@ -74,6 +75,8 @@ namespace LeviDB {
         int getCum(int idx) const noexcept;
 
         void plus(int idx, int val) noexcept;
+
+        int firstGreater(int cum) const noexcept;
 
     private:
         void halve() noexcept;

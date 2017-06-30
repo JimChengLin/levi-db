@@ -32,6 +32,20 @@ namespace LeviDB {
         total = getCum(CoderConst::FN + 1);
     }
 
+    int Holder::firstGreater(int cum) const noexcept {
+        int lo = 0;
+        int hi = CoderConst::FN + 1;
+        while (lo < hi) {
+            int mi = (lo + hi) / 2;
+            if (cum < getCum(mi)) {
+                hi = mi;
+            } else {
+                lo = mi + 1;
+            }
+        }
+        return lo;
+    }
+
     template<bool _>
     void ArithmeticSubCoder<_>::pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
         if (bit) {
@@ -132,6 +146,45 @@ namespace LeviDB {
 
     template<bool _>
     int ArithmeticSubCoder<_>::decode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in) {
+        if (_bit_q == _lower) {
+            return CoderConst::decode_exit;
+        }
+
+        unsigned long anchor =
+                (_bit_q.to_ulong() - _lower + 1) * _holder.total / (static_cast<uint32_t>(_upper) - _lower + 1);
+        int symbol = _holder.firstGreater(static_cast<int>(anchor)) - 1;
+
+        uint16_t o_lower = _lower;
+        uint32_t o_range = static_cast<uint32_t>(_upper) - _lower + 1;
+
+        _lower = o_lower + static_cast<uint16_t>(o_range * _holder.getCum(symbol) / _holder.total);
+        _upper = o_lower + static_cast<uint16_t>(o_range * _holder.getCum(symbol + 1) / _holder.total - 1);
+
+        while (condition_12() || condition_3()) {
+            if (condition_12()) {
+                _lower <<= 1;
+                _upper <<= 1;
+                _upper |= 1;
+
+                _bit_q <<= 1;
+                _bit_q[0] = fetchBit(input, nth_byte_in, nth_bit_in);
+            }
+
+            if (condition_3()) {
+                _lower <<= 1;
+                _upper <<= 1;
+                _upper |= 1;
+
+                _bit_q <<= 1;
+                _bit_q[0] = fetchBit(input, nth_byte_in, nth_bit_in);
+
+                _lower ^= mask_a;
+                _upper ^= mask_a;
+                _bit_q ^= mask_a;
+            }
+        }
+
+        return symbol;
     }
 
     template<bool TRUE_NYT_FALSE_NORMAL>
