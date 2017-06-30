@@ -129,15 +129,15 @@ namespace LeviDB {
                 nth_bit_in = CHAR_BIT - 1;
             }
         } else { // NYT backward
-            if (nth_bit_in > CHAR_BIT - 1) {
+            if (nth_bit_in < 0) {
                 throw Exception::corruptionException("bad record length");
             }
 
             bit = static_cast<bool>(input.data()[nth_byte_in] & (1 << nth_bit_in));
-            if (++nth_bit_in > CHAR_BIT - 1) {
+            if (--nth_bit_in < 0) {
                 if (nth_byte_in >= 1) {
                     --nth_byte_in;
-                    nth_bit_in = 0;
+                    nth_bit_in = CHAR_BIT - 1;
                 }
             }
         }
@@ -190,18 +190,10 @@ namespace LeviDB {
     template<bool TRUE_NYT_FALSE_NORMAL>
     void SubCoder<TRUE_NYT_FALSE_NORMAL>::initDecode(const Slice & input, size_t & nth_byte_in,
                                                      int & nth_bit_in) {
-        if (!TRUE_NYT_FALSE_NORMAL) { // normal forward
-            if (input.size() < sizeof(uint16_t)) {
-                throw Exception::corruptionException("bad record length");
-            }
-
-            _bit_q = *reinterpret_cast<const uint16_t *>(input.data());
-            nth_byte_in = sizeof(uint16_t);
-            nth_bit_in = CHAR_BIT - 1;
-        } else { // NYT backward
-            for (int i = static_cast<int>(_bit_q.size() - 1); i >= 0; --i) {
-                _bit_q[i] = fetchBit(input, nth_byte_in, nth_bit_in);
-            }
+        nth_byte_in = (!TRUE_NYT_FALSE_NORMAL) ? 0 : (input.size() - 1);
+        nth_bit_in = CHAR_BIT - 1;
+        for (int i = static_cast<int>(_bit_q.size() - 1); i >= 0; --i) {
+            _bit_q[i] = fetchBit(input, nth_byte_in, nth_bit_in);
         }
     }
 

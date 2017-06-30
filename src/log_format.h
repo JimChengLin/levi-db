@@ -11,7 +11,6 @@
  * record = type + length + content
  * type = uint8_t
  * length = uint16_t
- * length + content 足以还原出部分的数据
  *
  * type 用于拼接
  * uint8_t: [1][2][3][4][5][6][7][8]
