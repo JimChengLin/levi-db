@@ -10,6 +10,6 @@ void coder_test();
 
 int main() {
     coder_test();
-    std::cout << "Done." << std::endl;
+    std::cout << "done." << std::endl;
     return 0;
 }

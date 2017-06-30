@@ -2,7 +2,7 @@
 #include "exception.h"
 
 namespace LeviDB {
-    void Holder::plus(int idx, int val) noexcept {
+    void Holder::plus(int idx, const int val) noexcept {
         total += val;
         while (true) {
             cum_cnt[idx] += val;
@@ -43,7 +43,7 @@ namespace LeviDB {
         }
     }
 
-    int Holder::firstGreater(int cum) const noexcept {
+    int Holder::firstGreater(const int cum) const noexcept {
         int lo = 0;
         int hi = CoderConst::FN + 1;
         while (lo < hi) {
@@ -213,4 +213,17 @@ namespace LeviDB {
 
     template
     class SubCoder<false>;
+
+    std::vector<uint8_t> Coder::encode(std::vector<int> src) noexcept {
+        std::vector<uint8_t> res;
+
+    }
+
+    std::vector<int> Coder::decode(std::vector<uint8_t> src) {
+        std::vector<int> res;
+    }
+
+    bool Coder::isNew(const int symbol) const noexcept {
+
+    }
 }

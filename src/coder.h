@@ -83,6 +83,8 @@ namespace LeviDB {
         void halve() noexcept;
     };
 
+    class Coder;
+
     template<bool TRUE_NYT_FALSE_NORMAL>
     class SubCoder {
     private:
@@ -91,6 +93,8 @@ namespace LeviDB {
         int _cnt_3;
         uint16_t _lower;
         uint16_t _upper;
+
+        friend class Coder;
 
         static constexpr uint16_t mask_a = 1 << (sizeof(_lower) * CHAR_BIT - 1);
         static constexpr uint16_t mask_b = 1 << (sizeof(_lower) * CHAR_BIT - 1 - 1);
@@ -104,7 +108,7 @@ namespace LeviDB {
         ~SubCoder() noexcept {}
 
         // 0-based nth, 开始时 output.size() == 1
-        void encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
+        void encode(int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
 
         void finishEncode(std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
 
@@ -114,7 +118,7 @@ namespace LeviDB {
         void initDecode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
 
     private:
-        void pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept;
+        void pushBit(bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept;
 
         bool fetchBit(const Slice & input, size_t & nth_byte_in, int & nth_bit_in) const;
 
@@ -129,6 +133,24 @@ namespace LeviDB {
 
     typedef SubCoder<true> SubCoderNYT;
     typedef SubCoder<false> SubCoderNormal;
+
+    class Coder {
+    private:
+        SubCoderNYT _coder_NYT;
+        SubCoderNormal _coder_normal;
+
+    public:
+        Coder() noexcept : _coder_NYT(), _coder_normal() {}
+
+        ~Coder() noexcept {}
+
+        std::vector<uint8_t> encode(std::vector<int> src) noexcept;
+
+        std::vector<int> decode(std::vector<uint8_t> src);
+
+    private:
+        bool isNew(int symbol) const noexcept;
+    };
 }
 
 #endif //LEVIDB_CODER_H
