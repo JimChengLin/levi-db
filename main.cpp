@@ -6,7 +6,10 @@
 
 #include <iostream>
 
+void coder_test();
+
 int main() {
+    coder_test();
     std::cout << "Done." << std::endl;
     return 0;
 }

@@ -47,7 +47,7 @@ namespace LeviDB {
     }
 
     template<bool _>
-    void ArithmeticSubCoder<_>::pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
+    void SubCoder<_>::pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
         if (bit) {
             output.back() |= (1 << nth_bit_out);
         }
@@ -58,7 +58,7 @@ namespace LeviDB {
     }
 
     template<bool _>
-    void ArithmeticSubCoder<_>::encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
+    void SubCoder<_>::encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
         assert(output.size() >= 1);
         assert(symbol >= 0 && symbol <= CoderConst::FN);
         assert(nth_bit_out >= 0 && nth_bit_out <= CHAR_BIT - 1);
@@ -98,7 +98,7 @@ namespace LeviDB {
     };
 
     template<bool _>
-    void ArithmeticSubCoder<_>::finishEncode(std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
+    void SubCoder<_>::finishEncode(std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
         _bit_q = _lower;
         pushBit(_bit_q[_bit_q.size() - 1], output, nth_bit_out);
 
@@ -115,8 +115,8 @@ namespace LeviDB {
     }
 
     template<bool TRUE_NYT_FALSE_NORMAL>
-    bool ArithmeticSubCoder<TRUE_NYT_FALSE_NORMAL>::fetchBit(const Slice & input, size_t & nth_byte_in,
-                                                             int & nth_bit_in) {
+    bool SubCoder<TRUE_NYT_FALSE_NORMAL>::fetchBit(const Slice & input, size_t & nth_byte_in,
+                                                   int & nth_bit_in) {
         bool bit = 0;
         if (!TRUE_NYT_FALSE_NORMAL) { // normal forward
             if (nth_byte_in > input.size() - 1) {
@@ -145,7 +145,7 @@ namespace LeviDB {
     }
 
     template<bool _>
-    int ArithmeticSubCoder<_>::decode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in) {
+    int SubCoder<_>::decode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in) {
         if (_bit_q == _lower) {
             return CoderConst::decode_exit;
         }
@@ -188,8 +188,8 @@ namespace LeviDB {
     }
 
     template<bool TRUE_NYT_FALSE_NORMAL>
-    void ArithmeticSubCoder<TRUE_NYT_FALSE_NORMAL>::initDecode(const Slice & input, size_t & nth_byte_in,
-                                                               int & nth_bit_in) {
+    void SubCoder<TRUE_NYT_FALSE_NORMAL>::initDecode(const Slice & input, size_t & nth_byte_in,
+                                                     int & nth_bit_in) {
         if (!TRUE_NYT_FALSE_NORMAL) { // normal forward
             if (input.size() < sizeof(uint16_t)) {
                 throw Exception::corruptionException("bad record length");
@@ -204,4 +204,10 @@ namespace LeviDB {
             }
         }
     }
+
+    template
+    class SubCoder<true>;
+
+    template
+    class SubCoder<false>;
 }

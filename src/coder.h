@@ -83,7 +83,7 @@ namespace LeviDB {
     };
 
     template<bool TRUE_NYT_FALSE_NORMAL>
-    class ArithmeticSubCoder {
+    class SubCoder {
     private:
         Holder _holder;
         std::bitset<sizeof(uint16_t) * CHAR_BIT> _bit_q;
@@ -95,12 +95,12 @@ namespace LeviDB {
         static constexpr uint16_t mask_b = 1 << (sizeof(_lower) * CHAR_BIT - 1 - 1);
 
     public:
-        ArithmeticSubCoder() noexcept
+        SubCoder() noexcept
                 : _holder(TRUE_NYT_FALSE_NORMAL ? *reinterpret_cast<const Holder *>(&holderNYT)
                                                 : *reinterpret_cast<const Holder *>(&holderNormal)),
                   _bit_q(), _cnt_3(0), _lower(0), _upper(UINT16_MAX) {}
 
-        ~ArithmeticSubCoder() noexcept {}
+        ~SubCoder() noexcept {}
 
         // 0-based nth, 开始时 output.size() == 1
         void encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
@@ -126,8 +126,8 @@ namespace LeviDB {
         }
     };
 
-    typedef ArithmeticSubCoder<true> ArithmeticSubCoderNYT;
-    typedef ArithmeticSubCoder<false> ArithmeticSubCoderNormal;
+    typedef SubCoder<true> SubCoderNYT;
+    typedef SubCoder<false> SubCoderNormal;
 }
 
 #endif //LEVIDB_CODER_H

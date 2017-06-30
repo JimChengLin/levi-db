@@ -13,6 +13,7 @@ set(SOURCE_FILES
         src/log_format.h
         src/coder.cpp src/coder.h
         src/compressor.cpp src/compressor.h
-        src/repeat_detector.cpp src/repeat_detector.h)
+        src/repeat_detector.cpp src/repeat_detector.h
+        test/coder_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
