@@ -161,8 +161,8 @@ namespace LeviDB {
             return CoderConst::decode_exit;
         }
 
-        unsigned long anchor =
-                (_bit_q.to_ulong() - _lower + 1) * _holder.total / (static_cast<uint32_t>(_upper) - _lower + 1);
+        unsigned long anchor = ((_bit_q.to_ulong() - _lower + 1) * _holder.total - 1)
+                               / (static_cast<uint32_t>(_upper) - _lower + 1);
         int symbol = _holder.firstGreater(static_cast<int>(anchor)) - 1;
 
         uint16_t o_lower = _lower;
