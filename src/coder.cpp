@@ -214,7 +214,7 @@ namespace LeviDB {
     template
     class SubCoder<false>;
 
-    std::vector<uint8_t> Coder::encode(std::vector<int> src) noexcept {
+    std::vector<uint8_t> Coder::encode(const std::vector<int> & src) noexcept {
         int nth_bit_normal = CHAR_BIT - 1;
         int nth_bit_NYT = CHAR_BIT - 1;
         std::vector<uint8_t> output_normal(1);
@@ -250,20 +250,19 @@ namespace LeviDB {
         return output_normal;
     }
 
-    std::vector<int> Coder::decode(std::vector<uint8_t> src) {
+    std::vector<int> Coder::decode(const Slice & src) {
         int symbol;
         std::vector<int> res;
         int nth_bit_normal;
         int nth_bit_NYT;
         size_t nth_byte_normal;
         size_t nth_byte_NYT;
-        Slice input(reinterpret_cast<const char *>(src.data()), src.size());
 
-        _coder_normal.initDecode(input, nth_byte_normal, nth_bit_normal);
-        _coder_NYT.initDecode(input, nth_byte_NYT, nth_bit_NYT);
+        _coder_normal.initDecode(src, nth_byte_normal, nth_bit_normal);
+        _coder_NYT.initDecode(src, nth_byte_NYT, nth_bit_NYT);
 
         // get first symbol
-        symbol = _coder_NYT.decode(input, nth_byte_NYT, nth_bit_NYT);
+        symbol = _coder_NYT.decode(src, nth_byte_NYT, nth_bit_NYT);
         res.push_back(symbol);
         if (nth_bit_NYT < 0) { // singe char src
             return res;
@@ -271,9 +270,9 @@ namespace LeviDB {
         _coder_normal._holder.plus(symbol + 1, 1);
         _coder_NYT._holder.plus(symbol + 1, -1);
 
-        while ((symbol = _coder_normal.decode(input, nth_byte_normal, nth_bit_normal)) != CoderConst::decode_exit) {
+        while ((symbol = _coder_normal.decode(src, nth_byte_normal, nth_bit_normal)) != CoderConst::decode_exit) {
             if (symbol == CoderConst::NYT) {
-                symbol = _coder_NYT.decode(input, nth_byte_NYT, nth_bit_NYT);
+                symbol = _coder_NYT.decode(src, nth_byte_NYT, nth_bit_NYT);
                 res.push_back(symbol);
 
                 _coder_normal._holder.plus(symbol + 1, 1);
@@ -287,7 +286,7 @@ namespace LeviDB {
             }
         }
 
-        if (_coder_NYT.decode(input, nth_byte_NYT, nth_bit_NYT) != CoderConst::decode_exit ||
+        if (_coder_NYT.decode(src, nth_byte_NYT, nth_bit_NYT) != CoderConst::decode_exit ||
             nth_byte_normal - nth_byte_NYT == 1) {
             throw Exception::corruptionException("record struct damaged");
         }

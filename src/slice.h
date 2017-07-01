@@ -20,6 +20,12 @@ namespace LeviDB {
 
         Slice(const char * s) noexcept : _data(s), _size(strlen(s)) {}
 
+        template<typename T>
+        Slice(T * s, size_t n) noexcept
+                :Slice(reinterpret_cast<const char *>(s), n) {
+            static_assert(sizeof(T) == sizeof(char), "args mismatch");
+        }
+
         const char * data() const noexcept { return _data; }
 
         size_t size() const noexcept { return _size; }

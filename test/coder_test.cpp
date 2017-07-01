@@ -14,7 +14,7 @@ void coder_test() {
 
     LeviDB::SubCoderNYT decoder;
     LeviDB::SubCoderNormal * forward_decoder = reinterpret_cast<LeviDB::SubCoderNormal *>(&decoder);
-    LeviDB::Slice slice(reinterpret_cast<const char *>(encode_res.data()), encode_res.size());
+    LeviDB::Slice slice(encode_res.data(), encode_res.size());
     size_t nth_byte_;
     forward_decoder->initDecode(slice, nth_byte_, nth_bit);
 
@@ -56,7 +56,9 @@ void coder_test() {
     LeviDB::Coder main_encoder;
     LeviDB::Coder main_decoder;
     std::vector<int> main_src(src.cbegin(), src.cend());
-    assert(main_decoder.decode(main_encoder.encode(main_src)) == main_src);
+    std::vector<uint8_t> main_encode_res = main_encoder.encode(main_src);
+    LeviDB::Slice main_slice(main_encode_res.data(), main_encode_res.size());
+    assert(main_decoder.decode(main_slice) == main_src);
     // ---
 
     std::cout << __FUNCTION__ << std::endl;

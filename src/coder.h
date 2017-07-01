@@ -144,9 +144,9 @@ namespace LeviDB {
 
         ~Coder() noexcept {}
 
-        std::vector<uint8_t> encode(std::vector<int> src) noexcept;
+        std::vector<uint8_t> encode(const std::vector<int> & src) noexcept;
 
-        std::vector<int> decode(std::vector<uint8_t> src);
+        std::vector<int> decode(const Slice & src);
 
     private:
         bool isNew(int symbol) const noexcept;
