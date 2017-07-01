@@ -53,5 +53,11 @@ void coder_test() {
     assert(holder.total == 10);
     // ---
 
+    LeviDB::Coder main_encoder;
+    LeviDB::Coder main_decoder;
+    std::vector<int> main_src(src.cbegin(), src.cend());
+    assert(main_decoder.decode(main_encoder.encode(main_src)) == main_src);
+    // ---
+
     std::cout << __FUNCTION__ << std::endl;
 }
