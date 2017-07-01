@@ -20,7 +20,8 @@ void coder_test() {
 
     std::string decode_res;
     char decode_char;
-    while ((decode_char = static_cast<char>(forward_decoder->decode(slice, nth_byte_, nth_bit))) >= 0) {
+    while ((decode_char = static_cast<char>(forward_decoder->decode(slice, nth_byte_, nth_bit))) !=
+           LeviDB::CoderConst::decode_exit) {
         decode_res += decode_char;
     }
     assert(decode_res == src);
@@ -30,7 +31,8 @@ void coder_test() {
     std::reverse(encode_res.begin(), encode_res.end());
     backward_decoder.initDecode(slice, nth_byte_, nth_bit);
 
-    while ((decode_char = static_cast<char>(backward_decoder.decode(slice, nth_byte_, nth_bit))) >= 0) {
+    while ((decode_char = static_cast<char>(backward_decoder.decode(slice, nth_byte_, nth_bit))) !=
+           LeviDB::CoderConst::decode_exit) {
         decode_res += decode_char;
     }
     assert(decode_res == src);
@@ -49,6 +51,7 @@ void coder_test() {
         assert(holder.getCum(i + 1) == i + 1);
     }
     assert(holder.total == 10);
+    // ---
 
     std::cout << __FUNCTION__ << std::endl;
 }
