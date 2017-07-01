@@ -270,7 +270,10 @@ namespace LeviDB {
         _coder_normal._holder.plus(symbol + 1, 1);
         _coder_NYT._holder.plus(symbol + 1, -1);
 
-        while ((symbol = _coder_normal.decode(src, nth_byte_normal, nth_bit_normal)) != CoderConst::decode_exit) {
+        size_t break_threshold = src.size() * CHAR_BIT;
+        size_t iter_times = 0;
+        while ((symbol = _coder_normal.decode(src, nth_byte_normal, nth_bit_normal)) != CoderConst::decode_exit
+               && iter_times++ < break_threshold) {
             if (symbol == CoderConst::NYT) {
                 symbol = _coder_NYT.decode(src, nth_byte_NYT, nth_bit_NYT);
                 res.push_back(symbol);
