@@ -215,15 +215,89 @@ namespace LeviDB {
     class SubCoder<false>;
 
     std::vector<uint8_t> Coder::encode(std::vector<int> src) noexcept {
-        std::vector<uint8_t> res;
+        int nth_bit_normal = CHAR_BIT - 1;
+        int nth_bit_NYT = CHAR_BIT - 1;
+        std::vector<uint8_t> output_normal(1);
+        std::vector<uint8_t> output_NYT(1);
 
+        for (int symbol:src) {
+            if (isNew(symbol)) {
+                // NYT
+                _coder_normal.encode(CoderConst::NYT, output_normal, nth_bit_normal);
+                // encode
+                _coder_NYT.encode(symbol, output_NYT, nth_bit_NYT);
+                // freq
+                _coder_normal._holder.plus(symbol + 1, 1);
+                _coder_NYT._holder.plus(symbol + 1, -1);
+                // if no longer need NYT
+                if (_coder_NYT._holder.total == 0) {
+                    _coder_normal._holder.plus(CoderConst::NYT + 1, -1);
+                }
+            } else {
+                // encode
+                _coder_normal.encode(symbol, output_normal, nth_bit_normal);
+                // freq
+                _coder_normal._holder.plus(symbol + 1, 1);
+            }
+        }
+        if (output_normal.size() == 1 && nth_bit_normal == CHAR_BIT - 1) { // single char src
+        } else {
+            _coder_normal.finishEncode(output_normal, nth_bit_normal);
+        }
+        _coder_NYT.finishEncode(output_NYT, nth_bit_NYT);
+
+        output_normal.insert(output_normal.end(), output_NYT.crbegin(), output_NYT.crend());
+        return output_normal;
     }
 
     std::vector<int> Coder::decode(std::vector<uint8_t> src) {
+        int symbol;
         std::vector<int> res;
+        int nth_bit_normal;
+        int nth_bit_NYT;
+        size_t nth_byte_normal;
+        size_t nth_byte_NYT;
+        Slice input(reinterpret_cast<const char *>(src.data()), src.size());
+
+        _coder_normal.initDecode(input, nth_byte_normal, nth_bit_normal);
+        _coder_NYT.initDecode(input, nth_byte_NYT, nth_bit_NYT);
+
+        // get first symbol
+        symbol = _coder_NYT.decode(input, nth_byte_NYT, nth_bit_NYT);
+        res.push_back(symbol);
+        if (nth_bit_NYT < 0) { // singe char src
+            return res;
+        }
+        _coder_normal._holder.plus(symbol + 1, 1);
+        _coder_NYT._holder.plus(symbol + 1, -1);
+
+        while ((symbol = _coder_normal.decode(input, nth_byte_normal, nth_bit_normal)) != CoderConst::decode_exit) {
+            if (symbol == CoderConst::NYT) {
+                symbol = _coder_NYT.decode(input, nth_byte_NYT, nth_bit_NYT);
+                res.push_back(symbol);
+
+                _coder_normal._holder.plus(symbol + 1, 1);
+                _coder_NYT._holder.plus(symbol + 1, -1);
+                if (_coder_NYT._holder.total == 0) {
+                    _coder_normal._holder.plus(CoderConst::NYT + 1, -1);
+                }
+            } else {
+                res.push_back(symbol);
+                _coder_normal._holder.plus(symbol + 1, 1);
+            }
+        }
+
+        if (_coder_NYT.decode(input, nth_byte_NYT, nth_bit_NYT) != CoderConst::decode_exit ||
+            nth_byte_normal - nth_byte_NYT == 1) {
+            throw Exception::corruptionException("record struct damaged");
+        }
+
+        return res;
     }
 
     bool Coder::isNew(const int symbol) const noexcept {
-
+        int lo = _coder_NYT._holder.getCum(symbol);
+        int hi = _coder_NYT._holder.getCum(symbol + 1);
+        return lo != hi;
     }
 }
