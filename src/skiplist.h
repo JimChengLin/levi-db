@@ -8,10 +8,11 @@
 #include "arena.h"
 #include "random.h"
 #include <cassert>
+#include <functional>
 #include <vector>
 
 namespace LeviDB {
-    template<typename K, class CMP>
+    template<typename K, class CMP=std::less<K>>
     class SkipList {
     private:
         struct Node;
@@ -70,8 +71,8 @@ namespace LeviDB {
 
     private:
         static constexpr int max_height = 12;
-        static const CMP comparator{};
 
+        const CMP _comparator;
         Arena * const _arena;
         Node * const _head;
 
@@ -82,7 +83,7 @@ namespace LeviDB {
 
         int randomHeight() noexcept;
 
-        bool equal(const K & a, const K & b) const noexcept { return comparator(a, b) == 0; };
+        bool equal(const K & a, const K & b) const noexcept { return _comparator(a, b) == 0; };
 
         bool keyIsAfterNode(const K & key, Node * n) const noexcept;
 
@@ -130,7 +131,7 @@ namespace LeviDB {
 
     template<typename K, class CMP>
     bool SkipList<K, CMP>::keyIsAfterNode(const K & key, Node * n) const noexcept {
-        return n != nullptr && comparator(n->key, key) < 0;
+        return n != nullptr && _comparator(n->key, key) < 0;
     }
 
     template<typename K, class CMP>
@@ -160,7 +161,7 @@ namespace LeviDB {
         int curr_lv = _this_max_h - 1;
         while (true) {
             Node * next = x->next(curr_lv);
-            if (next == nullptr || comparator(next->key, key) >= 0) {
+            if (next == nullptr || _comparator(next->key, key) >= 0) {
                 if (curr_lv == 0) {
                     return x;
                 } else {
@@ -192,7 +193,8 @@ namespace LeviDB {
 
     template<typename K, class CMP>
     SkipList<K, CMP>::SkipList(Arena * arena) noexcept
-            :_arena(arena),
+            :_comparator(),
+             _arena(arena),
              _head(newNode(0, max_height)),
              _this_max_h(1),
              _rnd(0xdeadbeef) {
@@ -222,7 +224,7 @@ namespace LeviDB {
     }
 
     template<typename K, class CMP>
-    bool SkipList::contains(const K & key) const noexcept {
+    bool SkipList<K, CMP>::contains(const K & key) const noexcept {
         Node * x = findGreaterOrEqual(key, nullptr);
         return x != nullptr && equal(key, x->key);
     }

@@ -8,8 +8,11 @@
 
 void coder_test();
 
+void skiplist_test();
+
 int main() {
     coder_test();
+    skiplist_test();
     std::cout << "done." << std::endl;
     return 0;
 }

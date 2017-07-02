@@ -18,6 +18,6 @@ set(SOURCE_FILES
         src/skiplist.h
         src/random.h
         test/coder_test.cpp
-        )
+        test/skiplist_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
