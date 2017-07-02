@@ -56,7 +56,7 @@ void coder_test() {
     LeviDB::Coder main_encoder;
     LeviDB::Coder main_decoder;
     std::vector<int> main_src(src.cbegin(), src.cend());
-    std::vector<uint8_t> main_encode_res = main_encoder.encode(main_src);
+    std::vector<uint8_t> main_encode_res(main_encoder.encode(main_src));
     LeviDB::Slice main_slice(main_encode_res.data(), main_encode_res.size());
     assert(main_decoder.decode(main_slice) == main_src);
     // ---
