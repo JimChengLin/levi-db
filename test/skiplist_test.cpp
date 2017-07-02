@@ -2,7 +2,8 @@
 #include <iostream>
 
 void skiplist_test() {
-    char src[] = {'D', 'E', 'I', 'K', 'M', 'N', 'O', 'Q', 'W', 'X', 'Z'};
+    char src[] = {'N', 'O', 'Q', 'D', 'E', 'I', 'K', 'M', 'W', 'X', 'Z'};
+    char ans[] = {'D', 'E', 'I', 'K', 'M', 'N', 'O', 'Q', 'W', 'X', 'Z'};
 
     LeviDB::Arena arena;
     LeviDB::SkipList<char> skip_list(&arena);
@@ -12,8 +13,11 @@ void skiplist_test() {
 
     LeviDB::SkipList<char>::Iterator it(&skip_list);
     it.seekToFirst();
+    int i = 0;
     while (it.valid()) {
-        std::cout << it.key() << std::endl;
+        assert(it.key() == ans[i++]);
         it.next();
     }
+
+    std::cout << __FUNCTION__ << std::endl;
 }
