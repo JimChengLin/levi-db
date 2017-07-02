@@ -12,7 +12,20 @@
 #include <vector>
 
 namespace LeviDB {
-    template<typename K, class CMP=std::less<K>>
+    struct less {
+        template<typename T>
+        constexpr int operator()(T && a, T && b) const {
+            if (a < b) {
+                return -1;
+            } else if (a == b) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+    };
+
+    template<typename K, class CMP=less>
     class SkipList {
     private:
         struct Node;
@@ -79,7 +92,7 @@ namespace LeviDB {
         int _this_max_h;
         Random _rnd;
 
-        Node * newNode(const K & key, int height) noexcept;
+        auto newNode(const K & key, int height) noexcept;
 
         int randomHeight() noexcept;
 
@@ -87,11 +100,11 @@ namespace LeviDB {
 
         bool keyIsAfterNode(const K & key, Node * n) const noexcept;
 
-        Node * findGreaterOrEqual(const K & key, Node * prev[]) const noexcept;
+        auto findGreaterOrEqual(const K & key, Node * prev[]) const noexcept;
 
-        Node * findLessThan(const K & key) const noexcept;
+        auto findLessThan(const K & key) const noexcept;
 
-        Node * findLast() const noexcept;
+        auto findLast() const noexcept;
 
         // 禁止复制
         SkipList(const SkipList &);
@@ -112,7 +125,7 @@ namespace LeviDB {
     };
 
     template<typename K, class CMP>
-    Node * SkipList<K, CMP>::newNode(const K & key, int height) noexcept {
+    auto SkipList<K, CMP>::newNode(const K & key, int height) noexcept {
         char * mem = _arena->allocateAligned(sizeof(Node) + sizeof(Node *) * (height - 1));
         return new(mem) Node(key);
     }
@@ -135,7 +148,7 @@ namespace LeviDB {
     }
 
     template<typename K, class CMP>
-    Node * SkipList<K, CMP>::findGreaterOrEqual(const K & key, Node * prev[]) const noexcept {
+    auto SkipList<K, CMP>::findGreaterOrEqual(const K & key, Node * prev[]) const noexcept {
         Node * x = _head;
         int curr_lv = _this_max_h - 1;
         while (true) {
@@ -156,7 +169,7 @@ namespace LeviDB {
     }
 
     template<typename K, class CMP>
-    Node * SkipList<K, CMP>::findLessThan(const K & key) const noexcept {
+    auto SkipList<K, CMP>::findLessThan(const K & key) const noexcept {
         Node * x = _head;
         int curr_lv = _this_max_h - 1;
         while (true) {
@@ -174,7 +187,7 @@ namespace LeviDB {
     }
 
     template<typename K, class CMP>
-    Node * SkipList<K, CMP>::findLast() const noexcept {
+    auto SkipList<K, CMP>::findLast() const noexcept {
         Node * x = _head;
         int curr_lv = _this_max_h - 1;
         while (true) {
@@ -207,6 +220,7 @@ namespace LeviDB {
     void SkipList<K, CMP>::insert(const K & key) noexcept {
         Node * prev[max_height];
         Node * x = findGreaterOrEqual(key, prev);
+        assert(x == nullptr || !equal(key, x->key));
 
         int height = randomHeight();
         if (height > _this_max_h) {
