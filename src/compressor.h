@@ -11,7 +11,7 @@
  *
  * 调用步骤:
  * 提交源字符串, 再不断申请片段,
- * 必须回填上段实际写入的位置
+ * 必须回填上段实际写入位置
  *
  * 内部实现:
  * KV 会被转换为
@@ -23,13 +23,11 @@
 
 namespace LeviDB {
     class Compressor {
-    private:
-
     public:
         void submit(const Slice & key, const Slice & val) noexcept;
 
-        // 最大长度 2**15(log record)
-        std::vector<uint8_t> request(int size) noexcept;
+        // 单次申请最大长度 2**15(max log record length)
+        std::vector<int> request(int size) noexcept;
 
         void report(uint64_t pos) noexcept;
     };
