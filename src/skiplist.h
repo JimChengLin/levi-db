@@ -39,6 +39,8 @@ namespace LeviDB {
 
         bool contains(const K & key) const noexcept;
 
+        bool empty() const noexcept;
+
         class Iterator {
         public:
             explicit Iterator(const SkipList * list) noexcept
@@ -255,6 +257,11 @@ namespace LeviDB {
     bool SkipList<K, CMP>::contains(const K & key) const noexcept {
         Node * x = findGreaterOrEqual(key, nullptr);
         return x != nullptr && equal(key, x->key);
+    }
+
+    template<typename K, class CMP>
+    bool SkipList<K, CMP>::empty() const noexcept {
+        return _head->next(0) == nullptr;
     }
 }
 
