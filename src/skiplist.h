@@ -14,7 +14,7 @@
 namespace LeviDB {
     struct less {
         template<typename T>
-        constexpr int operator()(T && a, T && b) const {
+        int operator()(T && a, T && b) const {
             if (a < b) {
                 return -1;
             } else if (a == b) {
