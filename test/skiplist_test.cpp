@@ -2,7 +2,7 @@
 #include <iostream>
 
 void skiplist_test() {
-    char src[] = {'N', 'O', 'Q', 'D', 'E', 'I', 'K', 'M', 'W', 'X', 'Z'};
+    char src[] = {'X', 'Z', 'N', 'O', 'Q', 'D', 'E', 'I', 'K', 'M', 'W'};
     char ans[] = {'D', 'E', 'I', 'K', 'M', 'N', 'O', 'Q', 'W', 'X', 'Z'};
 
     LeviDB::Arena arena;
