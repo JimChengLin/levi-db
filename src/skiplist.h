@@ -35,6 +35,8 @@ namespace LeviDB {
 
         SkipList(Arena * arena, CMP && cmp) noexcept;
 
+        SkipList(SkipList && rhs) noexcept;
+
         void insert(const K & key) noexcept;
 
         bool contains(const K & key) const noexcept;
@@ -232,6 +234,20 @@ namespace LeviDB {
         for (int i = 0; i < max_height; ++i) {
             _head->setNext(i, nullptr);
         }
+    }
+
+    template<typename K, class CMP>
+    SkipList<K, CMP>::SkipList(SkipList && rhs) noexcept
+            :_comparator(),
+             _arena(),
+             _head(),
+             _this_max_h(),
+             _rnd(0) {
+        std::swap(this->_head, rhs._head);
+        std::swap(this->_this_max_h, rhs._this_max_h);
+        std::swap(this->_rnd, rhs._rnd);
+        std::swap(this->_arena, rhs._arena);
+        std::swap(this->_comparator, rhs._comparator);
     }
 
     template<typename K, class CMP>
