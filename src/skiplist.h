@@ -33,6 +33,8 @@ namespace LeviDB {
     public:
         explicit SkipList(Arena * arena) noexcept;
 
+        SkipList(Arena * arena, CMP && cmp) noexcept;
+
         void insert(const K & key) noexcept;
 
         bool contains(const K & key) const noexcept;
@@ -84,13 +86,13 @@ namespace LeviDB {
 
     private:
         static constexpr int max_height = 12;
-
         const CMP _comparator;
+
         Arena * const _arena;
         Node * const _head;
 
-        int _this_max_h;
         Random _rnd;
+        int _this_max_h;
 
         auto newNode(const K & key, int height) noexcept;
 
@@ -207,6 +209,18 @@ namespace LeviDB {
     template<typename K, class CMP>
     SkipList<K, CMP>::SkipList(Arena * arena) noexcept
             :_comparator(),
+             _arena(arena),
+             _head(newNode(0, max_height)),
+             _this_max_h(1),
+             _rnd(0xdeadbeef) {
+        for (int i = 0; i < max_height; ++i) {
+            _head->setNext(i, nullptr);
+        }
+    }
+
+    template<typename K, class CMP>
+    SkipList<K, CMP>::SkipList(Arena * arena, CMP && cmp) noexcept
+            :_comparator(cmp),
              _arena(arena),
              _head(newNode(0, max_height)),
              _this_max_h(1),
