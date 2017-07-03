@@ -86,9 +86,11 @@ namespace LeviDB {
             const Node * _node;
         };
 
+    public:
+        const CMP _comparator;
+
     private:
         static constexpr int max_height = 12;
-        const CMP _comparator;
 
         Arena * const _arena;
         Node * const _head;
