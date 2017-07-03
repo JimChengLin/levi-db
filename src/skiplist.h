@@ -39,6 +39,8 @@ namespace LeviDB {
 
         void insert(const K & key) noexcept;
 
+        void insert(K && key) noexcept;
+
         bool contains(const K & key) const noexcept;
 
         bool empty() const noexcept;
@@ -102,6 +104,8 @@ namespace LeviDB {
 
         auto newNode(const K & key, int height) noexcept;
 
+        auto newNode(K && key, int height) noexcept;
+
         int randomHeight() noexcept;
 
         bool equal(const K & a, const K & b) const noexcept { return _comparator(a, b) == 0; };
@@ -127,6 +131,8 @@ namespace LeviDB {
 
         explicit Node(const K & k) noexcept : key(k) {};
 
+        explicit Node(K && k) noexcept : key(std::move(k)) {};
+
         Node * next(int n) const noexcept { return next_arr[n]; }
 
         void setNext(int n, Node * ptr) noexcept { next_arr[n] = ptr; }
@@ -136,6 +142,12 @@ namespace LeviDB {
     auto SkipList<K, CMP>::newNode(const K & key, int height) noexcept {
         char * mem = _arena->allocateAligned(sizeof(Node) + sizeof(Node *) * (height - 1));
         return new(mem) Node(key);
+    }
+
+    template<typename K, class CMP>
+    auto SkipList<K, CMP>::newNode(K && key, int height) noexcept {
+        char * mem = _arena->allocateAligned(sizeof(Node) + sizeof(Node *) * (height - 1));
+        return new(mem) Node(std::move(key));
     }
 
     template<typename K, class CMP>
@@ -263,6 +275,27 @@ namespace LeviDB {
         }
 
         x = newNode(key, height);
+        for (int i = 0; i < height; ++i) {
+            x->setNext(i, prev[i]->next(i));
+            prev[i]->setNext(i, x);
+        }
+    }
+
+    template<typename K, class CMP>
+    void SkipList<K, CMP>::insert(K && key) noexcept {
+        Node * prev[max_height];
+        Node * x = findGreaterOrEqual(key, prev);
+        assert(x == nullptr || !equal(key, x->key));
+
+        int height = randomHeight();
+        if (height > _this_max_h) {
+            for (int i = _this_max_h; i < height; ++i) {
+                prev[i] = _head;
+            }
+            _this_max_h = height;
+        }
+
+        x = newNode(std::move(key), height);
         for (int i = 0; i < height; ++i) {
             x->setNext(i, prev[i]->next(i));
             prev[i]->setNext(i, x);
