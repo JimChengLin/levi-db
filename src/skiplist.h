@@ -33,9 +33,9 @@ namespace LeviDB {
     public:
         explicit SkipList(Arena * arena) noexcept;
 
-        SkipList(Arena * arena, CMP && cmp) noexcept;
+        explicit SkipList(SkipList && another) noexcept;
 
-        SkipList(SkipList && rhs) noexcept;
+        SkipList(Arena * arena, CMP && cmp) noexcept;
 
         void insert(const K & key) noexcept;
 
@@ -225,6 +225,18 @@ namespace LeviDB {
     }
 
     template<typename K, class CMP>
+    SkipList<K, CMP>::SkipList(SkipList && another) noexcept
+            :_comparator(another._comparator),
+             _arena(another._arena),
+             _head(another._head),
+             _this_max_h(another._this_max_h),
+             _rnd(another._rnd) {
+        for (int i = 0; i < max_height; ++i) {
+            another._head->setNext(i, nullptr);
+        }
+    }
+
+    template<typename K, class CMP>
     SkipList<K, CMP>::SkipList(Arena * arena, CMP && cmp) noexcept
             :_comparator(cmp),
              _arena(arena),
@@ -234,20 +246,6 @@ namespace LeviDB {
         for (int i = 0; i < max_height; ++i) {
             _head->setNext(i, nullptr);
         }
-    }
-
-    template<typename K, class CMP>
-    SkipList<K, CMP>::SkipList(SkipList && rhs) noexcept
-            :_comparator(),
-             _arena(),
-             _head(),
-             _this_max_h(),
-             _rnd(0) {
-        std::swap(this->_head, rhs._head);
-        std::swap(this->_this_max_h, rhs._this_max_h);
-        std::swap(this->_rnd, rhs._rnd);
-        std::swap(this->_arena, rhs._arena);
-        std::swap(this->_comparator, rhs._comparator);
     }
 
     template<typename K, class CMP>
