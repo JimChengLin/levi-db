@@ -116,7 +116,7 @@ namespace LeviDB {
 
         bool equal(const K & a, const K & b) const noexcept { return _comparator(a, b) == 0; };
 
-        bool keyIsAfterNode(const K & key, Node * n) const noexcept;
+        bool keyIsAfterNode(const K & key, const Node * n) const noexcept;
 
         auto findGreaterOrEqual(const K & key, Node * prev[]) const noexcept;
 
@@ -175,7 +175,7 @@ namespace LeviDB {
     }
 
     template<typename K, class CMP>
-    bool SkipList<K, CMP>::keyIsAfterNode(const K & key, Node * n) const noexcept {
+    bool SkipList<K, CMP>::keyIsAfterNode(const K & key, const Node * n) const noexcept {
         return n != nullptr && _comparator(n->key, key) < 0;
     }
 

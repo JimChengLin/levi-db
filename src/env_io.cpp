@@ -326,7 +326,7 @@ namespace LeviDB {
             }
         };
 
-        void unlockFile(FileLock * lock) {
+        void unlockFile(const FileLock * lock) {
             if (lockOrUnlock<false>(lock->_fd) == -1) {
                 throw Exception::IOErrorException("unlock", str_error);
             }

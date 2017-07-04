@@ -50,7 +50,7 @@ namespace LeviDB {
 
         std::unique_ptr<FileLock> lockFile(const std::string & fname);
 
-        void unlockFile(FileLock * lock);
+        void unlockFile(const FileLock * lock);
     };
 
     class SequentialFile {

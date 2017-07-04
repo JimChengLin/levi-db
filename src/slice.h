@@ -63,7 +63,7 @@ namespace LeviDB {
     };
 
     inline int Slice::compare(const Slice & b) const noexcept {
-        const size_t min_len = std::min(_size, b._size);
+        size_t min_len = std::min(_size, b._size);
         int r = memcmp(_data, b._data, min_len);
         if (r == 0) {
             if (_size < b._size) { r = -1; }

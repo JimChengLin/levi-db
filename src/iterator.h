@@ -42,9 +42,7 @@ namespace LeviDB {
     public:
         IteratorWrapper() noexcept : _iter(nullptr), _valid(false) {}
 
-        explicit IteratorWrapper(Iterator * iter) {
-            set(iter);
-        }
+        explicit IteratorWrapper(Iterator * iter) { set(iter); }
 
         ~IteratorWrapper() noexcept {}
 

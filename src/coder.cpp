@@ -2,7 +2,7 @@
 #include "exception.h"
 
 namespace LeviDB {
-    void Holder::plus(int idx, const int val) noexcept {
+    void Holder::plus(int idx, int val) noexcept {
         total += val;
         while (true) {
             cum_cnt[idx] += val;
@@ -43,7 +43,7 @@ namespace LeviDB {
         }
     }
 
-    int Holder::firstGreater(const int cum) const noexcept {
+    int Holder::firstGreater(int cum) const noexcept {
         int lo = 0;
         int hi = CoderConst::FN + 1;
         while (lo < hi) {
@@ -58,7 +58,7 @@ namespace LeviDB {
     }
 
     template<bool _>
-    void SubCoder<_>::pushBit(const bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept {
+    void SubCoder<_>::pushBit(bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept {
         if (bit) {
             output.back() |= (1 << nth_bit_out);
         }
@@ -69,7 +69,7 @@ namespace LeviDB {
     }
 
     template<bool _>
-    void SubCoder<_>::encode(const int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
+    void SubCoder<_>::encode(int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept {
         assert(output.size() >= 1);
         assert(symbol >= 0 && symbol <= CoderConst::FN);
         assert(nth_bit_out >= 0 && nth_bit_out <= CHAR_BIT - 1);
@@ -297,7 +297,7 @@ namespace LeviDB {
         return res;
     }
 
-    bool Coder::isNew(const int symbol) const noexcept {
+    bool Coder::isNew(int symbol) const noexcept {
         int lo = _coder_NYT._holder.getCum(symbol);
         int hi = _coder_NYT._holder.getCum(symbol + 1);
         return lo != hi;
