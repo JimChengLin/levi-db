@@ -42,10 +42,20 @@ namespace LeviDB {
         _root->successor = _root;
     }
 
-    void SuffixTree::setitem(const Slice & src) noexcept {
-        int idx = static_cast<int>(_chunk.size());
-        _chunk.push_back(src);
+    std::vector<int> SuffixTree::setitem(const Slice & src) noexcept {
+        uint16_t idx = static_cast<uint16_t >(_chunk.size());
+        _chunk.emplace_back(src);
 
+        _builder.send(STBuilder::STREAM_ON);
+        for (size_t i = 0; i < src.size(); ++i) {
+            insertChar(idx, static_cast<uint8_t>(src.data()[i]));
+        }
+        _builder.send(STBuilder::STREAM_OFF);
+
+        std::vector<int> res;
+        std::swap(res, _builder.res);
+        prepareNext();
+        return res;
     }
 
     void SuffixTree::prepareNext() noexcept {

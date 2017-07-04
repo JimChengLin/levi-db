@@ -19,6 +19,22 @@ namespace LeviDB {
     };
 
     class STBuilder {
+    private:
+
+    public:
+        enum Message {
+            STREAM_ON = -1,
+            STREAM_OFF = -2,
+            STREAM_PASS = -3,
+        };
+
+        std::vector<int> res;
+
+        STBuilder() noexcept : res() {}
+
+        void send(int chunk_idx_or_cmd = INT_MIN,
+                  int s_idx = INT_MIN,
+                  int msg_char = INT_MIN) noexcept;
     };
 
     class SuffixTree {
@@ -62,7 +78,7 @@ namespace LeviDB {
 
         ~SuffixTree() noexcept {};
 
-        void setitem(const Slice & src) noexcept;
+        std::vector<int> setitem(const Slice & src) noexcept;
 
         void prepareNext() noexcept;
 
