@@ -64,7 +64,7 @@ namespace LeviDB {
 
         void setitem(const Slice & src) noexcept;
 
-        void reset() noexcept;
+        void prepareNext() noexcept;
 
     private:
         STNode * newNode() noexcept;
