@@ -60,7 +60,7 @@ namespace LeviDB {
     public:
         SuffixTree(Arena * arena) noexcept;
 
-        ~SuffixTree() noexcept;
+        ~SuffixTree() noexcept {};
 
         void setitem(const Slice & src) noexcept;
 
@@ -69,9 +69,9 @@ namespace LeviDB {
     private:
         STNode * newNode() noexcept;
 
-        void nodeSetSub(STNode sub) noexcept;
-
         STNode * nodeGetSub(STNode * node, uint8_t key) const noexcept;
+
+        void nodeSetSub(const STNode & sub) noexcept;
 
         bool nodeIsRoot(STNode * node) const noexcept;
 
