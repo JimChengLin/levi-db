@@ -108,6 +108,8 @@ namespace LeviDB {
 
         auto newNode(K && key, int height) noexcept;
 
+        auto newNode(int height) noexcept;
+
         int randomHeight() noexcept;
 
         bool equal(const K & a, const K & b) const noexcept { return _comparator(a, b) == 0; };
@@ -150,6 +152,12 @@ namespace LeviDB {
     auto SkipList<K, CMP>::newNode(K && key, int height) noexcept {
         char * mem = _arena->allocateAligned(sizeof(Node) + sizeof(Node *) * (height - 1));
         return new(mem) Node(std::move(key));
+    }
+
+    template<typename K, class CMP>
+    auto SkipList<K, CMP>::newNode(int height) noexcept { // only for _head
+        char * mem = _arena->allocateAligned(sizeof(Node) + sizeof(Node *) * (height - 1));
+        return reinterpret_cast<Node *>(mem);
     }
 
     template<typename K, class CMP>
@@ -230,7 +238,7 @@ namespace LeviDB {
     SkipList<K, CMP>::SkipList(Arena * arena) noexcept
             :_comparator(),
              _arena(arena),
-             _head(newNode(0, max_height)),
+             _head(newNode(max_height)),
              _this_max_h(1),
              _rnd(0xdeadbeef) {
         for (int i = 0; i < max_height; ++i) {
@@ -252,7 +260,7 @@ namespace LeviDB {
     SkipList<K, CMP>::SkipList(Arena * arena, CMP cmp) noexcept
             :_comparator(cmp),
              _arena(arena),
-             _head(newNode(0, max_height)),
+             _head(newNode(max_height)),
              _this_max_h(1),
              _rnd(0xdeadbeef) {
         for (int i = 0; i < max_height; ++i) {
