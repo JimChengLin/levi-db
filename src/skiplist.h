@@ -45,6 +45,8 @@ namespace LeviDB {
 
         K * find(const K & key) const noexcept;
 
+        K * findOrGreater(const K & key) const noexcept;
+
         bool empty() const noexcept;
 
         class Iterator {
@@ -320,6 +322,12 @@ namespace LeviDB {
     K * SkipList<K, CMP>::find(const K & key) const noexcept {
         Node * x = findGreaterOrEqual(key, nullptr);
         return x != nullptr && equal(key, x->key) ? const_cast<K *>(&x->key) : nullptr;
+    }
+
+    template<typename K, class CMP>
+    K * SkipList<K, CMP>::findOrGreater(const K & key) const noexcept {
+        Node * x = findGreaterOrEqual(key, nullptr);
+        return x != nullptr ? x->key : nullptr;
     }
 
     template<typename K, class CMP>
