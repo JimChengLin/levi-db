@@ -126,7 +126,7 @@ namespace LeviDB {
         FILE * _file;
 
     public:
-        Logger(FILE * f) noexcept : _file(f) {};
+        explicit Logger(FILE * f) noexcept : _file(f) {};
 
         ~Logger() noexcept { fclose(_file); };
 

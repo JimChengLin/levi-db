@@ -58,7 +58,7 @@ namespace LeviDB {
         uint16_t _remainder;
 
     public:
-        SuffixTree(Arena * arena) noexcept;
+        explicit SuffixTree(Arena * arena) noexcept;
 
         ~SuffixTree() noexcept {};
 
@@ -78,6 +78,11 @@ namespace LeviDB {
         bool nodeIsInner(STNode * node) const noexcept;
 
         bool nodeIsLeaf(STNode * node) const noexcept;
+
+        // 禁止复制
+        SuffixTree(const SuffixTree &);
+
+        void operator=(const SuffixTree &);
     };
 }
 
