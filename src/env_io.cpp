@@ -275,7 +275,7 @@ namespace LeviDB {
 
             struct dirent * entry;
             while ((entry = readdir(d)) != NULL) {
-                res.push_back(std::string(entry->d_name));
+                res.emplace_back(entry->d_name);
             }
             closedir(d);
 

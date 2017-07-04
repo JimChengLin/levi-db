@@ -54,7 +54,7 @@ namespace LeviDB {
     char * Arena::allocateNewBlock(size_t block_bytes) noexcept {
         auto smart_ptr = std::unique_ptr<char[]>(new char[block_bytes]);
         char * res = smart_ptr.get();
-        _blocks.push_back(move(smart_ptr));
+        _blocks.emplace_back(move(smart_ptr));
         return res;
     }
 
