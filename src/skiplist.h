@@ -35,13 +35,15 @@ namespace LeviDB {
 
         explicit SkipList(SkipList && another) noexcept;
 
-        SkipList(Arena * arena, CMP && cmp) noexcept;
+        SkipList(Arena * arena, CMP cmp) noexcept;
 
         void insert(const K & key) noexcept;
 
         void insert(K && key) noexcept;
 
         bool contains(const K & key) const noexcept;
+
+        K * find(const K & key) const noexcept;
 
         bool empty() const noexcept;
 
@@ -243,13 +245,11 @@ namespace LeviDB {
              _head(another._head),
              _this_max_h(another._this_max_h),
              _rnd(another._rnd) {
-        for (int i = 0; i < max_height; ++i) {
-            another._head->setNext(i, nullptr);
-        }
+        another._head->setNext(0, nullptr);
     }
 
     template<typename K, class CMP>
-    SkipList<K, CMP>::SkipList(Arena * arena, CMP && cmp) noexcept
+    SkipList<K, CMP>::SkipList(Arena * arena, CMP cmp) noexcept
             :_comparator(cmp),
              _arena(arena),
              _head(newNode(0, max_height)),
@@ -306,6 +306,12 @@ namespace LeviDB {
     bool SkipList<K, CMP>::contains(const K & key) const noexcept {
         Node * x = findGreaterOrEqual(key, nullptr);
         return x != nullptr && equal(key, x->key);
+    }
+
+    template<typename K, class CMP>
+    K * SkipList<K, CMP>::find(const K & key) const noexcept {
+        Node * x = findGreaterOrEqual(key, nullptr);
+        return x != nullptr && equal(key, x->key) ? const_cast<K *>(&x->key) : nullptr;
     }
 
     template<typename K, class CMP>
