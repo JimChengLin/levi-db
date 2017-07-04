@@ -67,6 +67,14 @@ namespace LeviDB {
         void prepareNext() noexcept;
 
     private:
+        void insertChar(uint16_t chunk_idx, uint8_t msg_char) noexcept;
+
+        // 禁止复制
+        SuffixTree(const SuffixTree &);
+
+        void operator=(const SuffixTree &);
+
+    private:
         STNode * newNode() noexcept;
 
         STNode * nodeGetSub(STNode * node, uint8_t key) const noexcept;
@@ -78,11 +86,6 @@ namespace LeviDB {
         bool nodeIsInner(STNode * node) const noexcept;
 
         bool nodeIsLeaf(STNode * node) const noexcept;
-
-        // 禁止复制
-        SuffixTree(const SuffixTree &);
-
-        void operator=(const SuffixTree &);
     };
 }
 

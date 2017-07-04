@@ -31,9 +31,9 @@ namespace LeviDB {
             : _root(newNode()),
               _act_node(_root),
               _pool(arena),
-              _subs(arena),
-              _builder(),
               _chunk(),
+              _subs(arena, NodeCompare{_chunk}),
+              _builder(),
               _act_chunk_idx(0),
               _act_direct(0),
               _act_offset(0),
@@ -43,6 +43,8 @@ namespace LeviDB {
     }
 
     void SuffixTree::setitem(const Slice & src) noexcept {
+        int idx = static_cast<int>(_chunk.size());
+        _chunk.push_back(src);
 
     }
 
@@ -50,5 +52,9 @@ namespace LeviDB {
         _remainder = _counter = 0;
         _act_node = _root;
         _act_chunk_idx = _act_direct = _act_offset = 0;
+    }
+
+    void SuffixTree::insertChar(uint16_t chunk_idx, uint8_t msg_char) noexcept {
+
     }
 }

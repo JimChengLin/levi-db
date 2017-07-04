@@ -5,7 +5,7 @@
 namespace LeviDB {
     static constexpr int block_size = 4096;
 
-    char * Arena::allocate(size_t bytes) noexcept {
+    char * Arena::allocate(const size_t bytes) noexcept {
         assert(bytes > 0);
         if (bytes <= _alloc_bytes_remaining) {
             char * res = _alloc_ptr;
@@ -16,7 +16,7 @@ namespace LeviDB {
         return allocateFallback(bytes);
     }
 
-    char * Arena::allocateFallback(size_t bytes) noexcept {
+    char * Arena::allocateFallback(const size_t bytes) noexcept {
         if (bytes > block_size / 4) {
             return allocateNewBlock(bytes);
         }
@@ -30,7 +30,7 @@ namespace LeviDB {
         return res;
     }
 
-    char * Arena::allocateAligned(size_t bytes) noexcept {
+    char * Arena::allocateAligned(const size_t bytes) noexcept {
         static constexpr int align = sizeof(void *);
         static_assert((align & (align - 1)) == 0, "align error");
 
@@ -51,7 +51,7 @@ namespace LeviDB {
         return res;
     }
 
-    char * Arena::allocateNewBlock(size_t block_bytes) noexcept {
+    char * Arena::allocateNewBlock(const size_t block_bytes) noexcept {
         auto smart_ptr = std::unique_ptr<char[]>(new char[block_bytes]);
         char * res = smart_ptr.get();
         _blocks.emplace_back(move(smart_ptr));

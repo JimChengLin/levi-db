@@ -327,7 +327,7 @@ namespace LeviDB {
     template<typename K, class CMP>
     K * SkipList<K, CMP>::findOrGreater(const K & key) const noexcept {
         Node * x = findGreaterOrEqual(key, nullptr);
-        return x != nullptr ? x->key : nullptr;
+        return x != nullptr ? const_cast<K *>(&x->key) : nullptr;
     }
 
     template<typename K, class CMP>
