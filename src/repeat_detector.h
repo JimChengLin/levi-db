@@ -28,9 +28,11 @@ namespace LeviDB {
             STREAM_PASS = -3,
         };
 
-        std::vector<int> res;
+        std::vector<int> _data;
 
-        STBuilder() noexcept : res() {}
+        STBuilder() noexcept : _data() {}
+
+        ~STBuilder() noexcept {}
 
         void send(int chunk_idx_or_cmd = INT_MIN,
                   int s_idx = INT_MIN,
