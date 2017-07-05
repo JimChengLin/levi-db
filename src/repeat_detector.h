@@ -11,8 +11,8 @@
 
 namespace LeviDB {
     struct STNode {
-        STNode * successor;
-        STNode * parent;
+        const STNode * successor;
+        const STNode * parent;
         uint16_t chunk_idx;
         uint16_t from;
         uint16_t to;
@@ -20,13 +20,13 @@ namespace LeviDB {
 
     class STBuilder {
     private:
+
     public:
         enum Message {
             STREAM_ON = -1,
             STREAM_OFF = -2,
             STREAM_PASS = -3,
         };
-
         std::vector<int> _data;
 
         STBuilder() noexcept : _data() {}
@@ -36,6 +36,12 @@ namespace LeviDB {
         void send(int chunk_idx_or_cmd = INT_MIN,
                   int s_idx = INT_MIN,
                   int msg_char = INT_MIN) noexcept;
+
+    private:
+        // 禁止复制
+        STBuilder(const STBuilder &);
+
+        void operator=(const STBuilder &);
     };
 
     class SuffixTree {
@@ -62,9 +68,9 @@ namespace LeviDB {
             }
         };
 
-        STNode * _root;
-        STNode * _act_node;
-        Arena * _pool;
+        Arena * const _pool;
+        STNode * const _root;
+        const STNode * _act_node;
         SkipList<STNode, NodeCompare> _subs;
         STBuilder _builder;
         std::vector<Slice> _chunk;
@@ -94,15 +100,15 @@ namespace LeviDB {
     private:
         STNode * newNode() noexcept;
 
-        STNode * nodeSetSub(const STNode & sub) noexcept;
+        const STNode * nodeSetSub(const STNode & sub) noexcept;
 
-        STNode * nodeGetSub(STNode * node, uint8_t key) const noexcept;
+        const STNode * nodeGetSub(const STNode * node, uint8_t key) const noexcept;
 
-        bool nodeIsRoot(STNode * node) const noexcept;
+        bool nodeIsRoot(const STNode * node) const noexcept;
 
-        bool nodeIsInner(STNode * node) const noexcept;
+        bool nodeIsInner(const STNode * node) const noexcept;
 
-        bool nodeIsLeaf(STNode * node) const noexcept;
+        bool nodeIsLeaf(const STNode * node) const noexcept;
     };
 }
 

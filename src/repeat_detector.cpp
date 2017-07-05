@@ -5,24 +5,24 @@ namespace LeviDB {
         return reinterpret_cast<STNode *>(_pool->allocateAligned(sizeof(STNode)));
     }
 
-    STNode * SuffixTree::nodeGetSub(STNode * node, uint8_t key) const noexcept {
+    const STNode * SuffixTree::nodeGetSub(const STNode * node, uint8_t key) const noexcept {
         return this->_subs.find(STNode{.from=1, .to=0, .parent=node, .chunk_idx=key});
     }
 
-    STNode * SuffixTree::nodeSetSub(const STNode & sub) noexcept {
+    const STNode * SuffixTree::nodeSetSub(const STNode & sub) noexcept {
         return this->_subs.insert(sub);
     }
 
-    bool SuffixTree::nodeIsRoot(STNode * node) const noexcept {
+    bool SuffixTree::nodeIsRoot(const STNode * node) const noexcept {
         return node->successor == node;
     }
 
-    bool SuffixTree::nodeIsInner(STNode * node) const noexcept {
+    bool SuffixTree::nodeIsInner(const STNode * node) const noexcept {
         return !nodeIsRoot(node) &&
                this->_subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node})->parent == node;
     }
 
-    bool SuffixTree::nodeIsLeaf(STNode * node) const noexcept {
+    bool SuffixTree::nodeIsLeaf(const STNode * node) const noexcept {
         return !nodeIsRoot(node) &&
                this->_subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node})->parent != node;
     }
@@ -71,7 +71,7 @@ namespace LeviDB {
         const Slice & curr_s = _chunk[chunk_idx];
 
         auto case_root = [&](bool send_msg) {
-            STNode * edge_node = nodeGetSub(_root, msg_char);
+            const STNode * edge_node = nodeGetSub(_root, msg_char);
             if (edge_node == nullptr) {
                 STNode leaf_node = {
                         .successor=_root,
@@ -83,7 +83,7 @@ namespace LeviDB {
                 nodeSetSub(leaf_node);
                 --_remainder;
                 if (send_msg) {
-                    _builder.send(STBuilder::STREAM_PASS, INT_MIN/* placeholder */, msg_char);
+                    _builder.send(STBuilder::STREAM_PASS, 0/* placeholder */, msg_char);
                 }
             } else {
                 _act_chunk_idx = edge_node->chunk_idx;
@@ -100,23 +100,24 @@ namespace LeviDB {
             case_root(true);
         } else {
             Slice edge_s = _chunk[_act_chunk_idx];
-            STNode * edge_node = nodeGetSub(_act_node,
-                                            static_cast<uint8_t>(edge_s.data()[_act_direct]));
+            const STNode * edge_node = nodeGetSub(_act_node,
+                                                  static_cast<uint8_t>(edge_s.data()[_act_direct]));
 
-            STNode * next_edge_node;
+            const STNode * next_edge_node;
             if (edge_node->from + _act_offset == edge_node->to
                 && (next_edge_node = nodeGetSub(edge_node, msg_char))) {
                 _act_node = edge_node;
                 _act_chunk_idx = next_edge_node->chunk_idx;
                 _act_direct = next_edge_node->from;
+                _act_offset = 1;
                 _builder.send(next_edge_node->chunk_idx, next_edge_node->from, msg_char);
             } else if (edge_node->from + _act_offset < edge_node->to
                        && msg_char == edge_s.data()[edge_node->from + _act_offset]) {
                 _builder.send(edge_node->chunk_idx, edge_node->from + _act_offset, msg_char);
                 ++_act_offset;
             } else {
-                _builder.send(STBuilder::STREAM_PASS, msg_char);
-                STNode * prev_inner_node = nullptr;
+                _builder.send(STBuilder::STREAM_PASS, 0/* placeholder */, msg_char);
+                const STNode * prev_inner_node = nullptr;
 
                 auto split_grow = [&]() {
                     STNode leaf_node = {
@@ -136,18 +137,26 @@ namespace LeviDB {
                                 .to=static_cast<uint16_t>(edge_node->from + _act_offset),
                                 .parent=edge_node->parent,
                         };
+                        STNode edge_node_ = *edge_node;
+                        edge_node_.from = inner_node.to;
 
-                        STNode * inner_node_ptr = nodeSetSub(inner_node);;
+                        const STNode * inner_node_ = nodeSetSub(inner_node);
                         if (prev_inner_node != nullptr) {
-                            prev_inner_node->successor = inner_node_ptr;
+                            const_cast<STNode *>(prev_inner_node)->successor = inner_node_;
                         }
-                        prev_inner_node = inner_node_ptr;
+                        prev_inner_node = inner_node_;
+                        leaf_node.parent = inner_node_;
+                        edge_node_.parent = inner_node_;
 
-                        edge_node->from = inner_node.to;
-                        edge_node->parent = inner_node_ptr;
+                        nodeSetSub(leaf_node);
+                        edge_node = nodeSetSub(edge_node_);
+                    } else {
+                        if (prev_inner_node != nullptr) {
+                            const_cast<STNode *>(prev_inner_node)->successor = edge_node;
+                        }
+                        prev_inner_node = edge_node;
 
-                        leaf_node.parent = inner_node_ptr;
-                        nodeSetSub(*edge_node);
+                        leaf_node.parent = edge_node;
                         nodeSetSub(leaf_node);
                     }
                 };
@@ -155,9 +164,7 @@ namespace LeviDB {
                 auto overflow_fix = [&]() {
                     uint16_t end = _counter;
                     uint16_t begin = end - _act_offset;
-
-                    edge_node = nodeGetSub(_act_node,
-                                           static_cast<uint8_t>(curr_s.data()[_counter - _act_offset]));
+                    edge_node = nodeGetSub(_act_node, static_cast<uint8_t>(curr_s.data()[_counter - _act_offset]));
                     edge_s = _chunk[edge_node->chunk_idx];
 
                     int supply;
@@ -182,6 +189,7 @@ namespace LeviDB {
                             overflow_fix();
                         } else {
                             case_root(false);
+                            break;
                         }
                     } else {
                         _act_node = _act_node->successor;
@@ -196,7 +204,7 @@ namespace LeviDB {
                         _act_offset = 1;
 
                         if (prev_inner_node != nullptr) {
-                            prev_inner_node->successor = _act_node;
+                            const_cast<STNode *>(prev_inner_node)->successor = _act_node;
                         }
                         break;
                     } else if (edge_node->from + _act_offset < edge_node->to
