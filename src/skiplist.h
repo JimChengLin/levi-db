@@ -37,9 +37,9 @@ namespace LeviDB {
 
         SkipList(Arena * arena, CMP cmp) noexcept;
 
-        void insert(const K & key) noexcept;
+        K * insert(const K & key) noexcept;
 
-        void insert(K && key) noexcept;
+        K * insert(K && key) noexcept;
 
         bool contains(const K & key) const noexcept;
 
@@ -271,12 +271,12 @@ namespace LeviDB {
     }
 
     template<typename K, class CMP>
-    void SkipList<K, CMP>::insert(const K & key) noexcept {
+    K * SkipList<K, CMP>::insert(const K & key) noexcept {
         Node * prev[max_height];
         Node * x = findGreaterOrEqual(key, prev);
         if (x != nullptr && equal(key, x->key)) {
             x->key = key;
-            return;
+            return &x->key;
         }
 
         int height = randomHeight();
@@ -292,15 +292,16 @@ namespace LeviDB {
             x->setNext(i, prev[i]->next(i));
             prev[i]->setNext(i, x);
         }
+        return &x->key;
     }
 
     template<typename K, class CMP>
-    void SkipList<K, CMP>::insert(K && key) noexcept {
+    K * SkipList<K, CMP>::insert(K && key) noexcept {
         Node * prev[max_height];
         Node * x = findGreaterOrEqual(key, prev);
         if (x != nullptr && equal(key, x->key)) {
             x->key = std::move(key);
-            return;
+            return &x->key;
         }
 
         int height = randomHeight();
@@ -316,6 +317,7 @@ namespace LeviDB {
             x->setNext(i, prev[i]->next(i));
             prev[i]->setNext(i, x);
         }
+        return &x->key;
     }
 
     template<typename K, class CMP>
