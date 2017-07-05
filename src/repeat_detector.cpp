@@ -1,3 +1,4 @@
+#include "coder.h"
 #include "repeat_detector.h"
 
 namespace LeviDB {
@@ -5,12 +6,12 @@ namespace LeviDB {
         return reinterpret_cast<STNode *>(_pool->allocateAligned(sizeof(STNode)));
     }
 
-    const STNode * SuffixTree::nodeGetSub(const STNode * node, uint8_t key) const noexcept {
-        return this->_subs.find(STNode{.from=1, .to=0, .parent=node, .chunk_idx=key});
-    }
-
     const STNode * SuffixTree::nodeSetSub(const STNode & sub) noexcept {
         return this->_subs.insert(sub);
+    }
+
+    const STNode * SuffixTree::nodeGetSub(const STNode * node, uint8_t key) const noexcept {
+        return this->_subs.find(STNode{.from=1, .to=0, .parent=node, .chunk_idx=key});
     }
 
     bool SuffixTree::nodeIsRoot(const STNode * node) const noexcept {
@@ -216,5 +217,43 @@ namespace LeviDB {
             }
         }
         ++_counter;
+    }
+
+    void STBuilder::send(int chunk_idx_or_cmd, int s_idx, int msg_char) noexcept {
+        auto try_explode = [&]() {
+            constexpr int compress_cost = 1/* FN */ + 2/* chunk_idx */ + 2/* from */ + 2/* to */;
+            if (_compress_len > compress_cost) {
+                _data.resize(_data.size() - _compress_len);
+                _data.insert(_data.end(), {CoderConst::FN,
+                                           _compress_idx,
+                                           _compress_to - _compress_len,
+                                           _compress_to});
+            }
+            _compress_len = 0;
+        };
+
+        auto set_record = [&]() {
+            _compress_idx = chunk_idx_or_cmd;
+            _compress_to = s_idx + 1;
+            ++_compress_len;
+        };
+
+        switch (chunk_idx_or_cmd) {
+            case STBuilder::STREAM_ON:
+                _compress_len = 0;
+                break;
+            case STBuilder::STREAM_PASS:
+                try_explode();
+                _data.emplace_back(msg_char);
+                break;
+            case STBuilder::STREAM_OFF:
+                try_explode();
+                assert(_data.size() <= UINT16_MAX);
+                break;
+            default:
+                set_record();
+                _data.emplace_back(msg_char);
+                break;
+        }
     }
 }

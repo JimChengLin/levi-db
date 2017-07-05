@@ -20,6 +20,9 @@ namespace LeviDB {
 
     class STBuilder {
     private:
+        int _compress_len;
+        int _compress_idx;
+        int _compress_to;
 
     public:
         enum Message {
