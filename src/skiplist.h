@@ -132,7 +132,7 @@ namespace LeviDB {
 
     template<typename K, class CMP>
     struct SkipList<K, CMP>::Node {
-        const K key;
+        K key;
         Node * next_arr[1];
 
         explicit Node(const K & k) noexcept : key(k) {};
@@ -274,7 +274,10 @@ namespace LeviDB {
     void SkipList<K, CMP>::insert(const K & key) noexcept {
         Node * prev[max_height];
         Node * x = findGreaterOrEqual(key, prev);
-        assert(x == nullptr || !equal(key, x->key));
+        if (x != nullptr && equal(key, x->key)) {
+            x->key = key;
+            return;
+        }
 
         int height = randomHeight();
         if (height > _this_max_h) {
@@ -295,7 +298,10 @@ namespace LeviDB {
     void SkipList<K, CMP>::insert(K && key) noexcept {
         Node * prev[max_height];
         Node * x = findGreaterOrEqual(key, prev);
-        assert(x == nullptr || !equal(key, x->key));
+        if (x != nullptr && equal(key, x->key)) {
+            x->key = std::move(key);
+            return;
+        }
 
         int height = randomHeight();
         if (height > _this_max_h) {
@@ -321,13 +327,13 @@ namespace LeviDB {
     template<typename K, class CMP>
     K * SkipList<K, CMP>::find(const K & key) const noexcept {
         Node * x = findGreaterOrEqual(key, nullptr);
-        return x != nullptr && equal(key, x->key) ? const_cast<K *>(&x->key) : nullptr;
+        return x != nullptr && equal(key, x->key) ? &x->key : nullptr;
     }
 
     template<typename K, class CMP>
     K * SkipList<K, CMP>::findOrGreater(const K & key) const noexcept {
         Node * x = findGreaterOrEqual(key, nullptr);
-        return x != nullptr ? const_cast<K *>(&x->key) : nullptr;
+        return x != nullptr ? &x->key : nullptr;
     }
 
     template<typename K, class CMP>
