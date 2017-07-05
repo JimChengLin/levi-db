@@ -221,7 +221,7 @@ namespace LeviDB {
 
     void STBuilder::send(int chunk_idx_or_cmd, int s_idx, int msg_char) noexcept {
         auto try_explode = [&]() {
-            constexpr int compress_cost = 1/* FN */ + 2/* chunk_idx */ + 2/* from */ + 2/* to */;
+            static constexpr int compress_cost = 1/* FN */ + 2/* chunk_idx */ + 2/* from */ + 2/* to */;
             if (_compress_len > compress_cost) {
                 _data.resize(_data.size() - _compress_len);
                 _data.insert(_data.end(), {CoderConst::FN,
