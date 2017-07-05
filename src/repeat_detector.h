@@ -20,7 +20,6 @@ namespace LeviDB {
 
     class STBuilder {
     private:
-
     public:
         enum Message {
             STREAM_ON = -1,
@@ -95,9 +94,9 @@ namespace LeviDB {
     private:
         STNode * newNode() noexcept;
 
-        STNode * nodeGetSub(STNode * node, uint8_t key) const noexcept;
+        STNode * nodeSetSub(const STNode & sub) noexcept;
 
-        void nodeSetSub(const STNode & sub) noexcept;
+        STNode * nodeGetSub(STNode * node, uint8_t key) const noexcept;
 
         bool nodeIsRoot(STNode * node) const noexcept;
 
