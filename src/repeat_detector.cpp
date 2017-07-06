@@ -273,15 +273,12 @@ namespace LeviDB {
             }
             res += '\n';
 
-            const STNode * sub = _subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node});
-            if (sub != nullptr && sub->parent == node) {
-                ++lv;
-                const STNode * sub_node;
-                for (uint8_t i = 0; i < UINT8_MAX; ++i) {
-                    if ((sub_node = nodeGetSub(node, i)) != nullptr) {
-                        print_tree(sub_node, lv);
-                    }
-                }
+            ++lv;
+            SkipList<STNode, NodeCompare>::Iterator it(&_subs);
+            for (it.seek(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node});
+                 it.valid() && it.key().parent == node;
+                 it.next()) {
+                print_tree(&it.key(), lv);
             }
         };
 
