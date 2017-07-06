@@ -7,11 +7,11 @@ namespace LeviDB {
     }
 
     const STNode * SuffixTree::nodeSetSub(const STNode & sub) noexcept {
-        return this->_subs.insert(sub);
+        return _subs.insert(sub);
     }
 
     const STNode * SuffixTree::nodeGetSub(const STNode * node, uint8_t key) const noexcept {
-        return this->_subs.find(STNode{.from=1, .to=0, .parent=node, .chunk_idx=key});
+        return _subs.find(STNode{.from=1, .to=0, .parent=node, .chunk_idx=key});
     }
 
     bool SuffixTree::nodeIsRoot(const STNode * node) const noexcept {
@@ -20,12 +20,12 @@ namespace LeviDB {
 
     bool SuffixTree::nodeIsInner(const STNode * node) const noexcept {
         return !nodeIsRoot(node) &&
-               this->_subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node})->parent == node;
+               _subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node})->parent == node;
     }
 
     bool SuffixTree::nodeIsLeaf(const STNode * node) const noexcept {
         return !nodeIsRoot(node) &&
-               this->_subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node})->parent != node;
+               _subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node})->parent != node;
     }
 
     SuffixTree::SuffixTree(Arena * arena) noexcept
