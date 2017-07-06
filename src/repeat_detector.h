@@ -8,6 +8,7 @@
 #include "arena.h"
 #include "skiplist.h"
 #include "slice.h"
+#include "util.h"
 
 namespace LeviDB {
     struct STNode {
@@ -48,7 +49,7 @@ namespace LeviDB {
     };
 
     class SuffixTree {
-    private:
+    protected: // for test
         struct NodeCompare {
             const std::vector<Slice> & chunk;
 
@@ -56,11 +57,13 @@ namespace LeviDB {
                 if (a.parent < b.parent) {
                     return -1;
                 } else if (a.parent == b.parent) {
-                    char a_char = a.from > a.to ? static_cast<char>(a.chunk_idx) : chunk[a.chunk_idx][a.from];
-                    char b_char = b.from > b.to ? static_cast<char>(b.chunk_idx) : chunk[b.chunk_idx][b.from];
-                    if (a_char < b_char) {
+                    uint8_t a_val = a.from > a.to ?
+                                    static_cast<uint8_t>(a.chunk_idx) : char_be_uint8(chunk[a.chunk_idx][a.from]);
+                    uint8_t b_val = b.from > b.to ?
+                                    static_cast<uint8_t>(b.chunk_idx) : char_be_uint8(chunk[b.chunk_idx][b.from]);
+                    if (a_val < b_val) {
                         return -1;
-                    } else if (a_char == b_char) {
+                    } else if (a_val == b_val) {
                         return 0;
                     } else {
                         return 1;
@@ -100,7 +103,7 @@ namespace LeviDB {
 
         void operator=(const SuffixTree &);
 
-    private:
+    protected:
         STNode * newNode() noexcept;
 
         const STNode * nodeSetSub(const STNode & sub) noexcept;

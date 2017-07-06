@@ -43,15 +43,13 @@ namespace LeviDB {
         _root->successor = _root;
     }
 
-    static_assert(sizeof(uint8_t) == sizeof(char), "uint8_t != char");
-
     std::vector<int> SuffixTree::setitem(const Slice & src) noexcept {
         uint16_t idx = static_cast<uint16_t>(_chunk.size());
         _chunk.emplace_back(src);
 
         _builder.send(STBuilder::STREAM_ON);
         for (size_t i = 0; i < src.size(); ++i) {
-            insertChar(idx, static_cast<uint8_t>(src.data()[i]));
+            insertChar(idx, char_be_uint8(src.data()[i]));
         }
         _builder.send(STBuilder::STREAM_OFF);
 
@@ -101,8 +99,7 @@ namespace LeviDB {
             case_root(true);
         } else {
             Slice edge_s = _chunk[_act_chunk_idx];
-            const STNode * edge_node = nodeGetSub(_act_node,
-                                                  static_cast<uint8_t>(edge_s.data()[_act_direct]));
+            const STNode * edge_node = nodeGetSub(_act_node, char_be_uint8(edge_s.data()[_act_direct]));
 
             const STNode * next_edge_node;
             if (edge_node->from + _act_offset == edge_node->to
@@ -165,7 +162,7 @@ namespace LeviDB {
                 auto overflow_fix = [&]() {
                     uint16_t end = _counter;
                     uint16_t begin = end - _act_offset;
-                    edge_node = nodeGetSub(_act_node, static_cast<uint8_t>(curr_s.data()[_counter - _act_offset]));
+                    edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s.data()[_counter - _act_offset]));
                     edge_s = _chunk[edge_node->chunk_idx];
 
                     int supply;
@@ -174,7 +171,7 @@ namespace LeviDB {
                         begin += supply;
                         _act_offset -= supply;
 
-                        edge_node = nodeGetSub(_act_node, static_cast<uint8_t>(curr_s.data()[begin]));
+                        edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s.data()[begin]));
                         edge_s = _chunk[edge_node->chunk_idx];
                         _act_direct = edge_node->from;
                     }

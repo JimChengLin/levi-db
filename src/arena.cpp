@@ -32,7 +32,7 @@ namespace LeviDB {
 
     char * Arena::allocateAligned(size_t bytes) noexcept {
         static constexpr int align = sizeof(void *);
-        static_assert((align & (align - 1)) == 0, "align error");
+        static_assert((align & (align - 1)) == 0, "align should be 2^x");
 
         size_t current_mod = reinterpret_cast<uintptr_t>(_alloc_ptr) & (align - 1);
         size_t slop = (current_mod == 0 ? 0 : align - current_mod);

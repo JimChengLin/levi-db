@@ -30,7 +30,7 @@ namespace LeviDB {
                 if (i != CoderConst::NYT) {
                     // plus
                     int idx = i + 1;
-                    static constexpr int val = 1;
+                    constexpr int val = 1;
                     while (true) {
                         cum_cnt[idx] += val;
                         idx += (idx & (-idx));
@@ -52,7 +52,7 @@ namespace LeviDB {
         constexpr HolderNormal() noexcept : cum_cnt(), total(0) {
             // plus
             int idx = CoderConst::NYT + 1;
-            static constexpr int val = 1;
+            constexpr int val = 1;
             while (true) {
                 cum_cnt[idx] += val;
                 idx += (idx & (-idx));

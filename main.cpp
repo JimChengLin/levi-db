@@ -10,9 +10,12 @@ void coder_test();
 
 void skiplist_test();
 
+void repeat_detector_test();
+
 int main() {
     coder_test();
     skiplist_test();
+    repeat_detector_test();
     std::cout << "done." << std::endl;
     return 0;
 }
