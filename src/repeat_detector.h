@@ -95,6 +95,8 @@ namespace LeviDB {
 
         void prepareNext() noexcept;
 
+        std::string toString() const noexcept; // debug only
+
     private:
         void insertChar(uint16_t chunk_idx, uint8_t msg_char) noexcept;
 

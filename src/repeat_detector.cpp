@@ -19,13 +19,13 @@ namespace LeviDB {
     }
 
     bool SuffixTree::nodeIsInner(const STNode * node) const noexcept {
-        return !nodeIsRoot(node) &&
-               _subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node})->parent == node;
+        const STNode * sub = _subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node});
+        return !nodeIsRoot(node) && sub != nullptr && sub->parent == node;
     }
 
     bool SuffixTree::nodeIsLeaf(const STNode * node) const noexcept {
-        return !nodeIsRoot(node) &&
-               _subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node})->parent != node;
+        const STNode * sub = _subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node});
+        return !nodeIsRoot(node) && (sub == nullptr || sub->parent != node);
     }
 
     SuffixTree::SuffixTree(Arena * arena) noexcept
@@ -252,5 +252,40 @@ namespace LeviDB {
                 _data.emplace_back(msg_char);
                 break;
         }
+    }
+
+    std::string SuffixTree::toString() const noexcept {
+        std::string res;
+
+        auto print_node = [&](const STNode * node) {
+            if (node == _act_node) {
+                res += '*';
+            }
+            res.append(_chunk[node->chunk_idx].data() + node->from, node->to - node->from);
+        };
+
+        std::function<void(const STNode *, int)> print_tree = [&](const STNode * node, int lv) {
+            if (lv > 0) {
+                res += std::string(static_cast<size_t>(lv - 1) * 2, ' ') + "--";
+                print_node(node);
+            } else {
+                res += '#';
+            }
+            res += '\n';
+
+            const STNode * sub = _subs.findOrGreater(STNode{.from=1, .to=0, .chunk_idx=0, .parent=node});
+            if (sub != nullptr && sub->parent == node) {
+                ++lv;
+                const STNode * sub_node;
+                for (uint8_t i = 0; i < UINT8_MAX; ++i) {
+                    if ((sub_node = nodeGetSub(node, i)) != nullptr) {
+                        print_tree(sub_node, lv);
+                    }
+                }
+            }
+        };
+
+        print_tree(_root, 0);
+        return res;
     }
 }
