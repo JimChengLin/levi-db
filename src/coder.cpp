@@ -134,7 +134,7 @@ namespace LeviDB {
                 throw Exception::corruptionException("bad record length");
             }
 
-            bit = static_cast<bool>(input.data()[nth_byte_in] & (1 << nth_bit_in));
+            bit = static_cast<bool>(input[nth_byte_in] & (1 << nth_bit_in));
             if (--nth_bit_in < 0) {
                 ++nth_byte_in;
                 nth_bit_in = CHAR_BIT - 1;
@@ -144,7 +144,7 @@ namespace LeviDB {
                 throw Exception::corruptionException("bad record length");
             }
 
-            bit = static_cast<bool>(input.data()[nth_byte_in] & (1 << nth_bit_in));
+            bit = static_cast<bool>(input[nth_byte_in] & (1 << nth_bit_in));
             if (--nth_bit_in < 0) {
                 if (nth_byte_in >= 1) {
                     --nth_byte_in;

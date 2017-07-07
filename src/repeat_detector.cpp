@@ -50,7 +50,7 @@ namespace LeviDB {
 
         _builder.send(STBuilder::STREAM_ON);
         for (size_t i = 0; i < src.size(); ++i) {
-            insertChar(idx, char_be_uint8(src.data()[i]));
+            insertChar(idx, char_be_uint8(src[i]));
         }
         _builder.send(STBuilder::STREAM_OFF);
 
@@ -100,7 +100,7 @@ namespace LeviDB {
             case_root(true);
         } else {
             Slice edge_s = _chunk[_act_chunk_idx];
-            assert(_edge_node == nodeGetSub(_act_node, char_be_uint8(edge_s.data()[_act_direct])));
+            assert(_edge_node == nodeGetSub(_act_node, char_be_uint8(edge_s[_act_direct])));
 
             const STNode * next_edge_node;
             if (_edge_node->from + _act_offset == _edge_node->to
@@ -112,7 +112,7 @@ namespace LeviDB {
                 _edge_node = next_edge_node;
                 _builder.send(next_edge_node->chunk_idx, next_edge_node->from, msg_char);
             } else if (_edge_node->from + _act_offset < _edge_node->to
-                       && msg_char == edge_s.data()[_edge_node->from + _act_offset]) {
+                       && msg_char == edge_s[_edge_node->from + _act_offset]) {
                 _builder.send(_edge_node->chunk_idx, _edge_node->from + _act_offset, msg_char);
                 ++_act_offset;
             } else {
@@ -184,7 +184,7 @@ namespace LeviDB {
                 auto overflow_fix = [&]() {
                     uint16_t end = _counter;
                     uint16_t begin = end - _act_offset;
-                    assert(_edge_node == nodeGetSub(_act_node, char_be_uint8(curr_s.data()[_counter - _act_offset])));
+                    assert(_edge_node == nodeGetSub(_act_node, char_be_uint8(curr_s[_counter - _act_offset])));
                     edge_s = _chunk[_edge_node->chunk_idx];
 
                     int supply;
@@ -193,7 +193,7 @@ namespace LeviDB {
                         begin += supply;
                         _act_offset -= supply;
 
-                        _edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s.data()[begin]));
+                        _edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s[begin]));
                         edge_s = _chunk[_edge_node->chunk_idx];
                         _act_direct = _edge_node->from;
                     }
@@ -213,7 +213,7 @@ namespace LeviDB {
                         }
                     } else {
                         _act_node = _act_node->successor;
-                        _edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s.data()[_counter - _act_offset]));
+                        _edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s[_counter - _act_offset]));
                         overflow_fix();
                     }
 
@@ -230,7 +230,7 @@ namespace LeviDB {
                         }
                         break;
                     } else if (_edge_node->from + _act_offset < _edge_node->to
-                               && msg_char == edge_s.data()[_edge_node->from + _act_offset]) {
+                               && msg_char == edge_s[_edge_node->from + _act_offset]) {
                         ++_act_offset;
                         break;
                     }
