@@ -77,6 +77,7 @@ namespace LeviDB {
         Arena * const _pool;
         STNode * const _root;
         const STNode * _act_node;
+        const STNode * _edge_node;
         SkipList<STNode, NodeCompare> _subs;
         STBuilder _builder;
         std::vector<Slice> _chunk;
