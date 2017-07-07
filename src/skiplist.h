@@ -49,6 +49,10 @@ namespace LeviDB {
 
         bool empty() const noexcept;
 
+        void move_to_fit(const K & old_key, const K & new_key) noexcept;
+
+        void move_to_fit(const K & old_key, K && new_key) noexcept;
+
         class Iterator {
         public:
             explicit Iterator(const SkipList * list) noexcept
@@ -341,6 +345,50 @@ namespace LeviDB {
     template<typename K, class CMP>
     bool SkipList<K, CMP>::empty() const noexcept {
         return _head->next(0) == nullptr;
+    }
+
+    template<typename K, class CMP>
+    void SkipList<K, CMP>::move_to_fit(const K & old_key, const K & new_key) noexcept {
+        Node * prev[max_height];
+        Node * x = findGreaterOrEqual(old_key, prev);
+        assert(equal(old_key, x->key));
+
+        int height = 0;
+        for (; height < _this_max_h && prev[height]->next(height) == x; ++height) {
+            prev[height]->setNext(height, x->next(height));
+        }
+        assert(height > 0);
+
+        x->key = new_key;
+        Node * y = findGreaterOrEqual(new_key, prev);
+        assert(y == nullptr || !equal(new_key, y->key));
+
+        for (int i = 0; i < height; ++i) {
+            x->setNext(i, prev[i]->next(i));
+            prev[i]->setNext(i, x);
+        }
+    }
+
+    template<typename K, class CMP>
+    void SkipList<K, CMP>::move_to_fit(const K & old_key, K && new_key) noexcept {
+        Node * prev[max_height];
+        Node * x = findGreaterOrEqual(old_key, prev);
+        assert(equal(old_key, x->key));
+
+        int height = 0;
+        for (; height < _this_max_h && prev[height]->next(height) == x; ++height) {
+            prev[height]->setNext(height, x->next(height));
+        }
+        assert(height > 0);
+
+        x->key = std::move(new_key);
+        Node * y = findGreaterOrEqual(x->key, prev);
+        assert(y == nullptr || !equal(x->key, y->key));
+
+        for (int i = 0; i < height; ++i) {
+            x->setNext(i, prev[i]->next(i));
+            prev[i]->setNext(i, x);
+        }
     }
 }
 
