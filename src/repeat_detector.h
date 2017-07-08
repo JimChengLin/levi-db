@@ -30,6 +30,7 @@ namespace LeviDB {
             STREAM_ON = -1,
             STREAM_OFF = -2,
             STREAM_PASS = -3,
+            STREAM_POP = -4,
         };
         std::vector<int> _data;
 

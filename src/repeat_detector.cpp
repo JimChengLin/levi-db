@@ -157,7 +157,11 @@ namespace LeviDB {
 
                         const STNode * inner_node_ = nodeSetSub(inner_node);
                         if (prev_inner_node != nullptr) {
-                            const_cast<STNode *>(prev_inner_node)->successor = inner_node_;
+                            if (prev_inner_node != inner_node_) {
+                                const_cast<STNode *>(prev_inner_node)->successor = inner_node_;
+                            } else {
+                                edge_node_.successor = inner_node_;
+                            }
                         }
                         prev_inner_node = inner_node_;
                         leaf_node.parent = inner_node_;
@@ -184,7 +188,7 @@ namespace LeviDB {
                 auto overflow_fix = [&]() {
                     uint16_t end = _counter;
                     uint16_t begin = end - _act_offset;
-                    assert(_edge_node == nodeGetSub(_act_node, char_be_uint8(curr_s[_counter - _act_offset])));
+                    _edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s[_counter - _act_offset]));
                     edge_s = _chunk[_edge_node->chunk_idx];
 
                     int supply;
@@ -213,7 +217,6 @@ namespace LeviDB {
                         }
                     } else {
                         _act_node = _act_node->successor;
-                        _edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s[_counter - _act_offset]));
                         overflow_fix();
                     }
 
@@ -234,6 +237,11 @@ namespace LeviDB {
                         ++_act_offset;
                         break;
                     }
+                }
+
+                if (_remainder == 1) {
+                    _builder.send(STBuilder::STREAM_POP);
+                    _builder.send(_act_chunk_idx, _act_direct, msg_char);
                 }
             }
         }
@@ -260,16 +268,19 @@ namespace LeviDB {
         };
 
         switch (chunk_idx_or_cmd) {
-            case STBuilder::STREAM_ON:
+            case STREAM_ON:
                 _compress_len = 0;
                 break;
-            case STBuilder::STREAM_PASS:
+            case STREAM_PASS:
                 try_explode();
                 _data.emplace_back(msg_char);
                 break;
-            case STBuilder::STREAM_OFF:
+            case STREAM_OFF:
                 try_explode();
                 assert(_data.size() <= UINT16_MAX);
+                break;
+            case STREAM_POP:
+                _data.pop_back();
                 break;
             default:
                 set_record();
