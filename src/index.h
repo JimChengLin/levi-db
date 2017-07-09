@@ -17,12 +17,12 @@ namespace LeviDB {
     template<typename K>
     class BDNode {
     public:
-        class CritNodePtr {
+        class CritPointer {
         private:
             void * _ptr;
 
         public:
-            CritNodePtr() noexcept : _ptr(nullptr) {}
+            CritPointer() noexcept : _ptr(nullptr) {}
 
             bool isNull() const noexcept {
                 return _ptr == nullptr;
@@ -38,16 +38,6 @@ namespace LeviDB {
                 return !isVal();
             }
 
-            K * asVal() const noexcept {
-                assert(isVal());
-                return _ptr;
-            }
-
-            BDNode * asNode() const noexcept {
-                assert(isNode());
-                return reinterpret_cast<BDNode *>(reinterpret_cast<uintptr_t>(this) & (INTPTR_MAX - 1));
-            }
-
             void setVal(K * val) noexcept {
                 _ptr = val;
             }
@@ -56,7 +46,17 @@ namespace LeviDB {
                 _ptr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(node) | 1);
             }
 
-            ~CritNodePtr() noexcept {
+            K * asVal() const noexcept {
+                assert(isVal());
+                return _ptr;
+            }
+
+            BDNode * asNode() const noexcept {
+                assert(isNode());
+                return reinterpret_cast<BDNode *>(reinterpret_cast<uintptr_t>(this) & (UINTPTR_MAX - 1));
+            }
+
+            ~CritPointer() noexcept {
                 if (!isNull()) {
                     if (isVal()) {
                         delete asVal();
@@ -67,25 +67,41 @@ namespace LeviDB {
             }
         };
 
-        CritNodePtr _nodes[IndexConst::rank + 1];
+        CritPointer _ptrs[IndexConst::rank + 1];
         uint32_t _diffs[IndexConst::rank];
-        uint8_t _mask[IndexConst::rank];
+        uint8_t _masks[IndexConst::rank];
 
-        BDNode() noexcept : _nodes(), _diffs(), _mask() {}
+    public:
+        BDNode() noexcept : _ptrs(), _diffs(), _masks() {}
 
         ~BDNode() noexcept {
-            for (CritNodePtr ptr:_nodes) {
+            for (CritPointer ptr:_ptrs) {
                 if (ptr.isNull()) {
                     break;
                 }
                 ptr.~CritNodePtr();
             }
         }
+
+        bool full() const noexcept {
+            return !_ptrs[IndexConst::rank].isNull();
+        }
     };
 
-    template<typename T>
+    template<typename K>
     class BitDegradeTree {
+    private:
+        BDNode<K> _node;
+        BDNode<K> * _root;
 
+    public:
+        BitDegradeTree() noexcept : _node(), _root(&_node) {}
+
+        ~BitDegradeTree() noexcept {}
+
+        void insert(K * val) noexcept {
+
+        }
     };
 }
 
