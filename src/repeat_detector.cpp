@@ -249,6 +249,8 @@ namespace LeviDB {
     }
 
     void STBuilder::send(int chunk_idx_or_cmd, int s_idx, int msg_char) noexcept {
+        assert(chunk_idx_or_cmd <= UINT16_MAX && s_idx <= UINT16_MAX);
+
         auto try_explode = [&]() {
             static constexpr int compress_cost = 1/* FN */ + 2/* chunk_idx */ + 2/* from */ + 2/* to */;
             if (_compress_len > compress_cost) {

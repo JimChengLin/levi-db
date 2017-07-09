@@ -2,7 +2,7 @@
 #define LEVIDB_EXCEPTION_H
 
 /*
- * 全项目的异常
+ * 负责全项目的异常
  */
 
 #include "slice.h"
@@ -27,7 +27,7 @@ namespace LeviDB {
                 : _state((e._state == nullptr) ? nullptr : copyState(e._state.get())) {
         }
 
-        inline void operator=(const Exception & e) noexcept {
+        void operator=(const Exception & e) noexcept {
             if (_state != e._state) {
                 _state = (e._state == nullptr) ? nullptr : copyState(e._state.get());
             }
