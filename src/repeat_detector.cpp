@@ -45,8 +45,10 @@ namespace LeviDB {
     }
 
     std::vector<int> SuffixTree::setitem(const Slice & src) noexcept {
+        assert(src.size() - 1 <= UINT16_MAX);
         uint16_t idx = static_cast<uint16_t>(_chunk.size());
         _chunk.emplace_back(src);
+        assert(_chunk.size() - 1 <= UINT16_MAX);
 
         _builder.send(STBuilder::STREAM_ON);
         for (size_t i = 0; i < src.size(); ++i) {
@@ -249,8 +251,6 @@ namespace LeviDB {
     }
 
     void STBuilder::send(int chunk_idx_or_cmd, int s_idx, int msg_char) noexcept {
-        assert(chunk_idx_or_cmd <= UINT16_MAX && s_idx <= UINT16_MAX);
-
         auto try_explode = [&]() {
             static constexpr int compress_cost = 1/* FN */ + 2/* chunk_idx */ + 2/* from */ + 2/* to */;
             if (_compress_len > compress_cost) {
