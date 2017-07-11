@@ -23,6 +23,6 @@ set(SOURCE_FILES
         test/coder_test.cpp
         test/skiplist_test.cpp
         test/repeat_detector_test.cpp
-        )
+        test/index_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
