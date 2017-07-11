@@ -20,9 +20,11 @@ set(SOURCE_FILES
         src/slice.h
         src/index.cpp src/index.h
         src/util.h
+        src/matcher.cpp src/matcher.h
         test/coder_test.cpp
         test/skiplist_test.cpp
         test/repeat_detector_test.cpp
-        test/index_test.cpp)
+        test/index_test.cpp
+        )
 
 add_executable(LeviDB ${SOURCE_FILES})
