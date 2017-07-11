@@ -20,6 +20,8 @@ namespace LeviDB {
             }
         }
 
+        ~Random() noexcept {}
+
         uint32_t next() noexcept {
             // 余数法
             static const uint32_t M = 2147483647L;

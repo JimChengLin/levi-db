@@ -37,6 +37,8 @@ namespace LeviDB {
 
         SkipList(Arena * arena, CMP cmp) noexcept;
 
+        ~SkipList() noexcept {}
+
         const K * insert(const K & key) noexcept;
 
         const K * insert(K && key) noexcept;
