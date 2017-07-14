@@ -162,8 +162,8 @@ namespace LeviDB {
         }
     }
 
-#define add_gap(arr, idx, size) memmove(&arr[(idx) + 1], &arr[(idx)], sizeof(arr[0]) * (size - (idx)));
-#define del_gap(arr, idx, size) memmove(&arr[(idx)], &arr[(idx) + 1], sizeof(arr[0]) * (size - ((idx) + 1)));
+#define add_gap(arr, idx, size) memmove(&arr[(idx) + 1], &arr[(idx)], sizeof(arr[0]) * ((size) - (idx)));
+#define del_gap(arr, idx, size) memmove(&arr[(idx)], &arr[(idx) + 1], sizeof(arr[0]) * ((size) - ((idx) + 1)));
 
     void BitDegradeTree::nodeInsert(BDNode * node, int replace_idx, bool replace_direct,
                                     bool direct, uint32_t diff_at, uint8_t mask, char * kv,
@@ -288,5 +288,48 @@ namespace LeviDB {
         del_gap(parent->_ptrs, idx + 1, size);
         parent->_ptrs[size - 1].setNull();
         parent->_ptrs[idx].setNode(new_node);
+    }
+
+    void BitDegradeTree::remove(const char * k) noexcept {
+        BDNode * parent = nullptr;
+        std::tuple<int, bool, int> parent_info;
+
+        BDNode * cursor = _root;
+        while (true) {
+            auto pos = findBestMatch(cursor, k);
+            int idx;
+            bool direct;
+            int size;
+            std::tie(idx, direct, size) = pos;
+
+            const CritPtr & ptr = cursor->_ptrs[idx + direct];
+            if (ptr.isNull()) {
+                break;
+            } else if (ptr.isNode()) {
+                parent = cursor;
+                parent_info = pos;
+                cursor = ptr.asNode();
+            } else {
+                if (strcmp(ptr.asVal(), k) == 0) {
+                    nodeRemove(cursor, idx, direct, size);
+                    if (parent != nullptr) {
+                        tryMerge(parent, cursor,
+                                 std::get<0>(parent_info), std::get<1>(parent_info), std::get<2>(parent_info),
+                                 size - 1);
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    void BitDegradeTree::nodeRemove(BDNode * node, int idx, bool direct, int size) noexcept {
+
+    }
+
+    bool BitDegradeTree::tryMerge(BDNode * parent, BDNode * child,
+                                  int idx, bool direct, int parent_size,
+                                  int child_size) noexcept {
+
     }
 }

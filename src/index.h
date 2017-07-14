@@ -12,7 +12,7 @@
 
 namespace LeviDB {
     namespace IndexConst {
-        static constexpr int rank = 3;
+        static constexpr int rank = 3; // always >= 3
     }
 
     class BDNode;
@@ -100,6 +100,8 @@ namespace LeviDB {
 
         const char * find(const char * k) const noexcept;
 
+        void remove(const char * k) noexcept;
+
     private:
         std::tuple<int/* idx */, bool/* direct */, int/* size */>
         findBestMatch(BDNode * node, const char * k) const noexcept;
@@ -115,6 +117,10 @@ namespace LeviDB {
         void makeRoomPush(BDNode * parent, BDNode * child, int idx, bool direct) noexcept;
 
         void makeNewRoom(BDNode * parent, int idx) noexcept;
+
+        void nodeRemove(BDNode * node, int idx, bool direct, int size) noexcept;
+
+        bool tryMerge(BDNode * parent, BDNode * child, int idx, bool direct, int parent_size, int child_size) noexcept;
     };
 }
 
