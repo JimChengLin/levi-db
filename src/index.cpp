@@ -1,5 +1,6 @@
 #include "index.h"
 #include "util.h"
+#include <cstdlib>
 
 namespace LeviDB {
     CritPtr::~CritPtr() noexcept {
@@ -202,12 +203,10 @@ namespace LeviDB {
     void BitDegradeTree::makeRoom(BDNode * parent) noexcept {
         auto cmp = parent->getDiffLess();
 
-        for (int i = 0; i < parent->_ptrs.size(); ++i) {
+        int rnd = static_cast<int>(rand() % parent->_ptrs.size());
+        int i = rnd;
+        do {
             const CritPtr & crit_ptr = parent->_ptrs[i];
-            if (crit_ptr.isNull()) {
-                break;
-            }
-
             if (crit_ptr.isNode() && !crit_ptr.asNode()->full()) {
                 BDNode * node = crit_ptr.asNode();
                 // try left
@@ -235,7 +234,11 @@ namespace LeviDB {
                     }
                 }
             }
-        }
+
+            if (++i == parent->_ptrs.size()) {
+                i = 0;
+            }
+        } while (i != rnd);
 
         if (parent->full()) {
             const uint32_t * biggest = std::max_element(parent->_diffs.cbegin(), parent->_diffs.cend(), cmp);
