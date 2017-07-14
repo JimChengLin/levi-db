@@ -107,7 +107,7 @@ namespace LeviDB {
             }
 
             if (cbegin == cend) {
-                return {min_it - node->_diffs.cbegin(), direct, size};
+                return {static_cast<int>(min_it - node->_diffs.cbegin()), direct, size};
             }
         }
     }
@@ -324,7 +324,10 @@ namespace LeviDB {
     }
 
     void BitDegradeTree::nodeRemove(BDNode * node, int idx, bool direct, int size) noexcept {
-
+        del_gap(node->_diffs, idx, size - 1);
+        del_gap(node->_masks, idx, size - 1);
+        del_gap(node->_ptrs, idx + direct, size);
+        node->_ptrs[size - 1].setNull();
     }
 
     bool BitDegradeTree::tryMerge(BDNode * parent, BDNode * child,
