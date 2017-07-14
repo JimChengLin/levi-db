@@ -38,7 +38,6 @@ namespace LeviDB {
         }
 
         bool isNode() const noexcept {
-            assert(!isNull());
             return !isVal();
         }
 
@@ -120,7 +119,9 @@ namespace LeviDB {
 
         void nodeRemove(BDNode * node, int idx, bool direct, int size) noexcept;
 
-        bool tryMerge(BDNode * parent, BDNode * child, int idx, bool direct, int parent_size, int child_size) noexcept;
+        void tryMerge(BDNode * parent, BDNode * child,
+                      int idx, bool direct, int parent_size,
+                      int child_size) noexcept;
     };
 }
 

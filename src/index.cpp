@@ -14,6 +14,9 @@ namespace LeviDB {
     }
 
     int BDNode::size() const noexcept {
+        if (full()) {
+            return static_cast<int>(_ptrs.size());
+        }
         int cnt = 0;
         for (const CritPtr & ptr:_ptrs) {
             if (!ptr.isNull()) {
@@ -158,12 +161,13 @@ namespace LeviDB {
                 nodeInsert(cursor, replace_idx, replace_direct, direct, diff_at, mask, kv, cursor_size);
                 break;
             }
+
             cursor = ptr.asNode();
         }
     }
 
-#define add_gap(arr, idx, size) memmove(&arr[(idx) + 1], &arr[(idx)], sizeof(arr[0]) * ((size) - (idx)));
-#define del_gap(arr, idx, size) memmove(&arr[(idx)], &arr[(idx) + 1], sizeof(arr[0]) * ((size) - ((idx) + 1)));
+#define add_gap(arr, idx, size) memmove(&arr[(idx) + 1], &arr[(idx)], sizeof(arr[0]) * ((size) - (idx)))
+#define del_gap(arr, idx, size) memmove(&arr[(idx)], &arr[(idx) + 1], sizeof(arr[0]) * ((size) - ((idx) + 1)))
 
     void BitDegradeTree::nodeInsert(BDNode * node, int replace_idx, bool replace_direct,
                                     bool direct, uint32_t diff_at, uint8_t mask, char * kv,
@@ -195,7 +199,7 @@ namespace LeviDB {
         add_gap(node->_masks, replace_idx, size - 1);
         add_gap(node->_ptrs, ptr_idx, size);
 
-        node->_diffs[replace_idx] = static_cast<uint32_t>(diff_at);
+        node->_diffs[replace_idx] = diff_at;
         node->_masks[replace_idx] = mask;
         node->_ptrs[ptr_idx].setVal(kv);
     }
@@ -324,15 +328,30 @@ namespace LeviDB {
     }
 
     void BitDegradeTree::nodeRemove(BDNode * node, int idx, bool direct, int size) noexcept {
+        assert(size - 1 >= 0);
         del_gap(node->_diffs, idx, size - 1);
         del_gap(node->_masks, idx, size - 1);
         del_gap(node->_ptrs, idx + direct, size);
         node->_ptrs[size - 1].setNull();
     }
 
-    bool BitDegradeTree::tryMerge(BDNode * parent, BDNode * child,
+    void BitDegradeTree::tryMerge(BDNode * parent, BDNode * child,
                                   int idx, bool direct, int parent_size,
                                   int child_size) noexcept {
+        if (child_size == 1) {
+            parent->_ptrs[idx + direct].setVal(const_cast<char *>(child->_ptrs[0].asVal()));
+            child->_ptrs[0].setNull();
+            delete child;
+        } else {
+            assert(child_size > 1);
+            if (parent_size == parent->_ptrs.size()) {
+                return;
+            }
 
+            int move = std::min(static_cast<int>(parent->_ptrs.size()) - parent_size, child_size);
+            if (move) {
+
+            }
+        }
     }
 }
