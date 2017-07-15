@@ -57,7 +57,9 @@ namespace LeviDB {
             } else if (ptr.isNode()) {
                 cursor = ptr.asNode();
             } else {
-                combatInsert(ptr.asVal(), kv);
+                if (strcmp(ptr.asVal(), kv) != 0) {
+                    combatInsert(ptr.asVal(), kv);
+                }
                 break;
             }
         }
