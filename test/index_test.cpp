@@ -75,6 +75,10 @@ void index_test() {
 
         tree.remove("A");
         assert(tree._root->size() == 4 && tree._root->_ptrs[0].asNode()->size() == 2);
+
+        for (const char * ptr:{"G", "F", "B", "I", "H"}) {
+            assert(tree.find(ptr)[0] == ptr[0]);
+        }
     }
 
     std::cout << __FUNCTION__ << std::endl;
