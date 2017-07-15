@@ -36,6 +36,11 @@ void index_test() {
         x[0] = 0b0000001;
         tree.insert(x);
         assert(tree._root->_masks[0] == 0b10111111);
+
+        for (const char * ptr:{"P", "B", "C"}) {
+            tree.remove(ptr);
+        }
+        assert(tree._root->_ptrs[2].isNull() && tree._root->_ptrs[3].isNull());
     }
 
     {
@@ -67,6 +72,9 @@ void index_test() {
             assert(tree.find(ptr)[0] == ptr[0]);
         }
         assert(tree.find("_")[0] != '_');
+
+        tree.remove("A");
+        assert(tree._root->size() == 4 && tree._root->_ptrs[0].asNode()->size() == 2);
     }
 
     std::cout << __FUNCTION__ << std::endl;

@@ -337,6 +337,9 @@ namespace LeviDB {
         node->_ptrs[size - 1].setNull();
     }
 
+#define add_n_gap(arr, idx, size, n) memmove(&arr[(idx) + (n)], &arr[(idx)], sizeof(arr[0]) * ((size) - (idx)))
+#define cpy_last_from(dst, idx, src, size, n) memcpy(&dst[(idx)], &src[(size) - (n)], sizeof(src[0]) * (n));
+
     void BitDegradeTree::tryMerge(BDNode * parent, BDNode * child,
                                   int idx, bool direct, int parent_size,
                                   int child_size) noexcept {
@@ -346,13 +349,29 @@ namespace LeviDB {
             delete child;
         } else {
             assert(child_size > 1);
-            if (parent_size == parent->_ptrs.size()) {
-                return;
-            }
+            int move = std::min(static_cast<int>(parent->_ptrs.size()) - parent_size,
+                                child_size - 1); // cannot merge all
+            if (move > 0) {
+                if (!direct) { // left
+                    add_n_gap(parent->_diffs, idx, parent_size - 1, move);
+                    add_n_gap(parent->_masks, idx, parent_size - 1, move);
+                    add_n_gap(parent->_ptrs, idx + 1, parent_size, move);
 
-            int move = std::min(static_cast<int>(parent->_ptrs.size()) - parent_size, child_size);
-            if (move) {
+                    cpy_last_from(parent->_diffs, idx, child->_diffs, child_size - 1, move);
+                    cpy_last_from(parent->_masks, idx, child->_masks, child_size - 1, move);
+                    cpy_last_from(parent->_ptrs, idx + 1, child->_ptrs, child_size, move);
+                } else { // right
+                    add_n_gap(parent->_diffs, idx + 1, parent_size - 1, move);
+                    add_n_gap(parent->_masks, idx + 1, parent_size - 1, move);
+                    add_n_gap(parent->_ptrs, idx + 1 + 1, parent_size, move);
 
+                    cpy_last_from(parent->_diffs, idx + 1, child->_diffs, child_size - 1, move);
+                    cpy_last_from(parent->_masks, idx + 1, child->_masks, child_size - 1, move);
+                    cpy_last_from(parent->_ptrs, idx + 1 + 1, child->_ptrs, child_size, move);
+                }
+                memset(&child->_ptrs[child_size - move], 0, sizeof(child->_ptrs[0]) * move);
+                // child_size may be 1
+                return tryMerge(parent, child, idx, direct, parent_size + move, child_size - move);
             }
         }
     }
