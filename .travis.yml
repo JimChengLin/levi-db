@@ -15,6 +15,10 @@ matrix:
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
+      after_success:
+        - pip install --user cpp-coveralls
+        - coveralls -r .. --gcov-options '\-lp' --exclude build/CMakeFiles
+
     # Clang / Xcode 8
     - os: osx
       osx_image: xcode8
