@@ -2,7 +2,7 @@
 #include <array>
 #include <iostream>
 
-void repeat_detector_test() {
+void repeat_detector_test() noexcept {
     class Tester : public LeviDB::SuffixTree {
     public:
         Tester(LeviDB::Arena * arena) noexcept : SuffixTree(arena) {}

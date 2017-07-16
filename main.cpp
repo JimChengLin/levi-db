@@ -6,15 +6,15 @@
 
 #include <iostream>
 
-void coder_test();
+void coder_test() noexcept;
 
-void skiplist_test();
+void skiplist_test() noexcept;
 
-void repeat_detector_test();
+void repeat_detector_test() noexcept;
 
-void index_test();
+void index_test() noexcept;
 
-int main() {
+int main() noexcept {
     coder_test();
     skiplist_test();
     repeat_detector_test();

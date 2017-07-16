@@ -1,8 +1,8 @@
 #include "../src/coder.h"
-#include <algorithm>
+#include <algorithm> // GCC
 #include <iostream>
 
-void coder_test() {
+void coder_test() noexcept {
     std::string src = "JimZuoLin";
 
     LeviDB::SubCoderNYT encoder;

@@ -1,7 +1,7 @@
 #include "../src/skiplist.h"
 #include <iostream>
 
-void skiplist_test() {
+void skiplist_test() noexcept {
     char src[] = {'X', 'Z', 'N', 'O', 'Q', 'D', 'E', 'I', 'K', 'M', 'W'};
     char ans[] = {'D', 'E', 'I', 'K', 'M', 'N', 'O', 'Q', 'W', 'X', 'Z'};
 

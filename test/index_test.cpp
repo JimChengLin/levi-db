@@ -1,7 +1,7 @@
 #include "../src/index.h"
 #include <iostream>
 
-void index_test() {
+void index_test() noexcept {
     {
         char * a = new char[2];
         char * b = new char[2];
