@@ -1,6 +1,6 @@
 language: cpp
 dist: trusty
-sudo: require
+sudo: false
 
 matrix:
   include:
@@ -15,18 +15,7 @@ matrix:
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
-    # Clang 3.9
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-trusty-3.9
-          packages:
-            - clang-3.9
-      env:
-        - MATRIX_EVAL="CC=clang-3.9 && CXX=clang++-3.9"
-
-    # Xcode 8
+    # Clang / Xcode 8
     - os: osx
       osx_image: xcode8
 

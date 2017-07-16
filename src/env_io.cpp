@@ -1,6 +1,7 @@
 #include "env.h"
 #include "exception.h"
 #include <cerrno>
+#include <cstdarg>
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>

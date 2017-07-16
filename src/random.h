@@ -1,7 +1,7 @@
 #ifndef LEVIDB_RANDOM_H
 #define LEVIDB_RANDOM_H
 
-#include "stdint.h"
+#include <cstdint>
 
 /*
  * 简单随机数生成器

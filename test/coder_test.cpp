@@ -1,4 +1,5 @@
 #include "../src/coder.h"
+#include <algorithm>
 #include <iostream>
 
 void coder_test() {

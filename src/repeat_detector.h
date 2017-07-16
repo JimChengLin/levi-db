@@ -9,6 +9,7 @@
 #include "skiplist.h"
 #include "slice.h"
 #include "util.h"
+#include <climits>
 
 namespace LeviDB {
     struct STNode {
