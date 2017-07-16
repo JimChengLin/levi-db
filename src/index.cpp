@@ -338,7 +338,7 @@ namespace LeviDB {
     }
 
 #define add_n_gap(arr, idx, size, n) memmove(&arr[(idx) + (n)], &arr[(idx)], sizeof(arr[0]) * ((size) - (idx)))
-#define cpy_last_from(dst, idx, src, size, n) memcpy(&dst[(idx)], &src[(size) - (n)], sizeof(src[0]) * (n));
+#define cpy_last(dst, idx, src, size, n) memcpy(&dst[(idx)], &src[(size) - (n)], sizeof(src[0]) * (n));
 
     void BitDegradeTree::tryMerge(BDNode * parent, BDNode * child,
                                   int idx, bool direct, int parent_size,
@@ -357,17 +357,17 @@ namespace LeviDB {
                     add_n_gap(parent->_masks, idx, parent_size - 1, move);
                     add_n_gap(parent->_ptrs, idx + 1, parent_size, move);
 
-                    cpy_last_from(parent->_diffs, idx, child->_diffs, child_size - 1, move);
-                    cpy_last_from(parent->_masks, idx, child->_masks, child_size - 1, move);
-                    cpy_last_from(parent->_ptrs, idx + 1, child->_ptrs, child_size, move);
+                    cpy_last(parent->_diffs, idx, child->_diffs, child_size - 1, move);
+                    cpy_last(parent->_masks, idx, child->_masks, child_size - 1, move);
+                    cpy_last(parent->_ptrs, idx + 1, child->_ptrs, child_size, move);
                 } else { // right
                     add_n_gap(parent->_diffs, idx + 1, parent_size - 1, move);
                     add_n_gap(parent->_masks, idx + 1, parent_size - 1, move);
                     add_n_gap(parent->_ptrs, idx + 1 + 1, parent_size, move);
 
-                    cpy_last_from(parent->_diffs, idx + 1, child->_diffs, child_size - 1, move);
-                    cpy_last_from(parent->_masks, idx + 1, child->_masks, child_size - 1, move);
-                    cpy_last_from(parent->_ptrs, idx + 1 + 1, child->_ptrs, child_size, move);
+                    cpy_last(parent->_diffs, idx + 1, child->_diffs, child_size - 1, move);
+                    cpy_last(parent->_masks, idx + 1, child->_masks, child_size - 1, move);
+                    cpy_last(parent->_ptrs, idx + 1 + 1, child->_ptrs, child_size, move);
                 }
                 memset(&child->_ptrs[child_size - move], 0, sizeof(child->_ptrs[0]) * move);
                 // child_size may be 1

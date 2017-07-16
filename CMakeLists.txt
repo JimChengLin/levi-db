@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.7)
 project(LeviDB)
 
 set(CMAKE_CXX_STANDARD 14)
-add_compile_options(-DOS_MACOSX) # 在 Mac 上开发
+
+IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    add_compile_options(-DOS_MACOSX)
+ENDIF ()
 
 set(SOURCE_FILES
         main.cpp
