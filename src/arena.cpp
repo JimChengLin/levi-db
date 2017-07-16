@@ -1,7 +1,7 @@
 #include "arena.h"
 
 #include <cassert>
-#include <cstdint>
+#include <cstdint> // GCC
 
 namespace LeviDB {
     static constexpr int block_size = 4096;

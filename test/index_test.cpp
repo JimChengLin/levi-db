@@ -7,8 +7,11 @@ void index_test() {
         char * b = new char[2];
         char * c = new char[2];
         a[0] = 'A';
+        a[1] = 0;
         b[0] = 'B';
+        b[1] = 0;
         c[0] = 'C';
+        c[1] = 0;
 
         LeviDB::BitDegradeTree tree;
         tree.insert(a);
@@ -23,10 +26,12 @@ void index_test() {
 
         char * x = new char[2];
         x[0] = 0b1000000;
+        x[1] = 0;
         tree.insert(x);
 
         x = new char[2];
         x[0] = 0b1010000;
+        x[1] = 0;
         tree.insert(x);
 
         assert(tree._root->_ptrs[0].isNode());
@@ -34,6 +39,7 @@ void index_test() {
 
         x = new char[2];
         x[0] = 0b0000001;
+        x[1] = 0;
         tree.insert(x);
         assert(tree._root->_masks[0] == 0b10111111);
 
@@ -48,8 +54,11 @@ void index_test() {
         char * b = new char[2];
         char * c = new char[2];
         a[0] = 'A';
+        a[1] = 0;
         b[0] = 'F';
+        b[1] = 0;
         c[0] = 'G';
+        c[1] = 0;
 
         LeviDB::BitDegradeTree tree;
         tree.insert(a);
@@ -58,14 +67,17 @@ void index_test() {
 
         char * x = new char[2];
         x[0] = 'H';
+        x[1] = 0;
         tree.insert(x);
 
         x = new char[2];
         x[0] = 'I';
+        x[1] = 0;
         tree.insert(x);
 
         x = new char[2];
         x[0] = 'B';
+        x[1] = 0;
         tree.insert(x);
 
         for (const char * ptr:{"A", "G", "F", "B", "I", "H"}) {

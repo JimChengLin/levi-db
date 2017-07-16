@@ -1,8 +1,8 @@
 #include "index.h"
 #include "util.h"
-#include <algorithm>
+#include <algorithm> // GCC
 #include <cstdlib>
-#include <cstring>
+#include <cstring> // GCC
 
 namespace LeviDB {
     CritPtr::~CritPtr() noexcept {
