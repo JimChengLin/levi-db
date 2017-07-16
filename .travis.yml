@@ -4,7 +4,7 @@ sudo: false
 
 matrix:
   include:
-    # GCC 6
+    # GCC 6 with coverage
     - os: linux
       addons:
         apt:
@@ -13,12 +13,12 @@ matrix:
           packages:
             - g++-6
       env:
+        - COVERAGE="on"
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
       after_success:
-        # coverage
         - pip install --user cpp-coveralls
-        - coveralls -r .. --gcov-options '\-lp' --exclude build/CMakeFiles
+        - coveralls -r .. --gcov-options '\-lp'
 
     # Clang / Xcode 8
     - os: osx
@@ -36,7 +36,7 @@ matrix:
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
       script:
-        - make LeviDB -j2 && valgrind --leak-check=full --show-leak-kinds=all ./LeviDB
+        - make LeviDB -j2 && valgrind --leak-check=full --error-exitcode=99 ./LeviDB
 
 # shared
 before_install:

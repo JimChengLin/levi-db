@@ -1,5 +1,4 @@
 #include "arena.h"
-
 #include <cassert>
 #include <cstdint> // GCC
 

@@ -44,13 +44,13 @@ namespace LeviDB {
     }
 
     SuffixTree::SuffixTree(Arena * arena) noexcept
-            : _root(newNode()),
+            : _pool(arena),
+              _root(newNode()),
               _act_node(_root),
               _edge_node(nullptr),
-              _pool(arena),
-              _chunk(),
               _subs(arena, NodeCompare{_chunk}),
               _builder(),
+              _chunk(),
               _act_chunk_idx(0),
               _act_direct(0),
               _act_offset(0),

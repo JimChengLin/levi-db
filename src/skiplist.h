@@ -247,8 +247,8 @@ namespace LeviDB {
             :_comparator(),
              _arena(arena),
              _head(newNode(max_height)),
-             _this_max_h(1),
-             _rnd(0xdeadbeef) {
+             _rnd(0xdeadbeef),
+             _this_max_h(1) {
         for (int i = 0; i < max_height; ++i) {
             _head->setNext(i, nullptr);
         }
@@ -269,8 +269,8 @@ namespace LeviDB {
             :_comparator(cmp),
              _arena(arena),
              _head(newNode(max_height)),
-             _this_max_h(1),
-             _rnd(0xdeadbeef) {
+             _rnd(0xdeadbeef),
+             _this_max_h(1) {
         for (int i = 0; i < max_height; ++i) {
             _head->setNext(i, nullptr);
         }
