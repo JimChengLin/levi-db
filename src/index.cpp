@@ -8,7 +8,7 @@ namespace LeviDB {
     CritPtr::~CritPtr() noexcept {
         if (!isNull()) {
             if (isVal()) {
-                delete asVal();
+                delete[] asVal();
             } else {
                 delete asNode();
             }
@@ -333,6 +333,7 @@ namespace LeviDB {
 
     void BitDegradeTree::nodeRemove(BDNode * node, int idx, bool direct, int size) noexcept {
         assert(size - 1 >= 0);
+        delete[] node->_ptrs[idx + direct].asVal();
         del_gap(node->_diffs, idx, size - 1);
         del_gap(node->_masks, idx, size - 1);
         del_gap(node->_ptrs, idx + direct, size);
