@@ -1,6 +1,6 @@
 language: cpp
 dist: trusty
-sudo: false
+sudo: require
 
 matrix:
   include:
@@ -15,7 +15,6 @@ matrix:
       env:
         - COVERAGE="on"
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
-
       after_success:
         - pip install --user cpp-coveralls
         - coveralls -r .. --gcov-options '\-lp'
@@ -38,9 +37,39 @@ matrix:
       script:
         - make LeviDB -j2 && valgrind --leak-check=full --error-exitcode=99 ./LeviDB
 
+    # Coverity
+    - os: linux
+      env:
+        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
+        - secure="2mfVXNYKSUX/gTgdbGYS1iM4mPRXiexwW3lYfe083KwuMfGV0rnuCXygksmf2dwVPujAyzIfZNsX8ca9dgu/grArOyxD/IfJsWK1vjeC40GTrejyPtVrWq8jykwP6bV8/Gxlaxs3+V2vgHB6g+e8q3Hl9tmqhLC9MJ9XaenQdMU6xDCDTbQ14lXzvf+7ulyyn/h3K2BMcNq4uMB7eqUIIfcN4QGR/WjMVpWYq04lHxMsMcq1KIeN/AJpGFATvfksVX551Qa35T+yFxGbhXMQvsorWfrAPr/LC01oB3msvEW3Hrl0mPUU4+saKZuRWyp28DOcKiV5hcSOqVCYA5bAsqwN7UCpa4y1kHJddp4kUCOHWWVXaoejYvkt1vMhOi8lGL3TWWmH0upuTblC5ktNvPtkx46ttvfa4/R2SvOSUUfvnBk6USWp1aHeiT153UpRM3bcSEdiZIjvvDjkWfdlkMAYoCbjnSckH3pjcIu5oSqBM8BuesXAkUknNcZrY7xB/5Kk6pGB58TW5MXp59jdqjkMtPpR+eSCLYFjDJPKrXczBLVDnbwMHPf0S+HpjA/o9o44FB5M5E1FzQLN1FhvUeLPT+ub2JikzitQhLrV9hUzFHieANsSE35PLNG11aDupTtdYXpGZyTVs7NWGXTICStTFRxRgrHeNwfgGMK8zdQ="
+        - COVERITY_SCAN_TOKEN="zX29mTurO4beI4yFrFDfcQ"
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+        coverity_scan:
+          project:
+            name: "JimChengLin/levi-db"
+            description: "levi-db"
+          notification_email: zuodd@qq.com
+          build_command_prepend: "cov-configure --comptype gcc --compiler gcc-6 --template && cd .. && cmake . -DCMAKE_BUILD_TYPE=Debug"
+          build_command: "make -j2"
+          branch_pattern: master
+      before_install:
+        - eval "${MATRIX_EVAL}"
+        - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+      before_script:
+      script:
+        - echo skip script
+      after_failure:
+        - tail ../cov-int/build-log.txt
+        - tail ../cov-int/scm_log.txt
+
 # shared
 before_install:
-    - eval "${MATRIX_EVAL}"
+  - eval "${MATRIX_EVAL}"
 
 install:
   # mkdir
