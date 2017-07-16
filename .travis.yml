@@ -16,6 +16,7 @@ matrix:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
 
       after_success:
+        # coverage
         - pip install --user cpp-coveralls
         - coveralls -r .. --gcov-options '\-lp' --exclude build/CMakeFiles
 
@@ -23,6 +24,21 @@ matrix:
     - os: osx
       osx_image: xcode8
 
+    # Valgrind
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - valgrind
+            - g++-6
+      env:
+        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
+      script:
+        - make LeviDB -j2 && valgrind --leak-check=full ./LeviDB
+
+# shared
 before_install:
     - eval "${MATRIX_EVAL}"
 
