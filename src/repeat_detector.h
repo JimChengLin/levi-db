@@ -35,7 +35,8 @@ namespace LeviDB {
         };
         std::vector<int> _data;
 
-        STBuilder() noexcept : _data() {}
+        STBuilder() noexcept
+                : _compress_len(0), _compress_idx(-1), _compress_to(-1), _data() {}
 
         ~STBuilder() noexcept {}
 
