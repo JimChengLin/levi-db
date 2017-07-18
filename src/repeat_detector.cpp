@@ -66,7 +66,7 @@ namespace LeviDB {
         assert(_chunk.size() - 1 <= UINT16_MAX);
 
         _builder.send(STBuilder::STREAM_ON);
-        for (size_t i = 0; i < src.size(); ++i) {
+        for (int i = 0; i < src.size(); ++i) {
             insertChar(idx, char_be_uint8(src[i]));
         }
         _builder.send(STBuilder::STREAM_OFF);

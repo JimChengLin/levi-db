@@ -122,6 +122,11 @@ namespace LeviDB {
         void tryMerge(BDNode * parent, BDNode * child,
                       int idx, bool direct, int parent_size,
                       int child_size) noexcept;
+
+        // 禁止复制
+        BitDegradeTree(const BitDegradeTree &);
+
+        void operator=(const BitDegradeTree &);
     };
 }
 

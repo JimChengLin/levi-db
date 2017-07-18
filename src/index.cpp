@@ -1,8 +1,11 @@
 #include "index.h"
 #include "util.h"
-#include <algorithm> // GCC
 #include <cstdlib>
+
+#ifndef __clang__
+#include <algorithm> // GCC
 #include <cstring> // GCC
+#endif
 
 namespace LeviDB {
     CritPtr::~CritPtr() noexcept {
@@ -287,8 +290,8 @@ namespace LeviDB {
         BDNode * new_node = new BDNode;
         new_node->_diffs[0] = parent->_diffs[idx];
         new_node->_masks[0] = parent->_masks[idx];
-        new_node->_ptrs[0]._ptr = parent->_ptrs[idx]._ptr;
-        new_node->_ptrs[1]._ptr = parent->_ptrs[idx + 1]._ptr;
+        new_node->_ptrs[0] = parent->_ptrs[idx];
+        new_node->_ptrs[1] = parent->_ptrs[idx + 1];
 
         size_t size = parent->_ptrs.size();
         del_gap(parent->_diffs, idx, size - 1);
