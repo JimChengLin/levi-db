@@ -45,6 +45,7 @@ namespace LeviDB {
         };
     }
 
+    // todo: insert may cause memory leak silently
     void BitDegradeTree::insert(char * kv) noexcept {
         BDNode * cursor = _root;
 
@@ -92,7 +93,7 @@ namespace LeviDB {
     }
 
     std::tuple<int, bool, int>
-    BitDegradeTree::findBestMatch(BDNode * node, const char * k) const noexcept {
+    BitDegradeTree::findBestMatch(const BDNode * node, const char * k) const noexcept {
         const uint32_t * cbegin = node->_diffs.cbegin();
         const uint32_t * cend;
 
@@ -103,8 +104,9 @@ namespace LeviDB {
             cend = &node->_diffs[size - 1];
         }
 
+        auto cmp = node->getDiffLess();
         while (true) {
-            const uint32_t * min_it = std::min_element(cbegin, cend, node->getDiffLess());
+            const uint32_t * min_it = std::min_element(cbegin, cend, cmp);
             uint32_t diff_at = *min_it;
 
             // left or right
@@ -137,23 +139,63 @@ namespace LeviDB {
 
         BDNode * cursor = _root;
         while (true) {
-            auto pos = findBestMatch(cursor, kv);
             int replace_idx;
             bool replace_direct;
-            int cursor_size;
-            std::tie(replace_idx, replace_direct, cursor_size) = pos;
+            int cursor_size = cursor->size();
 
+            auto cmp = cursor->getDiffLess();
             const uint32_t * min_it = std::min_element(cursor->_diffs.cbegin(),
                                                        cursor->_diffs.cbegin() + cursor_size - 1,
-                                                       cursor->getDiffLess());
+                                                       cmp);
             if (*min_it > diff_at
                 || (*min_it == diff_at && cursor->_masks[min_it - cursor->_diffs.cbegin()] > mask)) {
-                if (!direct) { // left
+                if (!direct) {
                     replace_idx = 0;
                     replace_direct = false;
-                } else { // right
+                } else {
                     replace_idx = cursor_size - 1 - 1;
                     replace_direct = true;
+                }
+            } else {
+                if (cursor_size <= 1) {
+                    replace_idx = 0;
+                    replace_direct = false;
+                } else {
+                    const uint32_t * cbegin = cursor->_diffs.cbegin();
+                    const uint32_t * cend = cursor->_diffs.cbegin() + cursor_size - 1;
+
+                    while (true) {
+                        uint32_t crit_diff_at = *min_it;
+                        uint8_t crit_byte =
+                                strlen(kv) > crit_diff_at ? char_be_uint8(kv[crit_diff_at]) : static_cast<uint8_t>(0);
+                        bool crit_direct = (static_cast<uint8_t>(1) +
+                                            (cursor->_masks[min_it - cursor->_diffs.cbegin()] | crit_byte)) >> 8;
+                        if (!crit_direct) {
+                            cend = min_it;
+                        } else {
+                            cbegin = min_it + 1;
+                        }
+
+                        if (cbegin == cend) {
+                            replace_idx = static_cast<int>(min_it - cursor->_diffs.cbegin());
+                            replace_direct = crit_direct;
+                            break;
+                        } else {
+                            const uint32_t * next_it = std::min_element(cbegin, cend, cmp);
+                            if (*next_it > diff_at
+                                || (*next_it == diff_at && cursor->_masks[next_it - cursor->_diffs.cbegin()] > mask)) {
+                                if (!direct) {
+                                    replace_idx = static_cast<int>(cbegin - cursor->_diffs.cbegin());
+                                    replace_direct = false;
+                                } else {
+                                    replace_idx = static_cast<int>(cend - cursor->_diffs.cbegin()) - 1;
+                                    replace_direct = true;
+                                }
+                                break;
+                            }
+                            min_it = next_it;
+                        }
+                    }
                 }
             }
 
@@ -337,48 +379,64 @@ namespace LeviDB {
     void BitDegradeTree::nodeRemove(BDNode * node, int idx, bool direct, int size) noexcept {
         assert(size - 1 >= 0);
         delete[] node->_ptrs[idx + direct].asVal();
-        del_gap(node->_diffs, idx, size - 1);
-        del_gap(node->_masks, idx, size - 1);
+        if ((size - 1) - (idx + 1) > 0) {
+            del_gap(node->_diffs, idx, size - 1);
+            del_gap(node->_masks, idx, size - 1);
+        }
         del_gap(node->_ptrs, idx + direct, size);
         node->_ptrs[size - 1].setNull();
     }
 
 #define add_n_gap(arr, idx, size, n) memmove(&arr[(idx) + (n)], &arr[(idx)], sizeof(arr[0]) * ((size) - (idx)))
-#define cpy_last(dst, idx, src, size, n) memcpy(&dst[(idx)], &src[(size) - (n)], sizeof(src[0]) * (n));
+#define cpy_all(dst, idx, src, size) memcpy(&dst[(idx)], &src[0], sizeof(src[0]) * (size));
 
     void BitDegradeTree::tryMerge(BDNode * parent, BDNode * child,
                                   int idx, bool direct, int parent_size,
                                   int child_size) noexcept {
         if (child_size == 1) {
-            parent->_ptrs[idx + direct].setVal(const_cast<char *>(child->_ptrs[0].asVal()));
+            parent->_ptrs[idx + direct] = child->_ptrs[0];
             child->_ptrs[0].setNull();
             delete child;
         } else {
             assert(child_size > 1);
-            int move = std::min(static_cast<int>(parent->_ptrs.size()) - parent_size,
-                                child_size - 1); // cannot merge all
-            if (move > 0) {
+
+            if (parent->_ptrs.size() - parent_size + 1 >= child_size) {
                 if (!direct) { // left
-                    add_n_gap(parent->_diffs, idx, parent_size - 1, move);
-                    add_n_gap(parent->_masks, idx, parent_size - 1, move);
-                    add_n_gap(parent->_ptrs, idx + 1, parent_size, move);
+                    add_n_gap(parent->_diffs, idx, parent_size - 1, child_size - 1);
+                    add_n_gap(parent->_masks, idx, parent_size - 1, child_size - 1);
+                    add_n_gap(parent->_ptrs, idx + 1, parent_size, child_size - 1);
 
-                    cpy_last(parent->_diffs, idx, child->_diffs, child_size - 1, move);
-                    cpy_last(parent->_masks, idx, child->_masks, child_size - 1, move);
-                    cpy_last(parent->_ptrs, idx + 1, child->_ptrs, child_size, move);
+                    cpy_all(parent->_diffs, idx, child->_diffs, child_size - 1);
+                    cpy_all(parent->_masks, idx, child->_masks, child_size - 1);
+                    cpy_all(parent->_ptrs, idx, child->_ptrs, child_size);
                 } else { // right
-                    add_n_gap(parent->_diffs, idx + 1, parent_size - 1, move);
-                    add_n_gap(parent->_masks, idx + 1, parent_size - 1, move);
-                    add_n_gap(parent->_ptrs, idx + 1 + 1, parent_size, move);
+                    add_n_gap(parent->_diffs, idx + 1, parent_size - 1, child_size - 1);
+                    add_n_gap(parent->_masks, idx + 1, parent_size - 1, child_size - 1);
+                    add_n_gap(parent->_ptrs, idx + 1 + 1, parent_size, child_size - 1);
 
-                    cpy_last(parent->_diffs, idx + 1, child->_diffs, child_size - 1, move);
-                    cpy_last(parent->_masks, idx + 1, child->_masks, child_size - 1, move);
-                    cpy_last(parent->_ptrs, idx + 1 + 1, child->_ptrs, child_size, move);
+                    cpy_all(parent->_diffs, idx + 1, child->_diffs, child_size - 1);
+                    cpy_all(parent->_masks, idx + 1, child->_masks, child_size - 1);
+                    cpy_all(parent->_ptrs, idx + 1, child->_ptrs, child_size);
                 }
-                memset(&child->_ptrs[child_size - move], 0, sizeof(child->_ptrs[0]) * move);
-                // child_size may be 1
-                return tryMerge(parent, child, idx, direct, parent_size + move, child_size - move);
+
+                memset(&child->_ptrs[child_size - child_size], 0, sizeof(child->_ptrs[0]) * child_size);
+                delete child;
             }
         }
+    }
+
+    size_t BitDegradeTree::size(const BDNode * node) const noexcept {
+        size_t cnt = 0;
+        for (int i = 0; i < node->_ptrs.size(); ++i) {
+            const CritPtr & ptr = node->_ptrs[i];
+            if (ptr.isNull()) {
+                break;
+            } else if (ptr.isVal()) {
+                ++cnt;
+            } else {
+                cnt += size(ptr.asNode());
+            }
+        }
+        return cnt;
     }
 }

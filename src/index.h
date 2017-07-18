@@ -101,9 +101,11 @@ namespace LeviDB {
 
         void remove(const char * k) noexcept;
 
+        size_t size(const BDNode * node) const noexcept;
+
     private:
         std::tuple<int/* idx */, bool/* direct */, int/* size */>
-        findBestMatch(BDNode * node, const char * k) const noexcept;
+        findBestMatch(const BDNode * node, const char * k) const noexcept;
 
         void combatInsert(const char * opponent, char * kv) noexcept;
 

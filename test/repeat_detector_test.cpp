@@ -34,11 +34,11 @@ void repeat_detector_test() noexcept {
         LeviDB::Arena arena;
         Tester tester(&arena);
 
-        srand(19950207);
         static constexpr int n = 100;
         std::array<std::string, n> sources;
         std::array<char, 5> alphabet{{'A', 'B', 'C', 'D', 'E'}};
 
+        srand(19950207);
         for (int i = 0; i < n; ++i) {
             std::string sample;
             int len = rand() % 20 + 1;

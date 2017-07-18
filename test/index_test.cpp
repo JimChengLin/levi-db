@@ -1,6 +1,10 @@
 #include "../src/index.h"
 #include <iostream>
 
+#ifndef __clang__
+#include <cstring> // GCC
+#endif
+
 void index_test() noexcept {
     {
         char * a = new char[2];
@@ -46,7 +50,6 @@ void index_test() noexcept {
         for (const char * ptr:{"P", "B", "C"}) {
             tree.remove(ptr);
         }
-        assert(tree._root->_ptrs[2].isNull() && tree._root->_ptrs[3].isNull());
     }
 
     {
@@ -86,11 +89,59 @@ void index_test() noexcept {
         assert(tree.find("_")[0] != '_');
 
         tree.remove("A");
-        assert(tree._root->size() == 4 && tree._root->_ptrs[0].asNode()->size() == 2);
-
         for (const char * ptr:{"G", "F", "B", "I", "H"}) {
             assert(tree.find(ptr)[0] == ptr[0]);
         }
+        for (const char * ptr:{"G", "F", "B", "I", "H"}) {
+            tree.remove(ptr);
+        }
+        assert(tree.size(tree._root) == 0);
+    }
+
+    {
+        LeviDB::BitDegradeTree tree;
+        std::array<const char *, 200> sources;
+        std::array<char, 5> alphabet{{'A', 'B', 'C', 'D', 'E'}};
+
+        srand(19950207);
+        for (int i = 0; i < sources.size(); ++i) {
+            char * x = new char[5];
+            x[4] = 0;
+            for (int j = 0; j < 4; ++j) {
+                x[j] = alphabet[rand() % alphabet.size()];
+            }
+            auto res = tree.find(x);
+            if (res != nullptr && strcmp(res, x) == 0) {
+                delete[] x;
+                sources[i] = nullptr;
+                continue;
+            }
+
+            tree.insert(x);
+            sources[i] = x;
+            for (int j = 0; j <= i; ++j) {
+                if (sources[j] != nullptr) assert(strcmp(tree.find(sources[j]), sources[j]) == 0);
+            }
+
+            if (rand() % 2 == 0) {
+                tree.remove(x);
+                sources[i] = nullptr;
+                for (int j = 0; j <= i; ++j) {
+                    if (sources[j] != nullptr) assert(strcmp(tree.find(sources[j]), sources[j]) == 0);
+                }
+            }
+        }
+
+        for (int i = 0; i < sources.size(); ++i) {
+            if (sources[i] != nullptr) {
+                tree.remove(sources[i]);
+                sources[i] = nullptr;
+            }
+            for (int j = 0; j < sources.size(); ++j) {
+                if (sources[j] != nullptr) assert(strcmp(tree.find(sources[j]), sources[j]) == 0);
+            }
+        }
+        assert(tree.size(tree._root) == 0);
     }
 
     std::cout << __FUNCTION__ << std::endl;
