@@ -34,7 +34,7 @@ void repeat_detector_test() noexcept {
         LeviDB::Arena arena;
         Tester tester(&arena);
 
-        static constexpr int n = 1000;
+        static constexpr int n = 500;
         std::array<std::string, n> sources;
         std::array<char, 5> alphabet{{'A', 'B', 'C', 'D', 'E'}};
 

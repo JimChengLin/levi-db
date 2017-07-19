@@ -6,6 +6,7 @@
  * https://zhuanlan.zhihu.com/p/27071075
  */
 
+#include "env_io.h"
 #include <array>
 #include <cassert>
 #include <tuple>
@@ -82,6 +83,10 @@ namespace LeviDB {
         int size() const noexcept;
 
         auto getDiffLess() const noexcept;
+    };
+
+    class BDAddrTranslator {
+
     };
 
     class BitDegradeTree {

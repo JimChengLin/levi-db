@@ -1,5 +1,10 @@
-#include "env.h"
+#include "env_thread.h"
+#include <algorithm>
 #include <pthread.h>
+
+#ifndef __clang__
+#include <cstring>
+#endif
 
 namespace LeviDB {
     namespace ThreadEnv {

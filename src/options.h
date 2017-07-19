@@ -5,8 +5,6 @@
  * 运行参数与编译常数
  */
 
-#include "env.h"
-
 namespace LeviDB {
     namespace OptionsConst {
     }
@@ -15,13 +13,11 @@ namespace LeviDB {
         bool create_if_missing;
         bool error_if_exists;
         bool compress;
-        Logger * info_log;
 
         Options() noexcept
                 : create_if_missing(false),
                   error_if_exists(false),
-                  compress(true),
-                  info_log(nullptr) {};
+                  compress(true) {};
     };
 
     struct ReadOptions {

@@ -16,7 +16,8 @@ set(SOURCE_FILES
         src/arena.cpp src/arena.h
         src/coder.cpp src/coder.h
         src/compressor.cpp src/compressor.h
-        src/env_io.cpp src/env_thread.cpp src/env.h
+        src/env_io.cpp src/env_io.h
+        src/env_thread.cpp src/env_thread.h
         src/exception.cpp src/exception.h
         src/index.cpp src/index.h
         src/iterator.h
