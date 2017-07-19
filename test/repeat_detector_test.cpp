@@ -34,7 +34,7 @@ void repeat_detector_test() noexcept {
         LeviDB::Arena arena;
         Tester tester(&arena);
 
-        static constexpr int n = 100;
+        static constexpr int n = 1000;
         std::array<std::string, n> sources;
         std::array<char, 5> alphabet{{'A', 'B', 'C', 'D', 'E'}};
 
@@ -49,8 +49,11 @@ void repeat_detector_test() noexcept {
             sources[i] = std::move(sample);
 
             tester.setitem(LeviDB::Slice(sources[i]));
-            for (int j = 0; j < sample.size(); ++j) {
-                assert(tester.contains(sample, j));
+            for (int j = 0; j <= i; ++j) {
+                const std::string & s = sources[j];
+                for (int k = 0; k < s.size(); ++k) {
+                    assert(tester.contains(s, k));
+                }
             }
         }
     }

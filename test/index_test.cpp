@@ -100,7 +100,7 @@ void index_test() noexcept {
 
     {
         LeviDB::BitDegradeTree tree;
-        std::array<const char *, 200> sources;
+        std::array<const char *, 1000> sources;
         std::array<char, 5> alphabet{{'A', 'B', 'C', 'D', 'E'}};
 
         srand(19950207);

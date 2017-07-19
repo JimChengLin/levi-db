@@ -151,49 +151,28 @@ namespace LeviDB {
                         inner_node.chunk_idx = _edge_node->chunk_idx;
                         inner_node.from = _edge_node->from;
                         inner_node.to = static_cast<uint16_t>(_edge_node->from + _act_offset);
+
+                        inner_node.parent = nullptr;
+                        const STNode * inner_node_ = nodeSetSub(inner_node);
                         inner_node.parent = _edge_node->parent;
 
-                        SkipList<STNode, NodeCompare>::Iterator it(&_subs);
-                        std::vector<STNode> edge_subs;
-                        STNode tmp;
-                        tmp.from = 1;
-                        tmp.to = 0;
-                        tmp.chunk_idx = 0;
-                        tmp.parent = _edge_node;
-                        for (it.seek(tmp);
-                             it.valid() && it.key().parent == _edge_node;
-                             it.next()) {
-                            edge_subs.push_back(it.key());
-                        }
-                        for (int i = 0; i < edge_subs.size(); ++i) {
-                            tmp = edge_subs[i];
-                            tmp.parent = nullptr;
-                            _subs.move_to_fit(edge_subs[i], tmp);
-                            edge_subs[i] = tmp;
-                        }
-
-                        STNode edge_node_ = *_edge_node;
-                        edge_node_.from = inner_node.to;
-
-                        const STNode * inner_node_ = nodeSetSub(inner_node);
                         if (prev_inner_node != nullptr) {
-                            if (prev_inner_node != inner_node_) {
-                                const_cast<STNode *>(prev_inner_node)->successor = inner_node_;
-                            } else {
-                                edge_node_.successor = inner_node_;
-                            }
+                            const_cast<STNode *>(prev_inner_node)->successor = inner_node_;
                         }
                         prev_inner_node = inner_node_;
-                        leaf_node.parent = inner_node_;
-                        edge_node_.parent = inner_node_;
 
+                        STNode tmp;
+                        tmp = *_edge_node;
+                        tmp.from = inner_node.to;
+                        tmp.parent = inner_node_;
+                        _subs.move_to_fit(*_edge_node, tmp);
+
+                        tmp = inner_node;
+                        tmp.parent = nullptr;
+                        _subs.move_to_fit(tmp, inner_node);
+
+                        leaf_node.parent = inner_node_;
                         nodeSetSub(leaf_node);
-                        _edge_node = nodeSetSub(edge_node_);
-                        for (const STNode & node:edge_subs) {
-                            tmp = node;
-                            tmp.parent = _edge_node;
-                            _subs.move_to_fit(node, tmp);
-                        }
                     } else {
                         if (prev_inner_node != nullptr) {
                             const_cast<STNode *>(prev_inner_node)->successor = _edge_node;

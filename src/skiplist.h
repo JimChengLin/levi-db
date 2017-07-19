@@ -60,6 +60,8 @@ namespace LeviDB {
             explicit Iterator(const SkipList * list) noexcept
                     : _list(list), _node(nullptr) {};
 
+            ~Iterator() noexcept {}
+
             inline bool valid() const noexcept { return _node != nullptr; };
 
             inline const K & key() const noexcept {
