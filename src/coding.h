@@ -1,0 +1,4 @@
+#ifndef LEVIDB_CODING_H
+#define LEVIDB_CODING_H
+
+#endif //LEVIDB_CODING_H

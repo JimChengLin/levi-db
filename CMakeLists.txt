@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.7)
 project(LeviDB)
 
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
@@ -15,7 +16,9 @@ set(SOURCE_FILES
         main.cpp
         src/arena.cpp src/arena.h
         src/coder.cpp src/coder.h
+        src/coding.cpp src/coding.h
         src/compressor.cpp src/compressor.h
+        src/crc32c.cpp src/crc32c.h
         src/env_io.cpp src/env_io.h
         src/env_thread.cpp src/env_thread.h
         src/exception.cpp src/exception.h
@@ -30,6 +33,7 @@ set(SOURCE_FILES
         src/slice.h
         src/util.h
         test/coder_test.cpp
+        test/crc32c_test.cpp
         test/index_test.cpp
         test/repeat_detector_test.cpp
         test/skiplist_test.cpp

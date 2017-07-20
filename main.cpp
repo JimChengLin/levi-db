@@ -14,11 +14,14 @@ void repeat_detector_test() noexcept;
 
 void index_test() noexcept;
 
+void crc32c_test() noexcept;
+
 int main() noexcept {
     coder_test();
     skiplist_test();
     repeat_detector_test();
     index_test();
+    crc32c_test();
     std::cout << "done." << std::endl;
     return 0;
 }
