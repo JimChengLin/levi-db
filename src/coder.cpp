@@ -43,7 +43,7 @@ namespace LeviDB {
         }
     }
 
-    int Holder::firstGreater(int cum) const noexcept {
+    int Holder::findGreater(int cum) const noexcept {
         int lo = 0;
         int hi = CoderConst::FN + 1;
         while (lo < hi) {
@@ -163,7 +163,7 @@ namespace LeviDB {
 
         unsigned long anchor = ((_bit_q.to_ulong() - _lower + 1) * _holder.total - 1)
                                / (static_cast<uint32_t>(_upper) - _lower + 1);
-        int symbol = _holder.firstGreater(static_cast<int>(anchor)) - 1;
+        int symbol = _holder.findGreater(static_cast<int>(anchor)) - 1;
 
         uint16_t o_lower = _lower;
         uint32_t o_range = static_cast<uint32_t>(_upper) - _lower + 1;

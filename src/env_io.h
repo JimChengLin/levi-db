@@ -32,6 +32,12 @@ namespace LeviDB {
         FileOpen(const std::string & fname, IOEnv::OpenMode mode);
 
         ~FileOpen() noexcept { if (_fd > 0) close(_fd); };
+
+    private:
+        // 禁止复制
+        FileOpen(const FileOpen &);
+
+        void operator=(const FileOpen &);
     };
 
     class FileFopen {
@@ -41,6 +47,12 @@ namespace LeviDB {
         FileFopen(const std::string & fname, IOEnv::OpenMode mode);
 
         ~FileFopen() noexcept { if (_f != NULL) fclose(_f); }
+
+    private:
+        // 禁止复制
+        FileFopen(const FileFopen &);
+
+        void operator=(const FileFopen &);
     };
 
     class MmapFile {
@@ -51,7 +63,7 @@ namespace LeviDB {
         FileOpen _file;
 
     public:
-        MmapFile(const std::string & fname);
+        explicit MmapFile(const std::string & fname);
 
         ~MmapFile() noexcept { munmap(_mmaped_region, _length); }
 
@@ -60,6 +72,12 @@ namespace LeviDB {
         void write(uint64_t offset, const Slice & data);
 
         void grow();
+
+    private:
+        // 禁止复制
+        MmapFile(const MmapFile &);
+
+        void operator=(const MmapFile &);
     };
 
     class AppendableFile {
@@ -69,7 +87,7 @@ namespace LeviDB {
         FileFopen _ffile;
 
     public:
-        AppendableFile(const std::string & fname);
+        explicit AppendableFile(const std::string & fname);
 
         ~AppendableFile() noexcept {}
 
@@ -78,6 +96,12 @@ namespace LeviDB {
         void flush();
 
         void sync();
+
+    private:
+        // 禁止复制
+        AppendableFile(const AppendableFile &);
+
+        void operator=(const AppendableFile &);
     };
 
     class RandomAccessFile {
@@ -86,11 +110,17 @@ namespace LeviDB {
         FileOpen _file;
 
     public:
-        RandomAccessFile(const std::string & fname);
+        explicit RandomAccessFile(const std::string & fname);
 
         ~RandomAccessFile() noexcept {}
 
         Slice read(uint64_t offset, size_t n, char * scratch) const;
+
+    private:
+        // 禁止复制
+        RandomAccessFile(const RandomAccessFile &);
+
+        void operator=(const RandomAccessFile &);
     };
 }
 

@@ -425,7 +425,7 @@ namespace LeviDB {
         }
     }
 
-    size_t BitDegradeTree::size(const BDNode * node) const noexcept {
+    size_t BitDegradeTree::getSize(const BDNode * node) noexcept {
         size_t cnt = 0;
         for (int i = 0; i < node->_ptrs.size(); ++i) {
             const CritPtr & ptr = node->_ptrs[i];
@@ -434,7 +434,7 @@ namespace LeviDB {
             } else if (ptr.isVal()) {
                 ++cnt;
             } else {
-                cnt += size(ptr.asNode());
+                cnt += getSize(ptr.asNode());
             }
         }
         return cnt;

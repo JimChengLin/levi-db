@@ -78,7 +78,7 @@ namespace LeviDB {
 
         void plus(int idx, int val) noexcept;
 
-        int firstGreater(int cum) const noexcept;
+        int findGreater(int cum) const noexcept;
 
         void halve() noexcept;
     };

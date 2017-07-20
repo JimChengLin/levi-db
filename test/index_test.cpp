@@ -95,7 +95,7 @@ void index_test() noexcept {
         for (const char * ptr:{"G", "F", "B", "I", "H"}) {
             tree.remove(ptr);
         }
-        assert(tree.size(tree._root) == 0);
+        assert(tree.getSize(tree._root) == 0);
     }
 
     {
@@ -141,7 +141,7 @@ void index_test() noexcept {
                 if (sources[j] != nullptr) assert(strcmp(tree.find(sources[j]), sources[j]) == 0);
             }
         }
-        assert(tree.size(tree._root) == 0);
+        assert(tree.getSize(tree._root) == 0);
     }
 
     std::cout << __FUNCTION__ << std::endl;

@@ -24,8 +24,8 @@ namespace LeviDB {
 
         uint32_t next() noexcept {
             // 余数法
-            static const uint32_t M = 2147483647L;
-            static const uint64_t A = 16807;
+            static constexpr uint32_t M = 2147483647L;
+            static constexpr uint64_t A = 16807;
 
             uint64_t product = _seed * A;
             _seed = static_cast<uint32_t>((product >> 31) + (product & M));

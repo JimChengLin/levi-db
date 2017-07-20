@@ -85,10 +85,6 @@ namespace LeviDB {
         auto getDiffLess() const noexcept;
     };
 
-    class BDAddrTranslator {
-
-    };
-
     class BitDegradeTree {
     private:
         BDNode _node;
@@ -106,7 +102,7 @@ namespace LeviDB {
 
         void remove(const char * k) noexcept;
 
-        size_t size(const BDNode * node) const noexcept;
+        static size_t getSize(const BDNode * node) noexcept;
 
     private:
         std::tuple<int/* idx */, bool/* direct */, int/* size */>

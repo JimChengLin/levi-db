@@ -18,18 +18,22 @@
  * content = varint32 k_length + key + val
  */
 
+#include "arena.h"
+#include "coder.h"
+#include "repeat_detector.h"
 #include "slice.h"
 #include <vector>
 
 namespace LeviDB {
     class Compressor {
+
     public:
         void submit(const Slice & key, const Slice & val) noexcept;
 
         // 单次申请最大长度 2**15(max log record length)
-        std::vector<int> request(int size) noexcept;
+        std::vector<int> request(int size, bool compress) noexcept;
 
-        void report(uint64_t pos) noexcept;
+        void report(uint64_t offset) noexcept;
     };
 }
 

@@ -1,6 +1,6 @@
 #include "crc32c.h"
-#include <cstring>
 #include <cpuid.h>
+#include <cstring>
 #include <nmmintrin.h>
 
 namespace LeviDB {
@@ -311,18 +311,14 @@ namespace LeviDB {
 } while (0)
 
             if (size > 16) {
-                // Process unaligned bytes
                 for (size_t i = reinterpret_cast<uintptr_t>(p) % 8; i; --i) {
                     STEP1;
                 }
 
-                // _mm_crc32_u64 is only available on x64.
 #if defined(_M_X64) || defined(__x86_64__)
-                // Process 8 bytes at a time
                 while ((e - p) >= 8) {
                     STEP8;
                 }
-                // Process 4 bytes at a time
                 if ((e - p) >= 4) {
                     STEP4;
                 }
@@ -334,7 +330,6 @@ namespace LeviDB {
 #endif  // defined(_M_X64) || defined(__x86_64__)
             }
 
-            // Process the last few bytes
             while (p != e) {
                 STEP1;
             }
@@ -374,28 +369,22 @@ namespace LeviDB {
         _table0[c >> 24];                       \
 } while (0)
 
-            // Point x at first 4-byte aligned byte in string.  This might be
-            // just past the end of the string.
             const uintptr_t pval = reinterpret_cast<uintptr_t>(p);
             const uint8_t * x = reinterpret_cast<const uint8_t *>(((pval + 3) >> 2) << 2);
             if (x <= e) {
-                // Process bytes until finished or p is 4-byte aligned
                 while (p != x) {
                     STEP1;
                 }
             }
-            // Process bytes 16 at a time
             while ((e - p) >= 16) {
                 STEP4;
                 STEP4;
                 STEP4;
                 STEP4;
             }
-            // Process bytes 4 at a time
             while ((e - p) >= 4) {
                 STEP4;
             }
-            // Process the last few bytes
             while (p != e) {
                 STEP1;
             }
