@@ -300,7 +300,7 @@ namespace LeviDB {
 
         std::function<void(const STNode *, int)> print_tree = [&](const STNode * node, int lv) {
             if (lv > 0) {
-                res += std::string(static_cast<size_t>(lv - 1) * 2, ' ') + "--";
+                res += std::string(static_cast<unsigned int>(lv - 1) * 2, ' ') + "--";
                 print_node(node);
             } else {
                 res += '#';

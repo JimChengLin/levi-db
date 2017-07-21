@@ -1,6 +1,9 @@
 #include "../src/coder.h"
-#include <algorithm> // GCC
 #include <iostream>
+
+#ifndef __clang__
+#include <algorithm> // GCC
+#endif
 
 void coder_test() noexcept {
     std::string src = "JimZuoLin";

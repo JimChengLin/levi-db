@@ -3,6 +3,7 @@
 
 /*
  * 比对 key 是否 match
+ * 可使用正则
  */
 
 namespace LeviDB {

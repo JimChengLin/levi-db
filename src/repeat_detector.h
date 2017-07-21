@@ -90,6 +90,8 @@ namespace LeviDB {
         uint16_t _counter;
         uint16_t _remainder;
 
+        friend class Compressor;
+
     public:
         explicit SuffixTree(Arena * arena) noexcept;
 

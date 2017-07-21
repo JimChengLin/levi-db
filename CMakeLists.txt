@@ -19,6 +19,7 @@ set(SOURCE_FILES
         src/coding.cpp src/coding.h
         src/compressor.cpp src/compressor.h
         src/crc32c.cpp src/crc32c.h
+        src/decompressor.cpp src/decompressor.h
         src/env_io.cpp src/env_io.h
         src/env_thread.cpp src/env_thread.h
         src/exception.cpp src/exception.h
@@ -37,6 +38,6 @@ set(SOURCE_FILES
         test/index_test.cpp
         test/repeat_detector_test.cpp
         test/skiplist_test.cpp
-        )
+        test/compressor_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})

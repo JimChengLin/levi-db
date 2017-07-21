@@ -70,6 +70,7 @@ void repeat_detector_test() noexcept {
         for (int i = 0; i < sources.size(); ++i) {
             assert(suffix_tree.setitem(sources[i]) == answers[i]);
         }
+        suffix_tree.toString();
     }
 
     std::cout << __FUNCTION__ << std::endl;

@@ -1,6 +1,6 @@
 #include "../src/crc32c.h"
-#include <cstring>
 #include <cassert>
+#include <cstring>
 #include <iostream>
 
 void crc32c_test() noexcept {
