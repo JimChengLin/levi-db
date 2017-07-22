@@ -14,11 +14,11 @@ namespace LeviDB {
     public:
         Exception() noexcept : _state(nullptr) {}
 
-        ~Exception() noexcept {}
+        ~Exception() noexcept override = default;
 
         static const char * _what;
 
-        virtual const char * what() const noexcept override {
+        const char * what() const noexcept override {
             return Exception::_what;
         }
 
@@ -27,10 +27,11 @@ namespace LeviDB {
                 : _state((e._state == nullptr) ? nullptr : copyState(e._state.get())) {
         }
 
-        void operator=(const Exception & e) noexcept {
+        Exception & operator=(const Exception & e) noexcept {
             if (_state != e._state) {
                 _state = (e._state == nullptr) ? nullptr : copyState(e._state.get());
             }
+            return *this;
         }
 
         static Exception notFoundException(const Slice & msg, const Slice & msg2 = Slice()) noexcept {

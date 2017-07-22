@@ -22,12 +22,12 @@ namespace LeviDB {
 
     class CritPtr {
     private:
-        void * _ptr;
+        void * _ptr = nullptr;
 
         friend class BitDegradeTree;
 
     public:
-        CritPtr() noexcept : _ptr(nullptr) {}
+        CritPtr() noexcept = default;
 
         bool isNull() const noexcept {
             return _ptr == nullptr;
@@ -74,9 +74,9 @@ namespace LeviDB {
         std::array<uint8_t, IndexConst::rank> _masks;
 
     public:
-        BDNode() noexcept : _ptrs(), _diffs(), _masks() {}
+        BDNode() noexcept : _diffs(), _masks() {}
 
-        ~BDNode() noexcept {}
+        ~BDNode() noexcept = default;
 
         bool full() const noexcept { return !_ptrs.back().isNull(); }
 
@@ -92,9 +92,9 @@ namespace LeviDB {
     public:
         BDNode * _root; // for test
 
-        BitDegradeTree() noexcept : _node(), _root(&_node) {}
+        BitDegradeTree() noexcept : _root(&_node) {}
 
-        ~BitDegradeTree() noexcept {}
+        ~BitDegradeTree() noexcept = default;
 
         void insert(char * kv) noexcept;
 
@@ -103,6 +103,11 @@ namespace LeviDB {
         void remove(const char * k) noexcept;
 
         static size_t getSize(const BDNode * node) noexcept;
+
+        // 禁止复制
+        BitDegradeTree(const BitDegradeTree &) = delete;
+
+        void operator=(const BitDegradeTree &) = delete;
 
     private:
         std::tuple<int/* idx */, bool/* direct */, int/* size */>
@@ -125,11 +130,6 @@ namespace LeviDB {
         void tryMerge(BDNode * parent, BDNode * child,
                       int idx, bool direct, int parent_size,
                       int child_size) noexcept;
-
-        // 禁止复制
-        BitDegradeTree(const BitDegradeTree &);
-
-        void operator=(const BitDegradeTree &);
     };
 }
 

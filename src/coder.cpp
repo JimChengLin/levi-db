@@ -82,7 +82,7 @@ namespace LeviDB {
 
         while (condition_12() || condition_3()) {
             if (condition_12()) {
-                bool bit = static_cast<bool>(_lower & mask_a);
+                auto bit = static_cast<bool>(_lower & mask_a);
                 pushBit(bit, output, nth_bit_out);
 
                 _lower <<= 1;
@@ -119,16 +119,15 @@ namespace LeviDB {
             --_cnt_3;
         }
 
-        for (int i = static_cast<int>(_bit_q.size() - 1 - 1); i >= 0; --i) {
+        for (auto i = static_cast<int>(_bit_q.size() - 1 - 1); i >= 0; --i) {
             pushBit(_bit_q[i], output, nth_bit_out);
         }
-        return;
     }
 
     template<bool TRUE_NYT_FALSE_NORMAL>
     bool SubCoder<TRUE_NYT_FALSE_NORMAL>::fetchBit(const Slice & input, size_t & nth_byte_in,
                                                    int & nth_bit_in) const {
-        bool bit = 0;
+        bool bit;
         if (!TRUE_NYT_FALSE_NORMAL) { // normal forward
             if (nth_byte_in > input.size() - 1) {
                 throw Exception::corruptionException("bad record length");
@@ -203,7 +202,7 @@ namespace LeviDB {
                                                      int & nth_bit_in) {
         nth_byte_in = (!TRUE_NYT_FALSE_NORMAL) ? 0 : (input.size() - 1);
         nth_bit_in = CHAR_BIT - 1;
-        for (int i = static_cast<int>(_bit_q.size() - 1); i >= 0; --i) {
+        for (auto i = static_cast<int>(_bit_q.size() - 1); i >= 0; --i) {
             _bit_q[i] = fetchBit(input, nth_byte_in, nth_bit_in);
         }
     }

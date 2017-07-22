@@ -49,8 +49,6 @@ namespace LeviDB {
               _act_node(_root),
               _edge_node(nullptr),
               _subs(arena, NodeCompare{_chunk}),
-              _builder(),
-              _chunk(),
               _act_chunk_idx(0),
               _act_direct(0),
               _act_offset(0),
@@ -61,7 +59,7 @@ namespace LeviDB {
 
     std::vector<int> SuffixTree::setitem(const Slice & src) noexcept {
         assert(src.size() - 1 <= UINT16_MAX);
-        uint16_t idx = static_cast<uint16_t>(_chunk.size());
+        auto idx = static_cast<uint16_t>(_chunk.size());
         _chunk.emplace_back(src);
         assert(_chunk.size() - 1 <= UINT16_MAX);
 
@@ -231,7 +229,8 @@ namespace LeviDB {
                             const_cast<STNode *>(prev_inner_node)->successor = _act_node;
                         }
                         break;
-                    } else if (_edge_node->from + _act_offset < _edge_node->to
+                    }
+                    if (_edge_node->from + _act_offset < _edge_node->to
                                && msg_char == edge_s[_edge_node->from + _act_offset]) {
                         ++_act_offset;
                         break;

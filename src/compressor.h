@@ -23,7 +23,6 @@
 #include "repeat_detector.h"
 #include "slice.h"
 #include <memory>
-#include <tuple>
 #include <vector>
 
 namespace LeviDB {
@@ -43,41 +42,45 @@ namespace LeviDB {
 
     class Compressor {
     private:
-        char * _src_begin;
-        char * _src_end;
+        char * _src_begin = nullptr;
+        char * _src_end = nullptr;
         std::unique_ptr<char[]> _src;
 
         Arena _arena;
         SuffixTree _tree;
         std::vector<uint32_t> _anchors;
-        int _compressed_bytes;
+        int _compressed_bytes = 0;
 
     public:
-        Compressor() noexcept
-                : _src_begin(nullptr), _src_end(nullptr), _src(nullptr),
-                  _arena(), _tree(&_arena), _anchors(), _compressed_bytes(0) {};
+        Compressor() noexcept : _src(nullptr), _tree(&_arena) {};
 
-        ~Compressor() noexcept {}
+        ~Compressor() noexcept = default;
 
-        void submit(const Slice & key, const Slice & val, bool del = false) noexcept;
+        void submit(const Slice & key, const Slice & val = Slice()) noexcept;
+
+        void submitDel(const Slice & key) noexcept;
 
         // 单次最大长度 2^15(max log record length)
-        std::tuple<std::vector<uint8_t>/* result */, bool/* compress */, bool/* feedback */>
-        next(uint16_t n, bool compress, int cursor = -1) noexcept;
+        std::pair<std::vector<uint8_t>/* result */, bool/* compress */>
+        nextCompressed(uint16_t n, int cursor) noexcept { return next(n, true, cursor); }
+
+        std::pair<std::vector<uint8_t>, bool>
+        nextUncompressed(uint16_t n) noexcept { return next(n, false, -1); }
 
         bool valid() const noexcept { return _src_begin != _src_end; };
 
-        void feedback(uint32_t anchor) noexcept;
-
         void reset() noexcept;
 
-    private:
-        std::vector<uint8_t> process(std::vector<int> & codes, int cursor) noexcept;
-
         // 禁止复制
-        Compressor(const Compressor &);
+        Compressor(const Compressor &) = delete;
 
-        void operator=(const Compressor &);
+        void operator=(const Compressor &) = delete;
+
+    private:
+        std::pair<std::vector<uint8_t>, bool>
+        next(uint16_t n, bool compress, int cursor) noexcept;
+
+        std::vector<uint8_t> process(std::vector<int> & codes, int cursor) noexcept;
     };
 }
 

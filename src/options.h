@@ -10,23 +10,16 @@ namespace LeviDB {
     }
 
     struct Options {
-        bool create_if_missing;
-        bool error_if_exists;
-        bool compress;
-
-        Options() noexcept
-                : create_if_missing(false),
-                  error_if_exists(false),
-                  compress(true) {};
+        bool create_if_missing = false;
+        bool error_if_exists = false;
+        bool compress = true;
     };
 
     struct ReadOptions {
     };
 
     struct WriteOptions {
-        bool sync;
-
-        WriteOptions() noexcept : sync(false) {}
+        bool sync = false;
     };
 }
 

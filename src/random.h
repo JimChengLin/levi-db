@@ -20,7 +20,7 @@ namespace LeviDB {
             }
         }
 
-        ~Random() noexcept {}
+        ~Random() noexcept = default;
 
         uint32_t next() noexcept {
             // 余数法

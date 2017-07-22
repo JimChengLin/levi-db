@@ -4,46 +4,47 @@
 #include "crc32c.h"
 
 namespace LeviDB {
-    void Compressor::submit(const Slice & key, const Slice & val, bool del) noexcept {
+    void Compressor::submitDel(const Slice & key) noexcept {
         assert(!valid());
 
         char buf[5];
-        if (del) {
-            assert(val.size() == 0);
+        char * end = Coding::encodeVarint32(buf, static_cast<uint32_t>(key.size() + 1));
+        size_t len = end - buf;
 
-            char * end = Coding::encodeVarint32(buf, static_cast<uint32_t>(key.size() + 1));
-            size_t len = end - buf;
+        _src.reset(new char[len + key.size()]);
+        char * src = _src.get();
+        _src_begin = src;
 
-            _src.reset(new char[len + key.size()]);
-            char * src = _src.get();
-            _src_begin = src;
+        memcpy(src, buf, len);
+        src += len;
+        memcpy(src, key.data(), key.size());
+        src += key.size();
+        _src_end = src;
+    }
 
-            memcpy(src, buf, len);
-            src += len;
-            memcpy(src, key.data(), key.size());
-            src += key.size();
-            _src_end = src;
-        } else {
-            char * end = Coding::encodeVarint32(buf, static_cast<uint32_t>(key.size()));
-            size_t len = end - buf;
+    void Compressor::submit(const Slice & key, const Slice & val) noexcept {
+        assert(!valid());
 
-            _src.reset(new char[len + key.size() + val.size()]);
-            char * src = _src.get();
-            _src_begin = src;
+        char buf[5];
+        char * end = Coding::encodeVarint32(buf, static_cast<uint32_t>(key.size()));
+        size_t len = end - buf;
 
-            memcpy(src, buf, len);
-            src += len;
-            memcpy(src, key.data(), key.size());
-            src += key.size();
-            memcpy(src, val.data(), val.size());
-            src += val.size();
-            _src_end = src;
-        }
+        _src.reset(new char[len + key.size() + val.size()]);
+        char * src = _src.get();
+        _src_begin = src;
+
+        memcpy(src, buf, len);
+        src += len;
+        memcpy(src, key.data(), key.size());
+        src += key.size();
+        memcpy(src, val.data(), val.size());
+        src += val.size();
+        _src_end = src;
     }
 
 #define checksum_len sizeof(uint32_t)
 
-    std::tuple<std::vector<uint8_t>/* result */, bool/* compress */, bool/* feedback */>
+    std::pair<std::vector<uint8_t>/* result */, bool/* compress */>
     Compressor::next(uint16_t n, bool compress, int cursor) noexcept {
         assert(valid());
         assert(n > checksum_len && n <= 32768/* 2^15 */);
@@ -69,27 +70,24 @@ namespace LeviDB {
             res = process(codes, cursor);
         }
 
-        if (!compress || res.size() > length * (1 - 0.125)) {
+        if (!compress || res.size() > (length + checksum_len) * 7 / 8) {
             compressed = false;
 
+            length = std::min<size_t>(length + checksum_len, n);
             res.resize(length);
+
             length -= checksum_len;
             uint32_t checksum = CRC32C::value(_src_begin, length);
             memcpy(&res[0], &checksum, checksum_len);
             memcpy(&res[checksum_len], _src_begin, length);
             next_begin = _src_begin + length;
         }
-        _src_end = next_begin;
+        _src_begin = next_begin;
         assert(res.size() <= n);
 
         if (_compressed_bytes > CompressorConst::reset_threshold) { reset(); }
-        return {std::move(res), compressed, require_feedback};
-    }
-
-    void Compressor::feedback(uint32_t anchor) noexcept {
-        assert(!valid());
-        assert(_anchors.size() - 1 == _tree._chunk.size());
-        _anchors.push_back(anchor);
+        else if (require_feedback) { _anchors.emplace_back(cursor); }
+        return {std::move(res), compressed};
     }
 
     void Compressor::reset() noexcept {
@@ -109,9 +107,9 @@ namespace LeviDB {
 
     std::vector<uint8_t> Compressor::process(std::vector<int> & codes, int cursor) noexcept {
         assert(valid());
-        assert(_anchors.size() - 1 == _tree._chunk.size());
+        assert(_anchors.size() + 1 == _tree._chunk.size());
 
-        auto append_mark = [](char *& p, int chunk_offset, int from, int len) {
+        auto append_mark_dat = [](char *& p, int chunk_offset, int from, int len) {
             char mark = 0;
             for (int val:{chunk_offset, from, len}) {
                 if (val <= UINT8_MAX) {
@@ -124,15 +122,13 @@ namespace LeviDB {
             if (mark != 0) {
                 *(p++) = mark;
             }
-        };
-
-        auto append_compress_dat = [](char *& p, int chunk_offset, int from, int len) {
+            // dat
             for (int val:{chunk_offset, from, len}) {
                 if (val <= UINT8_MAX) {
                     *(p++) = val;
                 } else {
                     assert(val <= UINT16_MAX);
-                    uint16_t tmp = static_cast<uint16_t>(val);
+                    auto tmp = static_cast<uint16_t>(val);
                     memcpy(p, &tmp, sizeof(tmp));
                     p += sizeof(tmp);
                 }
@@ -164,10 +160,9 @@ namespace LeviDB {
 
                 char buf[7]; // uint8_t(mask) + uint16_t * 3
                 char * p = buf;
-                append_mark(p, chunk_offset, from, len);
-                append_compress_dat(p, chunk_offset, from, len);
+                append_mark_dat(p, chunk_offset, from, len);
 
-                if (1/* FN */+ (p - buf) <= len) {
+                if (1/* FN */+ (p - buf) < len) {
                     codes_ir.emplace_back(CoderConst::FN);
                     for (const char * cbegin = buf; cbegin != p; ++cbegin) {
                         codes_ir.emplace_back(*cbegin);

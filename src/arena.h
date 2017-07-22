@@ -12,9 +12,9 @@
 namespace LeviDB {
     class Arena {
     public:
-        Arena() noexcept : _alloc_bytes_remaining(0), _alloc_ptr(nullptr) {};
+        Arena() noexcept = default;
 
-        ~Arena() noexcept {};
+        ~Arena() noexcept = default;
 
         char * allocate(size_t bytes) noexcept;
 
@@ -24,8 +24,8 @@ namespace LeviDB {
 
     private:
         std::vector<std::unique_ptr<char[]>> _blocks;
-        size_t _alloc_bytes_remaining;
-        char * _alloc_ptr;
+        size_t _alloc_bytes_remaining = 0;
+        char * _alloc_ptr = nullptr;
 
         char * allocateFallback(size_t bytes) noexcept;
 

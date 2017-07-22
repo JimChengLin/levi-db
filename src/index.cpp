@@ -37,11 +37,11 @@ namespace LeviDB {
         return [&](const uint32_t & a, const uint32_t & b) {
             if (a < b) {
                 return true;
-            } else if (a == b) {
-                return _masks[&a - _diffs.cbegin()] < _masks[&b - _diffs.cbegin()];
-            } else {
-                return false;
             }
+            if (a == b) {
+                return _masks[&a - _diffs.cbegin()] < _masks[&b - _diffs.cbegin()];
+            }
+            return false;
         };
     }
 
@@ -60,7 +60,8 @@ namespace LeviDB {
             if (ptr.isNull()) {
                 ptr.setVal(kv);
                 break;
-            } else if (ptr.isNode()) {
+            }
+            if (ptr.isNode()) {
                 cursor = ptr.asNode();
             } else {
                 if (strcmp(ptr.asVal(), kv) != 0) {
@@ -84,7 +85,8 @@ namespace LeviDB {
             const CritPtr & ptr = cursor->_ptrs[idx + direct];
             if (ptr.isNull()) {
                 return nullptr;
-            } else if (ptr.isNode()) {
+            }
+            if (ptr.isNode()) {
                 cursor = ptr.asNode();
             } else {
                 return ptr.asVal();
@@ -100,9 +102,8 @@ namespace LeviDB {
         int size = node->size();
         if (size <= 1) {
             return {0, false, size};
-        } else {
-            cend = &node->_diffs[size - 1];
         }
+        cend = &node->_diffs[size - 1];
 
         auto cmp = node->getDiffLess();
         while (true) {
@@ -180,21 +181,20 @@ namespace LeviDB {
                             replace_idx = static_cast<int>(min_it - cursor->_diffs.cbegin());
                             replace_direct = crit_direct;
                             break;
-                        } else {
-                            const uint32_t * next_it = std::min_element(cbegin, cend, cmp);
-                            if (*next_it > diff_at
-                                || (*next_it == diff_at && cursor->_masks[next_it - cursor->_diffs.cbegin()] > mask)) {
-                                if (!direct) {
-                                    replace_idx = static_cast<int>(cbegin - cursor->_diffs.cbegin());
-                                    replace_direct = false;
-                                } else {
-                                    replace_idx = static_cast<int>(cend - cursor->_diffs.cbegin()) - 1;
-                                    replace_direct = true;
-                                }
-                                break;
-                            }
-                            min_it = next_it;
                         }
+                        const uint32_t * next_it = std::min_element(cbegin, cend, cmp);
+                        if (*next_it > diff_at
+                            || (*next_it == diff_at && cursor->_masks[next_it - cursor->_diffs.cbegin()] > mask)) {
+                            if (!direct) {
+                                replace_idx = static_cast<int>(cbegin - cursor->_diffs.cbegin());
+                                replace_direct = false;
+                            } else {
+                                replace_idx = static_cast<int>(cend - cursor->_diffs.cbegin()) - 1;
+                                replace_direct = true;
+                            }
+                            break;
+                        }
+                        min_it = next_it;
                     }
                 }
             }
@@ -256,7 +256,7 @@ namespace LeviDB {
     void BitDegradeTree::makeRoom(BDNode * parent) noexcept {
         auto cmp = parent->getDiffLess();
 
-        int rnd = static_cast<int>(rand() % parent->_ptrs.size());
+        auto rnd = static_cast<int>(rand() % parent->_ptrs.size());
         int i = rnd;
         do {
             const CritPtr & crit_ptr = parent->_ptrs[i];
@@ -329,7 +329,7 @@ namespace LeviDB {
     }
 
     void BitDegradeTree::makeNewRoom(BDNode * parent, int idx) noexcept {
-        BDNode * new_node = new BDNode;
+        auto new_node = new BDNode;
         new_node->_diffs[0] = parent->_diffs[idx];
         new_node->_masks[0] = parent->_masks[idx];
         new_node->_ptrs[0] = parent->_ptrs[idx];
@@ -358,7 +358,8 @@ namespace LeviDB {
             const CritPtr & ptr = cursor->_ptrs[idx + direct];
             if (ptr.isNull()) {
                 break;
-            } else if (ptr.isNode()) {
+            }
+            if (ptr.isNode()) {
                 parent = cursor;
                 parent_info = pos;
                 cursor = ptr.asNode();
@@ -419,7 +420,7 @@ namespace LeviDB {
                     cpy_all(parent->_ptrs, idx + 1, child->_ptrs, child_size);
                 }
 
-                memset(&child->_ptrs[child_size - child_size], 0, sizeof(child->_ptrs[0]) * child_size);
+                memset(&child->_ptrs[0], 0, sizeof(child->_ptrs[0]) * child_size);
                 delete child;
             }
         }
@@ -427,11 +428,11 @@ namespace LeviDB {
 
     size_t BitDegradeTree::getSize(const BDNode * node) noexcept {
         size_t cnt = 0;
-        for (int i = 0; i < node->_ptrs.size(); ++i) {
-            const CritPtr & ptr = node->_ptrs[i];
+        for (const CritPtr & ptr:node->_ptrs) {
             if (ptr.isNull()) {
                 break;
-            } else if (ptr.isVal()) {
+            }
+            if (ptr.isVal()) {
                 ++cnt;
             } else {
                 cnt += getSize(ptr.asNode());

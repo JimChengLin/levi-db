@@ -10,9 +10,9 @@
 namespace LeviDB {
     class Iterator {
     public:
-        Iterator() noexcept {};
+        Iterator() noexcept = default;
 
-        virtual ~Iterator() noexcept {};
+        virtual ~Iterator() noexcept = default;
 
         virtual bool valid() const = 0;
 
@@ -30,21 +30,26 @@ namespace LeviDB {
 
         virtual Slice value() const = 0;
 
-    private:
         // 禁止复制
-        Iterator(const Iterator &);
+        Iterator(const Iterator &) = delete;
 
-        void operator=(const Iterator &);
+        void operator=(const Iterator &) = delete;
     };
 
     // 缓存结果的迭代器
     class IteratorWrapper {
+    private:
+        std::unique_ptr<Iterator> _iter;
+        Slice _key;
+        Slice _value;
+        bool _valid = false;
+
     public:
-        IteratorWrapper() noexcept : _iter(nullptr), _valid(false) {}
+        IteratorWrapper() noexcept : _iter(nullptr) {}
 
         explicit IteratorWrapper(Iterator * iter) { set(iter); }
 
-        ~IteratorWrapper() noexcept {}
+        ~IteratorWrapper() noexcept = default;
 
         Iterator * iter() const noexcept { return _iter.get(); }
 
@@ -108,11 +113,6 @@ namespace LeviDB {
                 _value = _iter->value();
             }
         }
-
-        std::unique_ptr<Iterator> _iter;
-        Slice _key;
-        Slice _value;
-        bool _valid;
     };
 }
 

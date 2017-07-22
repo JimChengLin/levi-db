@@ -294,21 +294,21 @@ namespace LeviDB {
                 return 0;
             }
 
-            const uint8_t * p = reinterpret_cast<const uint8_t *>(buf);
+            const auto * p = reinterpret_cast<const uint8_t *>(buf);
             const uint8_t * e = p + size;
             uint32_t l = crc ^0xffffffffu;
 
 #define STEP1 do {                              \
     l = _mm_crc32_u8(l, *p++);                  \
-} while (0)
+} while (false)
 #define STEP4 do {                              \
     l = _mm_crc32_u32(l, load32(p));            \
     p += 4;                                     \
-} while (0)
+} while (false)
 #define STEP8 do {                              \
     l = _mm_crc32_u64(l, load64(p));            \
     p += 8;                                     \
-} while (0)
+} while (false)
 
             if (size > 16) {
                 for (size_t i = reinterpret_cast<uintptr_t>(p) % 8; i; --i) {
@@ -352,14 +352,14 @@ namespace LeviDB {
                 return acceleratedCRC32C(crc, buf, size);
             }
 
-            const uint8_t * p = reinterpret_cast<const uint8_t *>(buf);
+            const auto * p = reinterpret_cast<const uint8_t *>(buf);
             const uint8_t * e = p + size;
             uint32_t l = crc ^0xffffffffu;
 
 #define STEP1 do {                              \
     int c = (l & 0xff) ^ *p++;                  \
     l = _table0[c] ^ (l >> 8);                  \
-} while (0)
+} while (false)
 #define STEP4 do {                              \
     uint32_t c = l ^ load32(p);                 \
     p += 4;                                     \
@@ -367,10 +367,10 @@ namespace LeviDB {
         _table2[(c >> 8) & 0xff] ^              \
         _table1[(c >> 16) & 0xff] ^             \
         _table0[c >> 24];                       \
-} while (0)
+} while (false)
 
-            const uintptr_t pval = reinterpret_cast<uintptr_t>(p);
-            const uint8_t * x = reinterpret_cast<const uint8_t *>(((pval + 3) >> 2) << 2);
+            auto pval = reinterpret_cast<uintptr_t>(p);
+            const auto * x = reinterpret_cast<const uint8_t *>(((pval + 3) >> 2) << 2);
             if (x <= e) {
                 while (p != x) {
                     STEP1;

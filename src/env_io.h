@@ -33,11 +33,10 @@ namespace LeviDB {
 
         ~FileOpen() noexcept { if (_fd > 0) close(_fd); };
 
-    private:
         // 禁止复制
-        FileOpen(const FileOpen &);
+        FileOpen(const FileOpen &) = delete;
 
-        void operator=(const FileOpen &);
+        void operator=(const FileOpen &) = delete;
     };
 
     class FileFopen {
@@ -48,11 +47,10 @@ namespace LeviDB {
 
         ~FileFopen() noexcept { if (_f != NULL) fclose(_f); }
 
-    private:
         // 禁止复制
-        FileFopen(const FileFopen &);
+        FileFopen(const FileFopen &) = delete;
 
-        void operator=(const FileFopen &);
+        void operator=(const FileFopen &) = delete;
     };
 
     class MmapFile {
@@ -73,11 +71,10 @@ namespace LeviDB {
 
         void grow();
 
-    private:
         // 禁止复制
-        MmapFile(const MmapFile &);
+        MmapFile(const MmapFile &) = delete;
 
-        void operator=(const MmapFile &);
+        void operator=(const MmapFile &) = delete;
     };
 
     class AppendableFile {
@@ -89,7 +86,7 @@ namespace LeviDB {
     public:
         explicit AppendableFile(const std::string & fname);
 
-        ~AppendableFile() noexcept {}
+        ~AppendableFile() noexcept = default;
 
         void append(const Slice & data);
 
@@ -97,11 +94,10 @@ namespace LeviDB {
 
         void sync();
 
-    private:
         // 禁止复制
-        AppendableFile(const AppendableFile &);
+        AppendableFile(const AppendableFile &) = delete;
 
-        void operator=(const AppendableFile &);
+        void operator=(const AppendableFile &) = delete;
     };
 
     class RandomAccessFile {
@@ -112,15 +108,14 @@ namespace LeviDB {
     public:
         explicit RandomAccessFile(const std::string & fname);
 
-        ~RandomAccessFile() noexcept {}
+        ~RandomAccessFile() noexcept = default;
 
         Slice read(uint64_t offset, size_t n, char * scratch) const;
 
-    private:
         // 禁止复制
-        RandomAccessFile(const RandomAccessFile &);
+        RandomAccessFile(const RandomAccessFile &) = delete;
 
-        void operator=(const RandomAccessFile &);
+        void operator=(const RandomAccessFile &) = delete;
     };
 }
 

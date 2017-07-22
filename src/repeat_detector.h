@@ -22,9 +22,9 @@ namespace LeviDB {
 
     class STBuilder {
     private:
-        int _compress_len;
-        int _compress_idx;
-        int _compress_to;
+        int _compress_len = 0;
+        int _compress_idx = -1;
+        int _compress_to = -1;
 
     public:
         enum Message {
@@ -35,20 +35,18 @@ namespace LeviDB {
         };
         std::vector<int> _data;
 
-        STBuilder() noexcept
-                : _compress_len(0), _compress_idx(-1), _compress_to(-1), _data() {}
+        STBuilder() noexcept = default;
 
-        ~STBuilder() noexcept {}
+        ~STBuilder() noexcept = default;
 
         void send(int chunk_idx_or_cmd = INT_MIN,
                   int s_idx = INT_MIN,
                   int msg_char = INT_MIN) noexcept;
 
-    private:
         // 禁止复制
-        STBuilder(const STBuilder &);
+        STBuilder(const STBuilder &) = delete;
 
-        void operator=(const STBuilder &);
+        void operator=(const STBuilder &) = delete;
     };
 
     class SuffixTree {
@@ -59,21 +57,22 @@ namespace LeviDB {
             int operator()(const STNode & a, const STNode & b) const noexcept {
                 if (a.parent < b.parent) {
                     return -1;
-                } else if (a.parent == b.parent) {
+                }
+                if (a.parent == b.parent) {
                     uint8_t a_val = a.from > a.to ?
                                     static_cast<uint8_t>(a.chunk_idx) : char_be_uint8(chunk[a.chunk_idx][a.from]);
                     uint8_t b_val = b.from > b.to ?
                                     static_cast<uint8_t>(b.chunk_idx) : char_be_uint8(chunk[b.chunk_idx][b.from]);
                     if (a_val < b_val) {
                         return -1;
-                    } else if (a_val == b_val) {
-                        return 0;
-                    } else {
-                        return 1;
                     }
-                } else {
+                    if (a_val == b_val) {
+                        return 0;
+                    }
                     return 1;
                 }
+                return 1;
+
             }
         };
 
@@ -95,7 +94,7 @@ namespace LeviDB {
     public:
         explicit SuffixTree(Arena * arena) noexcept;
 
-        ~SuffixTree() noexcept {};
+        ~SuffixTree() noexcept = default;
 
         std::vector<int> setitem(const Slice & src) noexcept;
 
@@ -103,15 +102,14 @@ namespace LeviDB {
 
         std::string toString() const noexcept; // debug only
 
-    private:
-        void insertChar(uint16_t chunk_idx, uint8_t msg_char) noexcept;
-
         // 禁止复制
-        SuffixTree(const SuffixTree &);
+        SuffixTree(const SuffixTree &) = delete;
 
-        void operator=(const SuffixTree &);
+        void operator=(const SuffixTree &) = delete;
 
     protected:
+        void insertChar(uint16_t chunk_idx, uint8_t msg_char) noexcept;
+
         STNode * newNode() noexcept;
 
         const STNode * nodeSetSub(const STNode & sub) noexcept;

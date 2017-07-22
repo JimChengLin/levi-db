@@ -98,7 +98,7 @@ namespace LeviDB {
 
     Slice MmapFile::read(uint64_t offset, size_t n) const noexcept {
         assert(offset + n <= _length);
-        return Slice(reinterpret_cast<char *>(_mmaped_region) + offset, n);
+        return {reinterpret_cast<char *>(_mmaped_region) + offset, n};
     }
 
     void MmapFile::write(uint64_t offset, const Slice & data) {
@@ -158,6 +158,6 @@ namespace LeviDB {
         if (r < 0) {
             throw Exception::IOErrorException(_filename, error_info);
         }
-        return Slice(scratch, static_cast<size_t>(r));
+        return {scratch, static_cast<size_t>(r)};
     }
 }

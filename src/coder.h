@@ -22,10 +22,10 @@ namespace LeviDB {
     }
 
     struct HolderNYT {
-        int cum_cnt[CoderConst::holder_size];
-        int total;
+        int cum_cnt[CoderConst::holder_size] = {};
+        int total = 0;
 
-        constexpr HolderNYT() noexcept : cum_cnt(), total(0) {
+        constexpr HolderNYT() noexcept {
             for (int i = 0; i <= CoderConst::FN; ++i) {
                 if (i != CoderConst::NYT) {
                     // plus
@@ -46,10 +46,10 @@ namespace LeviDB {
     };
 
     struct HolderNormal {
-        int cum_cnt[CoderConst::holder_size];
-        int total;
+        int cum_cnt[CoderConst::holder_size] = {};
+        int total = 0;
 
-        constexpr HolderNormal() noexcept : cum_cnt(), total(0) {
+        constexpr HolderNormal() noexcept {
             // plus
             int idx = CoderConst::NYT + 1;
             constexpr int val = 1;
@@ -69,10 +69,8 @@ namespace LeviDB {
     static constexpr HolderNormal holderNormal{};
 
     struct Holder {
-        int cum_cnt[CoderConst::holder_size];
-        int total;
-
-        Holder() noexcept : cum_cnt(), total(0) {}
+        int cum_cnt[CoderConst::holder_size] = {};
+        int total = 0;
 
         int getCum(int idx) const noexcept;
 
@@ -90,9 +88,9 @@ namespace LeviDB {
     private:
         Holder _holder;
         std::bitset<sizeof(uint16_t) * CHAR_BIT> _bit_q;
-        int _cnt_3;
-        uint16_t _lower;
-        uint16_t _upper;
+        int _cnt_3 = 0;
+        uint16_t _lower = 0;
+        uint16_t _upper = UINT16_MAX;
 
         friend class Coder;
 
@@ -102,10 +100,9 @@ namespace LeviDB {
     public:
         SubCoder() noexcept
                 : _holder(TRUE_NYT_FALSE_NORMAL ? *reinterpret_cast<const Holder *>(&holderNYT)
-                                                : *reinterpret_cast<const Holder *>(&holderNormal)),
-                  _bit_q(), _cnt_3(0), _lower(0), _upper(UINT16_MAX) {}
+                                                : *reinterpret_cast<const Holder *>(&holderNormal)) {}
 
-        ~SubCoder() noexcept {}
+        ~SubCoder() noexcept = default;
 
         // 0-based nth, 开始时 output.size() == 1
         void encode(int symbol, std::vector<uint8_t> & output, int & nth_bit_out) noexcept;
@@ -140,9 +137,9 @@ namespace LeviDB {
         SubCoderNormal _coder_normal;
 
     public:
-        Coder() noexcept : _coder_NYT(), _coder_normal() {}
+        Coder() noexcept = default;
 
-        ~Coder() noexcept {}
+        ~Coder() noexcept = default;
 
         std::vector<uint8_t> encode(const std::vector<int> & src) noexcept;
 

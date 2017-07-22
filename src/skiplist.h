@@ -17,11 +17,11 @@ namespace LeviDB {
         int operator()(T && a, T && b) const {
             if (a < b) {
                 return -1;
-            } else if (a == b) {
-                return 0;
-            } else {
-                return 1;
             }
+            if (a == b) {
+                return 0;
+            }
+            return 1;
         }
     };
 
@@ -33,11 +33,11 @@ namespace LeviDB {
     public:
         explicit SkipList(Arena * arena) noexcept;
 
-        explicit SkipList(SkipList && another) noexcept;
+        SkipList(SkipList && another) noexcept;
 
         SkipList(Arena * arena, CMP cmp) noexcept;
 
-        ~SkipList() noexcept {}
+        ~SkipList() noexcept = default;
 
         const K * insert(const K & key) noexcept;
 
@@ -60,7 +60,7 @@ namespace LeviDB {
             explicit Iterator(const SkipList * list) noexcept
                     : _list(list), _node(nullptr) {};
 
-            ~Iterator() noexcept {}
+            ~Iterator() noexcept = default;
 
             inline bool valid() const noexcept { return _node != nullptr; };
 
@@ -105,6 +105,11 @@ namespace LeviDB {
     public:
         const CMP _comparator;
 
+        // 禁止复制
+        SkipList(const SkipList &) = delete;
+
+        void operator=(const SkipList &) = delete;
+
     private:
         static constexpr int max_height = 12;
 
@@ -131,11 +136,6 @@ namespace LeviDB {
         auto findLessThan(const K & key) const noexcept;
 
         auto findLast() const noexcept;
-
-        // 禁止复制
-        SkipList(const SkipList &);
-
-        void operator=(const SkipList &);
     };
 
     template<typename K, class CMP>
@@ -145,7 +145,7 @@ namespace LeviDB {
 
         explicit Node(const K & k) noexcept : key(k) {};
 
-        explicit Node(K && k) noexcept : key(std::move(k)) {};
+        Node(K && k) noexcept : key(std::move(k)) {};
 
         Node * next(int n) const noexcept { return next_arr[n]; }
 
@@ -155,13 +155,15 @@ namespace LeviDB {
     template<typename K, class CMP>
     auto SkipList<K, CMP>::newNode(const K & key, int height) noexcept {
         char * mem = _arena->allocateAligned(sizeof(Node) + sizeof(Node *) * (height - 1));
-        return new(mem) Node(key);
+        auto node = new(mem) Node(key);
+        return node;
     }
 
     template<typename K, class CMP>
     auto SkipList<K, CMP>::newNode(K && key, int height) noexcept {
         char * mem = _arena->allocateAligned(sizeof(Node) + sizeof(Node *) * (height - 1));
-        return new(mem) Node(std::move(key));
+        auto node = new(mem) Node(std::move(key));
+        return node;
     }
 
     template<typename K, class CMP>
@@ -201,9 +203,8 @@ namespace LeviDB {
                 }
                 if (curr_lv == 0) {
                     return next;
-                } else {
-                    --curr_lv;
                 }
+                --curr_lv;
             }
         }
     }
@@ -217,9 +218,8 @@ namespace LeviDB {
             if (next == nullptr || _comparator(next->key, key) >= 0) {
                 if (curr_lv == 0) {
                     return x;
-                } else {
-                    --curr_lv;
                 }
+                --curr_lv;
             } else {
                 x = next;
             }
@@ -235,9 +235,8 @@ namespace LeviDB {
             if (next == nullptr) {
                 if (curr_lv == 0) {
                     return x;
-                } else {
-                    --curr_lv;
                 }
+                --curr_lv;
             } else {
                 x = next;
             }
