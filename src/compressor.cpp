@@ -3,13 +3,18 @@
 #include "compressor.h"
 #include "crc32c.h"
 
+#ifndef __clang__
+#include <algorithm>
+#endif
+
 namespace LeviDB {
     void Compressor::submitDel(const Slice & key) noexcept {
         assert(!valid());
 
         char buf[5];
-        char * end = Coding::encodeVarint32(buf, static_cast<uint32_t>(key.size() + 1));
+        char * end = Coding::encodeVarint32(buf, static_cast<uint32_t>(key.size() + 1/* deletion mark */));
         size_t len = end - buf;
+        _spec_varint_len = static_cast<int>(len);
 
         _src.reset(new char[len + key.size()]);
         char * src = _src.get();
@@ -28,6 +33,7 @@ namespace LeviDB {
         char buf[5];
         char * end = Coding::encodeVarint32(buf, static_cast<uint32_t>(key.size()));
         size_t len = end - buf;
+        _spec_varint_len = static_cast<int>(len);
 
         _src.reset(new char[len + key.size() + val.size()]);
         char * src = _src.get();
@@ -44,7 +50,7 @@ namespace LeviDB {
 
 #define checksum_len sizeof(uint32_t)
 
-    std::pair<std::vector<uint8_t>/* result */, bool/* compress */>
+    std::pair<std::vector<uint8_t>, CompressorConst::CompressType>
     Compressor::next(uint16_t n, bool compress, int cursor) noexcept {
         assert(valid());
         assert(n > checksum_len && n <= 32768/* 2^15 */);
@@ -52,42 +58,48 @@ namespace LeviDB {
         std::vector<uint8_t> res;
         size_t length = std::min<size_t>(_src_end - _src_begin, n);
 
-        bool compressed = false;
-        bool require_feedback = false;
+        auto compress_type = CompressorConst::NO_COMPRESS;
         char * next_begin = _src_begin;
-        if (compress) {
+        if (compress && length > checksum_len) {
             assert(cursor >= 0);
-
-            compressed = true;
-            require_feedback = true;
+            compress_type = CompressorConst::CODER_COMPRESS;
             next_begin = _src_begin + length;
 
-            char * arr = _arena.allocate(length);
-            memcpy(arr, _src_begin, length);
-            std::vector<int> codes = _tree.setitem(Slice(arr, length));
-            _compressed_bytes += length;
+            int skip = 0;
+            size_t arr_len = length;
+            std::vector<int> opt_head = maySpecCmd();
+            if (!opt_head.empty()) {
+                skip = _spec_varint_len + _spec_len;
+                cursor += skip;
+                arr_len -= skip;
+            }
 
-            res = process(codes, cursor);
+            char * arr = _arena.allocate(arr_len);
+            memcpy(arr, _src_begin + skip, arr_len);
+            std::vector<int> codes = _tree.setitem(Slice(arr, arr_len));
+            _compressed_bytes += arr_len;
+            _anchors.emplace_back(cursor);
+            res = process(codes, cursor, compress_type/* may change */, std::move(opt_head), skip);
         }
 
-        if (!compress || res.size() > (length + checksum_len) * 7 / 8) {
-            compressed = false;
-
+        if (!compress ||
+            (compress_type != CompressorConst::NO_COMPRESS && res.size() > (length + checksum_len) * 7 / 8)) {
+            compress_type = CompressorConst::NO_COMPRESS;
             length = std::min<size_t>(length + checksum_len, n);
             res.resize(length);
 
             length -= checksum_len;
             uint32_t checksum = CRC32C::value(_src_begin, length);
-            memcpy(&res[0], &checksum, checksum_len);
-            memcpy(&res[checksum_len], _src_begin, length);
+            memcpy(&res[0], _src_begin, length);
+            memcpy(&res[length], &checksum, checksum_len);
             next_begin = _src_begin + length;
         }
         _src_begin = next_begin;
         assert(res.size() <= n);
 
+        emitSpecCmd(); // no arg = reset
         if (_compressed_bytes > CompressorConst::reset_threshold) { reset(); }
-        else if (require_feedback) { _anchors.emplace_back(cursor); }
-        return {std::move(res), compressed};
+        return {std::move(res), compress_type};
     }
 
     void Compressor::reset() noexcept {
@@ -105,38 +117,14 @@ namespace LeviDB {
         new(&_tree) SuffixTree(&_arena);
     }
 
-    std::vector<uint8_t> Compressor::process(std::vector<int> & codes, int cursor) noexcept {
-        assert(valid());
-        assert(_anchors.size() + 1 == _tree._chunk.size());
+    std::vector<uint8_t> Compressor::process(const std::vector<int> & codes, int cursor,
+                                             CompressorConst::CompressType & flagMayChange,
+                                             std::vector<int> && opt_head, int skip) noexcept {
+        assert(valid() && flagMayChange == CompressorConst::CODER_COMPRESS);
+        assert(_anchors.size() == _tree._chunk.size());
 
-        auto append_mark_dat = [](char *& p, int chunk_offset, int from, int len) {
-            char mark = 0;
-            for (int val:{chunk_offset, from, len}) {
-                if (val <= UINT8_MAX) {
-                } else {
-                    assert(val <= UINT16_MAX);
-                    mark |= 1;
-                }
-                mark <<= 1;
-            }
-            if (mark != 0) {
-                *(p++) = mark;
-            }
-            // dat
-            for (int val:{chunk_offset, from, len}) {
-                if (val <= UINT8_MAX) {
-                    *(p++) = val;
-                } else {
-                    assert(val <= UINT16_MAX);
-                    auto tmp = static_cast<uint16_t>(val);
-                    memcpy(p, &tmp, sizeof(tmp));
-                    p += sizeof(tmp);
-                }
-            }
-        };
-
-        std::vector<int> codes_ir;
-        codes_ir.reserve(codes.size());
+        std::vector<int> codes_ir(std::move(opt_head));
+        codes_ir.reserve(codes_ir.size() + codes.size());
 
         for (int i = 0; i < codes.size(); ++i) {
             int symbol = codes[i];
@@ -156,17 +144,16 @@ namespace LeviDB {
                                     _tree._chunk[chunk_idx].data() + to);
                     continue;
                 }
+                if (chunk_offset == 0) { from += skip; }
                 int len = to - from;
 
                 char buf[7]; // uint8_t(mask) + uint16_t * 3
                 char * p = buf;
-                append_mark_dat(p, chunk_offset, from, len);
+                Compressor::appendCompressInfo(p, chunk_offset, from, len);
 
                 if (1/* FN */+ (p - buf) < len) {
                     codes_ir.emplace_back(CoderConst::FN);
-                    for (const char * cbegin = buf; cbegin != p; ++cbegin) {
-                        codes_ir.emplace_back(*cbegin);
-                    }
+                    codes_ir.insert(codes_ir.end(), buf, p);
                 } else {
                     codes_ir.insert(codes_ir.end(),
                                     _tree._chunk[chunk_idx].data() + from,
@@ -176,6 +163,78 @@ namespace LeviDB {
         }
 
         Coder coder;
-        return coder.encode(codes_ir);
+        std::vector<uint8_t> res = coder.encode(codes_ir);
+        if (res.size() >= (codes_ir.size() + checksum_len) // SimpleCode
+            && std::find(codes_ir.cbegin(), codes_ir.cend(), CompressorConst::unique) == codes_ir.cend()) {
+            res.resize(codes_ir.size() + checksum_len);
+            flagMayChange = CompressorConst::SIMPLE_COMPRESS;
+
+            std::replace_copy(codes_ir.cbegin(), codes_ir.cend(), res.begin(),
+                              static_cast<int>(CoderConst::FN),
+                              static_cast<int>(CompressorConst::unique));
+            uint32_t checksum = CRC32C::value(reinterpret_cast<char *>(res.data()), codes_ir.size());
+            memcpy(&res[codes_ir.size()], &checksum, checksum_len);
+
+            auto cend = res.cend() - checksum_len;
+            if (std::find(res.cbegin(), cend, CompressorConst::unique) == cend) {
+                flagMayChange = CompressorConst::NO_COMPRESS;
+            }
+        }
+        return res;
+    }
+
+    std::vector<int> Compressor::maySpecCmd() const noexcept {
+        if (_spec_chunk_offset != -1) {
+            char buf[7];
+            char * p = buf;
+            Compressor::appendCompressInfo(p, _spec_chunk_offset, _spec_from, _spec_len);
+
+            if (1 + (p - buf) < _spec_len) {
+                std::vector<int> res;
+                res.insert(res.end(), _src_begin, _src_begin + _spec_varint_len);
+                res.emplace_back(CoderConst::FN);
+                res.insert(res.end(), buf, p);
+                return res;
+            }
+        }
+        return {};
+    }
+
+    void Compressor::appendCompressInfo(char *& p, int chunk_offset, int from, int len) noexcept {
+        char mark = 0;
+        for (int val:{chunk_offset, from, len}) {
+            mark <<= 1;
+            if (val <= UINT8_MAX) {
+            } else {
+                assert(val <= UINT16_MAX);
+                mark |= 1;
+            }
+        }
+        if (mark != 0) {
+            *(p++) = mark;
+        }
+
+        auto append_dat = [&p](int val) noexcept {
+            if (val <= UINT8_MAX) {
+                *(p++) = val;
+            } else {
+                auto tmp = static_cast<uint16_t>(val);
+                memcpy(p, &tmp, sizeof(tmp));
+                p += sizeof(tmp);
+            }
+        };
+
+        switch (mark) {
+            case CompressorConst::U8U8U16:
+            case CompressorConst::U8U16U8:
+            case CompressorConst::U8U16U16:
+                assert(chunk_offset == 0);
+                break;
+            default:
+                append_dat(chunk_offset);
+                break;
+        }
+        append_dat(from);
+        append_dat(len);
     }
 }

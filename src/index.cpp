@@ -34,7 +34,7 @@ namespace LeviDB {
     }
 
     auto BDNode::getDiffLess() const noexcept {
-        return [&](const uint32_t & a, const uint32_t & b) {
+        return [&](const uint32_t & a, const uint32_t & b) noexcept {
             if (a < b) {
                 return true;
             }

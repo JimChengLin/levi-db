@@ -6,7 +6,7 @@
 #endif
 
 void coder_test() noexcept {
-    std::string src = "JimZuoLin";
+    const std::string src = "JimZuoLin";
 
     LeviDB::SubCoderNYT encoder;
     std::vector<uint8_t> encode_res(1);
@@ -17,7 +17,7 @@ void coder_test() noexcept {
     encoder.finishEncode(encode_res, nth_bit);
 
     LeviDB::SubCoderNYT decoder;
-    LeviDB::SubCoderNormal * forward_decoder = reinterpret_cast<LeviDB::SubCoderNormal *>(&decoder);
+    auto * forward_decoder = reinterpret_cast<LeviDB::SubCoderNormal *>(&decoder);
     LeviDB::Slice slice(encode_res.data(), encode_res.size());
     size_t nth_byte_;
     forward_decoder->initDecode(slice, nth_byte_, nth_bit);

@@ -11,7 +11,8 @@ namespace LeviDB {
     namespace Coding {
         char * encodeVarint32(char * dst, uint32_t value) noexcept;
 
-        const char * decodeVarint32(const char * p, const char * limit, uint32_t * value) noexcept;
+        const char * // nullptr when fail
+        decodeVarint32(const char * p, const char * limit, uint32_t * value) noexcept;
     }
 }
 

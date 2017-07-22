@@ -1,0 +1,4 @@
+#ifndef LEVIDB_LOG_WRITER_H
+#define LEVIDB_LOG_WRITER_H
+
+#endif //LEVIDB_LOG_WRITER_H

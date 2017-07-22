@@ -7,55 +7,9 @@
 
 void index_test() noexcept {
     {
-        char * a = new char[2];
-        char * b = new char[2];
-        char * c = new char[2];
-        a[0] = 'A';
-        a[1] = 0;
-        b[0] = 'B';
-        b[1] = 0;
-        c[0] = 'C';
-        c[1] = 0;
-
-        LeviDB::BitDegradeTree tree;
-        tree.insert(a);
-        tree.insert(c);
-        tree.insert(b);
-
-        assert(tree._root->_masks[0] == 0b11111101);
-        assert(tree._root->_masks[1] == 0b11111110);
-        assert(tree._root->_ptrs[0].asVal()[0] == 'A');
-        assert(tree._root->_ptrs[1].asVal()[0] == 'B');
-        assert(tree._root->_ptrs[2].asVal()[0] == 'C');
-
-        char * x = new char[2];
-        x[0] = 0b1000000;
-        x[1] = 0;
-        tree.insert(x);
-
-        x = new char[2];
-        x[0] = 0b1010000;
-        x[1] = 0;
-        tree.insert(x);
-
-        assert(tree._root->_ptrs[0].isNode());
-        assert(tree._root->_masks[2] == 0b11101111);
-
-        x = new char[2];
-        x[0] = 0b0000001;
-        x[1] = 0;
-        tree.insert(x);
-        assert(tree._root->_masks[0] == 0b10111111);
-
-        for (const char * ptr:{"P", "B", "C"}) {
-            tree.remove(ptr);
-        }
-    }
-
-    {
-        char * a = new char[2];
-        char * b = new char[2];
-        char * c = new char[2];
+        auto a = new char[2];
+        auto b = new char[2];
+        auto c = new char[2];
         a[0] = 'A';
         a[1] = 0;
         b[0] = 'F';
@@ -68,7 +22,7 @@ void index_test() noexcept {
         tree.insert(c);
         tree.insert(b);
 
-        char * x = new char[2];
+        auto x = new char[2];
         x[0] = 'H';
         x[1] = 0;
         tree.insert(x);
@@ -105,7 +59,7 @@ void index_test() noexcept {
 
         srand(19950207);
         for (int i = 0; i < sources.size(); ++i) {
-            char * x = new char[5];
+            auto x = new char[5];
             x[4] = 0;
             for (int j = 0; j < 4; ++j) {
                 x[j] = alphabet[rand() % alphabet.size()];
@@ -137,8 +91,8 @@ void index_test() noexcept {
                 tree.remove(sources[i]);
                 sources[i] = nullptr;
             }
-            for (int j = 0; j < sources.size(); ++j) {
-                if (sources[j] != nullptr) assert(strcmp(tree.find(sources[j]), sources[j]) == 0);
+            for (const char * src:sources) {
+                if (src != nullptr) assert(strcmp(tree.find(src), src) == 0);
             }
         }
         assert(tree.getSize(tree._root) == 0);

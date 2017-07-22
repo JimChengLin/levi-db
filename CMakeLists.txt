@@ -34,10 +34,12 @@ set(SOURCE_FILES
         src/slice.h
         src/util.h
         test/coder_test.cpp
+        test/compressor_test.cpp
         test/crc32c_test.cpp
         test/index_test.cpp
         test/repeat_detector_test.cpp
         test/skiplist_test.cpp
-        test/compressor_test.cpp)
+        src/log_writer.cpp src/log_writer.h
+        )
 
 add_executable(LeviDB ${SOURCE_FILES})

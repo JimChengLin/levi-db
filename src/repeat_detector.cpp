@@ -85,7 +85,7 @@ namespace LeviDB {
         ++_remainder;
         const Slice & curr_s = _chunk[chunk_idx];
 
-        auto case_root = [&](bool send_msg) {
+        auto case_root = [&](bool send_msg) noexcept {
             _edge_node = nodeGetSub(_root, msg_char);
             if (_edge_node == nullptr) {
                 STNode leaf_node;
@@ -134,7 +134,7 @@ namespace LeviDB {
                 _builder.send(STBuilder::STREAM_PASS, 0/* placeholder */, msg_char);
                 const STNode * prev_inner_node = nullptr;
 
-                auto split_grow = [&]() {
+                auto split_grow = [&]() noexcept {
                     STNode leaf_node;
                     leaf_node.successor = _root;
                     leaf_node.chunk_idx = chunk_idx;
@@ -182,7 +182,7 @@ namespace LeviDB {
                     }
                 };
 
-                auto overflow_fix = [&]() {
+                auto overflow_fix = [&]() noexcept {
                     uint16_t end = _counter;
                     uint16_t begin = end - _act_offset;
                     _edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s[_counter - _act_offset]));
@@ -247,7 +247,7 @@ namespace LeviDB {
     }
 
     void STBuilder::send(int chunk_idx_or_cmd, int s_idx, int msg_char) noexcept {
-        auto try_explode = [&]() {
+        auto try_explode = [&]() noexcept {
             static constexpr int compress_cost = 1/* FN */ + 1/* chunk_idx */ + 1/* from */ + 1/* to */;
             if (_compress_len > compress_cost) {
                 _data.resize(_data.size() - _compress_len);
@@ -259,7 +259,7 @@ namespace LeviDB {
             _compress_len = 0;
         };
 
-        auto set_record = [&]() {
+        auto set_record = [&]() noexcept {
             _compress_idx = chunk_idx_or_cmd;
             _compress_to = s_idx + 1;
             ++_compress_len;
@@ -290,14 +290,14 @@ namespace LeviDB {
     std::string SuffixTree::toString() const noexcept {
         std::string res;
 
-        auto print_node = [&](const STNode * node) {
+        auto print_node = [&](const STNode * node) noexcept {
             if (node == _act_node) {
                 res += '*';
             }
             res.append(_chunk[node->chunk_idx].data() + node->from, node->to - node->from);
         };
 
-        std::function<void(const STNode *, int)> print_tree = [&](const STNode * node, int lv) {
+        std::function<void(const STNode *, int)> print_tree = [&](const STNode * node, int lv) noexcept {
             if (lv > 0) {
                 res += std::string(static_cast<unsigned int>(lv - 1) * 2, ' ') + "--";
                 print_node(node);

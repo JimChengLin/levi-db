@@ -5,7 +5,7 @@
 void repeat_detector_test() noexcept {
     class Tester : public LeviDB::SuffixTree {
     public:
-        Tester(LeviDB::Arena * arena) noexcept : SuffixTree(arena) {}
+        explicit Tester(LeviDB::Arena * arena) noexcept : SuffixTree(arena) {}
 
         bool contains(const std::string & src, int from) const noexcept {
             const LeviDB::STNode * edge_node = nodeGetSub(_root, LeviDB::char_be_uint8(src[from]));
@@ -18,11 +18,10 @@ void repeat_detector_test() noexcept {
                 for (int i = edge_node->from; i < edge_node->to; ++i) {
                     if (edge_s.data()[i] != src[from]) {
                         return false;
-                    } else {
-                        ++from;
-                        if (from == src.size()) {
-                            return true;
-                        }
+                    }
+                    ++from;
+                    if (from == src.size()) {
+                        return true;
                     }
                 }
                 edge_node = nodeGetSub(edge_node, LeviDB::char_be_uint8(src[from]));
