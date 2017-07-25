@@ -51,7 +51,7 @@ namespace LeviDB {
 #define checksum_len sizeof(uint32_t)
 
     std::pair<std::vector<uint8_t>, CompressorConst::CompressType>
-    Compressor::next(uint16_t n, bool compress, int cursor) noexcept {
+    Compressor::next(uint16_t n, bool compress, uint32_t cursor) noexcept {
         assert(valid());
         assert(n > checksum_len && n <= 32768/* 2^15 */);
 
@@ -61,7 +61,6 @@ namespace LeviDB {
         auto compress_type = CompressorConst::NO_COMPRESS;
         char * next_begin = _src_begin;
         if (compress && length > checksum_len) {
-            assert(cursor >= 0);
             compress_type = CompressorConst::CODER_COMPRESS;
             next_begin = _src_begin + length;
 
@@ -75,7 +74,7 @@ namespace LeviDB {
             }
 
             std::vector<int> codes;
-            if (arr_len) {
+            if (arr_len != 0) {
                 char * arr = _arena.allocate(arr_len);
                 memcpy(arr, _src_begin + skip, arr_len);
                 codes = _tree.setitem(Slice(arr, arr_len));
@@ -120,7 +119,7 @@ namespace LeviDB {
         new(&_tree) SuffixTree(&_arena);
     }
 
-    std::vector<uint8_t> Compressor::process(const std::vector<int> & codes, int cursor,
+    std::vector<uint8_t> Compressor::process(const std::vector<int> & codes, uint32_t cursor,
                                              CompressorConst::CompressType & flagMayChange,
                                              std::vector<int> && opt_head, int skip) noexcept {
         assert(valid() && flagMayChange == CompressorConst::CODER_COMPRESS);
@@ -140,7 +139,7 @@ namespace LeviDB {
                 int from = codes[++i];
                 int to = codes[++i];
 
-                int chunk_offset = cursor - _anchors[chunk_idx];
+                uint32_t chunk_offset = cursor - _anchors[chunk_idx];
                 if (chunk_offset > UINT16_MAX) {
                     codes_ir.insert(codes_ir.end(),
                                     _tree._chunk[chunk_idx].data() + from,
@@ -186,7 +185,7 @@ namespace LeviDB {
         return res;
     }
 
-    std::vector<int> Compressor::maySpecCmd(int cursor) const noexcept {
+    std::vector<int> Compressor::maySpecCmd(uint32_t cursor) const noexcept {
         if (_spec_len != -1) {
             char buf[7];
             char * p = buf;

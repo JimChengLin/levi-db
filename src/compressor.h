@@ -75,10 +75,13 @@ namespace LeviDB {
 
         // 单次最大长度 2^15(max log record length)
         std::pair<std::vector<uint8_t>, CompressorConst::CompressType>
-        nextCompressed(uint16_t n, int cursor) noexcept { return next(n, true, cursor); }
+        nextCompressed(uint16_t n, uint32_t cursor) noexcept { return next(n, true, cursor); }
 
         std::pair<std::vector<uint8_t>, CompressorConst::CompressType>
-        nextUncompressed(uint16_t n) noexcept { return next(n, false, -1); }
+        nextUncompressed(uint16_t n) noexcept { return next(n, false, 0); }
+
+        std::pair<std::vector<uint8_t>, CompressorConst::CompressType>
+        next(uint16_t n, bool compress, uint32_t cursor) noexcept;
 
         bool valid() const noexcept { return _src_begin != _src_end; };
 
@@ -96,14 +99,11 @@ namespace LeviDB {
         void operator=(const Compressor &) = delete;
 
     private:
-        std::pair<std::vector<uint8_t>, CompressorConst::CompressType>
-        next(uint16_t n, bool compress, int cursor) noexcept;
-
-        std::vector<uint8_t> process(const std::vector<int> & codes, int cursor,
+        std::vector<uint8_t> process(const std::vector<int> & codes, uint32_t cursor,
                                      CompressorConst::CompressType & flagMayChange,
                                      std::vector<int> && opt_head, int skip) noexcept;
 
-        std::vector<int> maySpecCmd(int cursor) const noexcept;
+        std::vector<int> maySpecCmd(uint32_t cursor) const noexcept;
 
         static void appendCompressInfo(char *& p, int chunk_offset, int from, int len) noexcept;
     };

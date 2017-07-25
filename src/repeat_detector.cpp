@@ -231,7 +231,7 @@ namespace LeviDB {
                         break;
                     }
                     if (_edge_node->from + _act_offset < _edge_node->to
-                               && msg_char == edge_s[_edge_node->from + _act_offset]) {
+                        && msg_char == edge_s[_edge_node->from + _act_offset]) {
                         ++_act_offset;
                         break;
                     }
@@ -248,7 +248,7 @@ namespace LeviDB {
 
     void STBuilder::send(int chunk_idx_or_cmd, int s_idx, int msg_char) noexcept {
         auto try_explode = [&]() noexcept {
-            static constexpr int compress_cost = 1/* FN */ + 1/* chunk_idx */ + 1/* from */ + 1/* to */;
+            static constexpr int compress_cost = 1/* FN */+ 1/* chunk_idx */+ 1/* from */+ 1/* to */;
             if (_compress_len > compress_cost) {
                 _data.resize(_data.size() - _compress_len);
                 _data.insert(_data.end(), {CoderConst::FN,
@@ -297,9 +297,9 @@ namespace LeviDB {
             res.append(_chunk[node->chunk_idx].data() + node->from, node->to - node->from);
         };
 
-        std::function<void(const STNode *, int)> print_tree = [&](const STNode * node, int lv) noexcept {
+        std::function<void(const STNode *, size_t)> print_tree = [&](const STNode * node, size_t lv) noexcept {
             if (lv > 0) {
-                res += std::string(static_cast<unsigned int>(lv - 1) * 2, ' ') + "--";
+                res += std::string((lv - 1) * 2, ' ') + "--";
                 print_node(node);
             } else {
                 res += '#';

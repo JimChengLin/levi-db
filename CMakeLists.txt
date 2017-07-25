@@ -25,7 +25,6 @@ set(SOURCE_FILES
         src/exception.cpp src/exception.h
         src/index.cpp src/index.h
         src/iterator.h
-        src/log_format.h
         src/matcher.cpp src/matcher.h
         src/options.h
         src/random.h

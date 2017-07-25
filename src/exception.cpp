@@ -15,9 +15,9 @@ namespace LeviDB {
     Exception::Exception(Code code, const Slice & msg, const Slice & msg2) noexcept {
         assert(code != 0);
 
-        const auto len = static_cast<uint32_t>(msg.size());
-        const auto len2 = static_cast<uint32_t>(msg2.size());
-        const uint32_t size = len + (len2 ? (2 + len2) : 0);
+        const size_t len = msg.size();
+        const size_t len2 = msg2.size();
+        const size_t size = len + (len2 ? (2 + len2) : 0);
 
         auto res = std::unique_ptr<char[]>(new char[size + 5]);
         memcpy(res.get(), &size, sizeof(size));

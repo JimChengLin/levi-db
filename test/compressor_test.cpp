@@ -24,7 +24,7 @@ void compressor_test() noexcept {
     auto res_1 = req(sample_len);
     assert(res_1.first.size() == 8 && res_1.second == LeviDB::CompressorConst::SIMPLE_COMPRESS);
 
-    compressor.submit(std::string(UINT8_MAX + 10, 'A')/* U8(0)U8U16 */ + std::string(10, 'B')/* U8(0)U16U8 */);
+    compressor.submit(std::string(UINT8_MAX + 10, 'A')/* U8(0)U8U16 */+ std::string(10, 'B')/* U8(0)U16U8 */);
     auto res_2 = req(UINT8_MAX + 10 + 10);
     assert(res_2.first.size() == 18);
 

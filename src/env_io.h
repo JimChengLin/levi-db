@@ -94,6 +94,8 @@ namespace LeviDB {
 
         void sync();
 
+        uint64_t length() const noexcept { return _length; }
+
         // 禁止复制
         AppendableFile(const AppendableFile &) = delete;
 

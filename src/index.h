@@ -11,6 +11,7 @@
 #include <cassert>
 #include <tuple>
 
+// todo: reduce cast
 namespace LeviDB {
     namespace IndexConst {
         static constexpr int rank = 3; // always >= 3
