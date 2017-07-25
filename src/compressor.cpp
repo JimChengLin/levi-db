@@ -4,7 +4,7 @@
 #include "crc32c.h"
 
 #ifndef __clang__
-#include <algorithm>
+#include <algorithm> // GCC
 #endif
 
 namespace LeviDB {
@@ -67,18 +67,21 @@ namespace LeviDB {
 
             int skip = 0;
             size_t arr_len = length;
-            std::vector<int> opt_head = maySpecCmd();
+            std::vector<int> opt_head = maySpecCmd(cursor);
             if (!opt_head.empty()) {
                 skip = _spec_varint_len + _spec_len;
                 cursor += skip;
                 arr_len -= skip;
             }
 
-            char * arr = _arena.allocate(arr_len);
-            memcpy(arr, _src_begin + skip, arr_len);
-            std::vector<int> codes = _tree.setitem(Slice(arr, arr_len));
-            _compressed_bytes += arr_len;
-            _anchors.emplace_back(cursor);
+            std::vector<int> codes;
+            if (arr_len) {
+                char * arr = _arena.allocate(arr_len);
+                memcpy(arr, _src_begin + skip, arr_len);
+                codes = _tree.setitem(Slice(arr, arr_len));
+                _compressed_bytes += arr_len;
+                _anchors.emplace_back(cursor);
+            }
             res = process(codes, cursor, compress_type/* may change */, std::move(opt_head), skip);
         }
 
@@ -183,11 +186,11 @@ namespace LeviDB {
         return res;
     }
 
-    std::vector<int> Compressor::maySpecCmd() const noexcept {
-        if (_spec_chunk_offset != -1) {
+    std::vector<int> Compressor::maySpecCmd(int cursor) const noexcept {
+        if (_spec_len != -1) {
             char buf[7];
             char * p = buf;
-            Compressor::appendCompressInfo(p, _spec_chunk_offset, _spec_from, _spec_len);
+            Compressor::appendCompressInfo(p, cursor - _spec_anchor, _spec_from, _spec_len);
 
             if (1 + (p - buf) < _spec_len) {
                 std::vector<int> res;
@@ -200,7 +203,7 @@ namespace LeviDB {
         return {};
     }
 
-    void Compressor::appendCompressInfo(char *& p, int chunk_offset, int from, int len) noexcept {
+    void Compressor::appendCompressInfo(char *& p, int chunk_offset, int from, int len) noexcept { // static method
         char mark = 0;
         for (int val:{chunk_offset, from, len}) {
             mark <<= 1;

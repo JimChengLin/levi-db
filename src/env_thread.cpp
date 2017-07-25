@@ -3,7 +3,7 @@
 #include <pthread.h>
 
 #ifndef __clang__
-#include <cstring>
+#include <cstring> // GCC
 #endif
 
 namespace LeviDB {

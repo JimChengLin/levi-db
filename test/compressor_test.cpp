@@ -49,7 +49,10 @@ void compressor_test() noexcept {
     assert(res_7.first.size() == 14);
 
     // spec cmd
-
+    compressor.submit(sample);
+    compressor.emitSpecCmd(0, 1/* physical "from" */, sample_len);
+    auto res_8 = req(sample_len);
+    assert(res_8.first.size() == 11);
 
     std::cout << __FUNCTION__ << std::endl;
 }

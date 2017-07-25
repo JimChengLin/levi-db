@@ -59,7 +59,7 @@ namespace LeviDB {
         int _compressed_bytes = 0;
 
         // 特殊压缩指令
-        int _spec_chunk_offset = -1;
+        int _spec_anchor = -1;
         int _spec_from = -1;
         int _spec_len = -1;
         int _spec_varint_len = -1;
@@ -84,11 +84,10 @@ namespace LeviDB {
 
         void reset() noexcept;
 
-        void emitSpecCmd(int chunk_offset = -1, int from = -1, int len = -1, int varint_len = -1) noexcept {
-            _spec_chunk_offset = chunk_offset;
+        void emitSpecCmd(int anchor = -1, int from = -1, int len = -1) noexcept {
+            _spec_anchor = anchor;
             _spec_from = from;
             _spec_len = len;
-            _spec_varint_len = varint_len;
         }
 
         // 禁止复制
@@ -104,7 +103,7 @@ namespace LeviDB {
                                      CompressorConst::CompressType & flagMayChange,
                                      std::vector<int> && opt_head, int skip) noexcept;
 
-        std::vector<int> maySpecCmd() const noexcept;
+        std::vector<int> maySpecCmd(int cursor) const noexcept;
 
         static void appendCompressInfo(char *& p, int chunk_offset, int from, int len) noexcept;
     };
