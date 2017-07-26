@@ -182,4 +182,24 @@ namespace LeviDB {
         }
         return {scratch, static_cast<size_t>(r)};
     }
+
+    SequentialFile::SequentialFile(const std::string & fname)
+            : _filename(fname), _ffile(fname, IOEnv::R_M) {}
+
+    Slice SequentialFile::read(size_t n, char * scratch) {
+        size_t r = fread_unlocked(scratch, 1, n, _ffile._f);
+        if (r < n) {
+            if (feof(_ffile._f)) {
+            } else {
+                throw Exception::IOErrorException(_filename, error_info);
+            }
+        }
+        return {scratch, r};
+    }
+
+    void SequentialFile::skip(uint64_t offset) {
+        if (fseek(_ffile._f, static_cast<long>(offset), SEEK_CUR)) {
+            throw Exception::IOErrorException(_filename, error_info);
+        }
+    }
 }

@@ -20,6 +20,8 @@ void compressor_test() noexcept;
 
 void log_writer_test() noexcept;
 
+void compress_bench() noexcept;
+
 int main() noexcept {
     coder_test();
     skiplist_test();
@@ -28,6 +30,7 @@ int main() noexcept {
     crc32c_test();
     compressor_test();
     log_writer_test();
+    compress_bench();
     std::cout << "done." << std::endl;
     return 0;
 }

@@ -123,6 +123,21 @@ namespace LeviDB {
 
         void operator=(const RandomAccessFile &) = delete;
     };
+
+    class SequentialFile {
+    private:
+        std::string _filename;
+        FileFopen _ffile;
+
+    public:
+        explicit SequentialFile(const std::string & fname);
+
+        ~SequentialFile() noexcept = default;
+
+        Slice read(size_t n, char * scratch);
+
+        void skip(uint64_t offset);
+    };
 }
 
 #endif //LEVIDB_ENV_IO_H

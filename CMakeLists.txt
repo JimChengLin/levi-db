@@ -14,6 +14,7 @@ endif ()
 
 set(SOURCE_FILES
         main.cpp
+        benchmark/compress_bench.cpp
         src/arena.cpp src/arena.h
         src/coder.cpp src/coder.h
         src/coding.cpp src/coding.h
