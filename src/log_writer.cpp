@@ -20,9 +20,9 @@ namespace LeviDB {
             do {
                 const int leftover = LogWriterConst::block_size - _block_offset;
                 assert(leftover >= 0);
-                if (leftover < LogWriterConst::min_size) {
+                if (leftover < LogWriterConst::min_record_size) {
                     if (leftover > 0) {
-                        static_assert(LogWriterConst::min_size == 7, "trailing bytes may be wrong");
+                        static_assert(LogWriterConst::min_record_size == 7, "trailing bytes may be wrong");
                         _dst->append(Slice("\x00\x00\x00\x00\x00\x00", static_cast<size_t>(leftover)));
                     }
                     _block_offset = 0;

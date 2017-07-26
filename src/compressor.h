@@ -17,6 +17,11 @@
  * KV 会被转换为
  * content = varint32 k_length + key + val
  * del 时, k_length += 1
+ *
+ * special command:
+ * index 可以侦测到 common prefix
+ * 用 emitSpecCmd 触发
+ * 重复部分不包含 length prefix
  */
 
 #include "arena.h"
@@ -105,7 +110,7 @@ namespace LeviDB {
 
         std::vector<int> maySpecCmd(uint32_t cursor) const noexcept;
 
-        static void appendCompressInfo(char *& p, int chunk_offset, int from, int len) noexcept;
+        static void appendCompressInfo(uint8_t *& p, int chunk_offset, int from, int len) noexcept;
     };
 }
 

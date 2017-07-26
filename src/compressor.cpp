@@ -142,15 +142,15 @@ namespace LeviDB {
                 uint32_t chunk_offset = cursor - _anchors[chunk_idx];
                 if (chunk_offset > UINT16_MAX) {
                     codes_ir.insert(codes_ir.end(),
-                                    _tree._chunk[chunk_idx].data() + from,
-                                    _tree._chunk[chunk_idx].data() + to);
+                                    reinterpret_cast<const uint8_t *>(_tree._chunk[chunk_idx].data() + from),
+                                    reinterpret_cast<const uint8_t *>(_tree._chunk[chunk_idx].data() + to));
                     continue;
                 }
                 if (chunk_offset == 0) { from += skip; }
                 int len = to - from;
 
-                char buf[7]; // uint8_t(mask) + uint16_t * 3
-                char * p = buf;
+                uint8_t buf[7]; // uint8_t(mask) + uint16_t * 3
+                uint8_t * p = buf;
                 Compressor::appendCompressInfo(p, chunk_offset, from, len);
 
                 if (1/* FN */+ (p - buf) < len) {
@@ -158,8 +158,8 @@ namespace LeviDB {
                     codes_ir.insert(codes_ir.end(), buf, p);
                 } else {
                     codes_ir.insert(codes_ir.end(),
-                                    _tree._chunk[chunk_idx].data() + from,
-                                    _tree._chunk[chunk_idx].data() + to);
+                                    reinterpret_cast<const uint8_t *>(_tree._chunk[chunk_idx].data() + from),
+                                    reinterpret_cast<const uint8_t *>(_tree._chunk[chunk_idx].data() + to));
                 }
             }
         }
@@ -187,13 +187,15 @@ namespace LeviDB {
 
     std::vector<int> Compressor::maySpecCmd(uint32_t cursor) const noexcept {
         if (_spec_len != -1) {
-            char buf[7];
-            char * p = buf;
+            uint8_t buf[7];
+            uint8_t * p = buf;
             Compressor::appendCompressInfo(p, cursor - _spec_anchor, _spec_from, _spec_len);
 
             if (1 + (p - buf) < _spec_len) {
                 std::vector<int> res;
-                res.insert(res.end(), _src_begin, _src_begin + _spec_varint_len);
+                res.insert(res.end(),
+                           reinterpret_cast<const uint8_t *>(_src_begin),
+                           reinterpret_cast<const uint8_t *>(_src_begin + _spec_varint_len));
                 res.emplace_back(CoderConst::FN);
                 res.insert(res.end(), buf, p);
                 return res;
@@ -202,8 +204,8 @@ namespace LeviDB {
         return {};
     }
 
-    void Compressor::appendCompressInfo(char *& p, int chunk_offset, int from, int len) noexcept { // static method
-        char mark = 0;
+    void Compressor::appendCompressInfo(uint8_t *& p, int chunk_offset, int from, int len) noexcept { // static method
+        uint8_t mark = 0;
         for (int val:{chunk_offset, from, len}) {
             mark <<= 1;
             if (val <= UINT8_MAX) {
@@ -216,7 +218,7 @@ namespace LeviDB {
             *(p++) = mark;
         }
 
-        auto append_dat = [&p](int val) noexcept {
+        for (int val:{chunk_offset, from, len}) {
             if (val <= UINT8_MAX) {
                 *(p++) = val;
             } else {
@@ -224,19 +226,6 @@ namespace LeviDB {
                 memcpy(p, &tmp, sizeof(tmp));
                 p += sizeof(tmp);
             }
-        };
-
-        switch (mark) {
-            case CompressorConst::U8U8U16:
-            case CompressorConst::U8U16U8:
-            case CompressorConst::U8U16U16:
-                assert(chunk_offset == 0);
-                break;
-            default:
-                append_dat(chunk_offset);
-                break;
         }
-        append_dat(from);
-        append_dat(len);
     }
 }

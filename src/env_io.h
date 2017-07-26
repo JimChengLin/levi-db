@@ -139,6 +139,11 @@ namespace LeviDB {
         void skip(uint64_t offset);
 
         FILE * getFILE() const noexcept { return _ffile._f; }
+
+        // 禁止复制
+        SequentialFile(const SequentialFile &) = delete;
+
+        void operator=(const SequentialFile &) = delete;
     };
 }
 

@@ -26,11 +26,11 @@ void compressor_test() noexcept {
 
     compressor.submit(std::string(UINT8_MAX + 10, 'A')/* U8(0)U8U16 */+ std::string(10, 'B')/* U8(0)U16U8 */);
     auto res_2 = req(UINT8_MAX + 10 + 10);
-    assert(res_2.first.size() == 18);
+    assert(res_2.first.size() == 20);
 
     compressor.submit(std::string(UINT8_MAX + 10, 'C') + std::string(UINT8_MAX + 10, 'D')/* U8(0)U16U16 */);
     auto res_3 = req((UINT8_MAX + 10) * 2);
-    assert(res_3.first.size() == 19);
+    assert(res_3.first.size() == 21);
 
     compressor.submit(sample/* U16U8U8 */);
     auto res_4 = req(sample_len);
