@@ -19,4 +19,5 @@ void log_writer_test() noexcept {
     }
 
     LeviDB::IOEnv::deleteFile(fname);
+    std::cout << __FUNCTION__ << std::endl;
 }

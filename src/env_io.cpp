@@ -104,7 +104,7 @@ namespace LeviDB {
                 break;
         }
         FILE * f = fopen(fname.c_str(), arg);
-        if (f == NULL) {
+        if (f == nullptr) {
             throw Exception::IOErrorException(fname, error_info);
         }
         _f = f;
@@ -112,7 +112,7 @@ namespace LeviDB {
 
     MmapFile::MmapFile(const std::string & fname)
             : _filename(fname), _file(fname, IOEnv::WP_M), _length(IOEnv::getFileSize(fname)) {
-        _mmaped_region = mmap(NULL, _length, PROT_READ | PROT_WRITE, MAP_SHARED, _file._fd, 0);
+        _mmaped_region = mmap(nullptr, _length, PROT_READ | PROT_WRITE, MAP_SHARED, _file._fd, 0);
         if (_mmaped_region == MAP_FAILED) {
             throw Exception::IOErrorException(fname, error_info);
         }
@@ -139,7 +139,7 @@ namespace LeviDB {
         if (munmap(_mmaped_region, _length - IOEnv::page_size) < 0) {
             throw Exception::IOErrorException(_filename, error_info);
         }
-        _mmaped_region = mmap(NULL, _length, PROT_READ | PROT_WRITE, MAP_SHARED, _file._fd, 0);
+        _mmaped_region = mmap(nullptr, _length, PROT_READ | PROT_WRITE, MAP_SHARED, _file._fd, 0);
 #else
         _mmaped_region = mremap(_mmaped_region, _length - IOEnv::page_size, _length, 0);
 #endif

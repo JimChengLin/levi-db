@@ -49,7 +49,7 @@ namespace LeviDB {
 
         FileFopen(const std::string & fname, IOEnv::OpenMode mode);
 
-        ~FileFopen() noexcept { if (_f != NULL) fclose(_f); }
+        ~FileFopen() noexcept { if (_f != nullptr) fclose(_f); }
 
         // 禁止复制
         FileFopen(const FileFopen &) = delete;
@@ -137,6 +137,8 @@ namespace LeviDB {
         Slice read(size_t n, char * scratch);
 
         void skip(uint64_t offset);
+
+        FILE * getFILE() const noexcept { return _ffile._f; }
     };
 }
 

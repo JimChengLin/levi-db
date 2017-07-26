@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#define LEVI_DB_BENCH
+
 void coder_test() noexcept;
 
 void skiplist_test() noexcept;
@@ -30,7 +32,9 @@ int main() noexcept {
     crc32c_test();
     compressor_test();
     log_writer_test();
+#ifdef LEVI_DB_BENCH
     compress_bench();
+#endif
     std::cout << "done." << std::endl;
     return 0;
 }

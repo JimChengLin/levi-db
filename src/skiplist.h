@@ -145,7 +145,7 @@ namespace LeviDB {
 
         explicit Node(const K & k) noexcept : key(k) {};
 
-        Node(K && k) noexcept : key(std::move(k)) {};
+        explicit Node(K && k) noexcept : key(std::move(k)) {};
 
         Node * next(int n) const noexcept { return next_arr[n]; }
 

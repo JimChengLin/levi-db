@@ -311,7 +311,7 @@ namespace LeviDB {
 } while (false)
 
             if (size > 16) {
-                for (size_t i = reinterpret_cast<uintptr_t>(p) % 8; i; --i) {
+                for (size_t i = reinterpret_cast<uintptr_t>(p) % 8; i != 0; --i) {
                     STEP1;
                 }
 
