@@ -12,7 +12,7 @@ void crc32c_test() noexcept {
     memset(buf, 0xff, sizeof(buf));
     assert(LeviDB::CRC32C::value(buf, sizeof(buf)) == 0x62a8ab43);
 
-    for (char i = 0; i < 32; i++) {
+    for (unsigned char i = 0; i < 32; i++) {
         buf[i] = i;
     }
     assert(LeviDB::CRC32C::value(buf, sizeof(buf)) == 0x46dd794e);

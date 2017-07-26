@@ -18,6 +18,8 @@ void crc32c_test() noexcept;
 
 void compressor_test() noexcept;
 
+void log_writer_test() noexcept;
+
 int main() noexcept {
     coder_test();
     skiplist_test();
@@ -25,6 +27,7 @@ int main() noexcept {
     index_test();
     crc32c_test();
     compressor_test();
+    log_writer_test();
     std::cout << "done." << std::endl;
     return 0;
 }

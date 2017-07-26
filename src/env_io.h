@@ -23,6 +23,10 @@ namespace LeviDB {
         static constexpr int page_size = 4 * 1024; // 4KB
 
         uint64_t getFileSize(const std::string & fname);
+
+        bool fileExists(const std::string & fname) noexcept;
+
+        void deleteFile(const std::string & fname);
     }
 
     class FileOpen {
@@ -56,9 +60,9 @@ namespace LeviDB {
     class MmapFile {
     private:
         void * _mmaped_region;
-        uint64_t _length;
         std::string _filename;
         FileOpen _file;
+        uint64_t _length;
 
     public:
         explicit MmapFile(const std::string & fname);
@@ -79,9 +83,9 @@ namespace LeviDB {
 
     class AppendableFile {
     private:
-        uint64_t _length;
         std::string _filename;
         FileFopen _ffile;
+        uint64_t _length;
 
     public:
         explicit AppendableFile(const std::string & fname);

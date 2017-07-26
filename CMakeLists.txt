@@ -25,6 +25,7 @@ set(SOURCE_FILES
         src/exception.cpp src/exception.h
         src/index.cpp src/index.h
         src/iterator.h
+        src/log_writer.cpp src/log_writer.h
         src/matcher.cpp src/matcher.h
         src/options.h
         src/random.h
@@ -36,9 +37,9 @@ set(SOURCE_FILES
         test/compressor_test.cpp
         test/crc32c_test.cpp
         test/index_test.cpp
+        test/log_writer_test.cpp
         test/repeat_detector_test.cpp
         test/skiplist_test.cpp
-        src/log_writer.cpp src/log_writer.h
         )
 
 add_executable(LeviDB ${SOURCE_FILES})

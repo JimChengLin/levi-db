@@ -65,13 +65,15 @@ namespace LeviDB {
     }
 
     void LogWriter::emitPhysicalRecord(uint8_t type, const Slice & data) {
-        char buf[3];
+        char buf[LogWriterConst::header_size];
         buf[0] = type;
         auto tmp = static_cast<uint16_t>(data.size());
         memcpy(&buf[1], &tmp, sizeof(tmp));
-        _dst->append(Slice(buf, 3));
+
+        _dst->append(Slice(buf, LogWriterConst::header_size));
         _dst->append(data);
         _dst->flush();
+        _block_offset += LogWriterConst::header_size + data.size();
     }
 
     uint8_t LogWriter::getCombinedType(LogWriterConst::ConcatType record_type,
@@ -82,7 +84,7 @@ namespace LeviDB {
         int base = 0;
         for (LogWriterConst::ConcatType type:{record_type, kv_type}) {
             switch (type) {
-                case LogWriterConst::FULL:
+                case LogWriterConst::FULL: // 0b00
                     break;
                 case LogWriterConst::FIRST: // 0b01
                     res[base + 1] = true;
@@ -99,12 +101,12 @@ namespace LeviDB {
         }
 
         switch (compress_type) {
-            case CompressorConst::NO_COMPRESS:
+            case CompressorConst::NO_COMPRESS: // 0b00
                 break;
-            case CompressorConst::CODER_COMPRESS:
+            case CompressorConst::CODER_COMPRESS: // 0b10
                 res[4] = true;
                 break;
-            case CompressorConst::SIMPLE_COMPRESS:
+            case CompressorConst::SIMPLE_COMPRESS: // 0b11
                 res[4] = true;
                 res[5] = true;
                 break;

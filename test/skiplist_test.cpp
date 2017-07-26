@@ -15,7 +15,8 @@ void skiplist_test() noexcept {
     it.seekToFirst();
     int i = 0;
     while (it.valid()) {
-        assert(it.key() == ans[i++]);
+        assert(it.key() == ans[i]);
+        ++i;
         it.next();
     }
 

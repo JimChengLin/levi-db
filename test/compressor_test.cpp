@@ -7,7 +7,7 @@ void compressor_test() noexcept {
     static constexpr int sample_len = 9;
 
     LeviDB::Compressor compressor;
-    int cursor = 0;
+    uint32_t cursor = 0;
 
     auto req = [&compressor, &cursor](int length) {
         // don't know precise prefix length(varint32)

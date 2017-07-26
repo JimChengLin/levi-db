@@ -28,6 +28,16 @@ namespace LeviDB {
             }
             return static_cast<uint64_t>(sbuf.st_size);
         };
+
+        bool fileExists(const std::string & fname) noexcept {
+            return access(fname.c_str(), F_OK) == 0;
+        }
+
+        void deleteFile(const std::string & fname) {
+            if (unlink(fname.c_str()) != 0) {
+                throw Exception::IOErrorException(fname, error_info);
+            }
+        }
     }
 
     FileOpen::FileOpen(const std::string & fname, IOEnv::OpenMode mode) {
@@ -52,7 +62,19 @@ namespace LeviDB {
                 arg = O_RDWR | O_CREAT | O_APPEND;
                 break;
         }
-        int fd = open(fname.c_str(), arg);
+
+        int fd;
+        switch (mode) {
+            case IOEnv::W_M:
+            case IOEnv::A_M:
+            case IOEnv::WP_M:
+            case IOEnv::AP_M:
+                fd = open(fname.c_str(), arg, 0644);
+                break;
+            default:
+                fd = open(fname.c_str(), arg);
+                break;
+        }
         if (fd < 0) {
             throw Exception::IOErrorException(fname, error_info);
         }
@@ -89,7 +111,7 @@ namespace LeviDB {
     }
 
     MmapFile::MmapFile(const std::string & fname)
-            : _file(fname, IOEnv::WP_M), _length(IOEnv::getFileSize(fname)), _filename(fname) {
+            : _filename(fname), _file(fname, IOEnv::WP_M), _length(IOEnv::getFileSize(fname)) {
         _mmaped_region = mmap(NULL, _length, PROT_READ | PROT_WRITE, MAP_SHARED, _file._fd, 0);
         if (_mmaped_region == MAP_FAILED) {
             throw Exception::IOErrorException(fname, error_info);
@@ -127,7 +149,7 @@ namespace LeviDB {
     }
 
     AppendableFile::AppendableFile(const std::string & fname)
-            : _ffile(fname, IOEnv::A_M), _length(IOEnv::getFileSize(fname)), _filename(fname) {}
+            : _filename(fname), _ffile(fname, IOEnv::A_M), _length(IOEnv::getFileSize(fname)) {}
 
     void AppendableFile::append(const Slice & data) {
         size_t r = fwrite_unlocked(data.data(), 1, data.size(), _ffile._f);
@@ -151,7 +173,7 @@ namespace LeviDB {
     }
 
     RandomAccessFile::RandomAccessFile(const std::string & fname)
-            : _file(fname, IOEnv::R_M), _filename(fname) {}
+            : _filename(fname), _file(fname, IOEnv::R_M) {}
 
     Slice RandomAccessFile::read(uint64_t offset, size_t n, char * scratch) const {
         ssize_t r = pread(_file._fd, scratch, n, static_cast<off_t >(offset));

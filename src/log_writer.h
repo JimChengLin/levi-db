@@ -56,7 +56,7 @@ namespace LeviDB {
 
         ~LogWriter() noexcept = default;
 
-        void addRecord(const Record & slice, bool compress = true) { return addRecords({slice}, compress); }
+        void addRecord(const Record & record, bool compress = true) { return addRecords({record}, compress); }
 
         void addRecords(const std::vector<Record> & records, bool compress = true);
 
