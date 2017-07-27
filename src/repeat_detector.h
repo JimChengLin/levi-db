@@ -110,6 +110,8 @@ namespace LeviDB {
     protected:
         void insertChar(uint16_t chunk_idx, uint8_t msg_char) noexcept;
 
+        void tryExplodeRemainder(uint16_t chunk_idx) noexcept;
+
         STNode * newNode() noexcept;
 
         const STNode * nodeSetSub(const STNode & sub) noexcept;

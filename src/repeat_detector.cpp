@@ -71,11 +71,13 @@ namespace LeviDB {
 
         std::vector<int> res;
         std::swap(res, _builder._data);
+        tryExplodeRemainder(idx);
         prepareNext();
         return res;
     }
 
     void SuffixTree::prepareNext() noexcept {
+        assert(_remainder == 0);
         _remainder = _counter = 0;
         _act_node = _root;
         _act_chunk_idx = _act_direct = _act_offset = 0;
@@ -244,6 +246,78 @@ namespace LeviDB {
             }
         }
         ++_counter;
+    }
+
+    void SuffixTree::tryExplodeRemainder(uint16_t chunk_idx) noexcept {
+        const Slice & curr_s = _chunk[chunk_idx];
+        const STNode * prev_inner_node = nullptr;
+
+        auto split = [&]() noexcept {
+            --_remainder;
+            if ((nodeIsLeaf(_edge_node) || _edge_node->to - _edge_node->from > 1)
+                && _edge_node->from + _act_offset != _edge_node->to) {
+                STNode inner_node;
+                inner_node.successor = _root;
+                inner_node.chunk_idx = _edge_node->chunk_idx;
+                inner_node.from = _edge_node->from;
+                inner_node.to = static_cast<uint16_t>(_edge_node->from + _act_offset);
+
+                inner_node.parent = nullptr;
+                const STNode * inner_node_ = nodeSetSub(inner_node);
+                inner_node.parent = _edge_node->parent;
+
+                if (prev_inner_node != nullptr) {
+                    const_cast<STNode *>(prev_inner_node)->successor = inner_node_;
+                }
+                prev_inner_node = inner_node_;
+
+                STNode tmp;
+                tmp = *_edge_node;
+                tmp.from = inner_node.to;
+                tmp.parent = inner_node_;
+                _subs.move_to_fit(*_edge_node, tmp);
+
+                tmp = inner_node;
+                tmp.parent = nullptr;
+                _subs.move_to_fit(tmp, inner_node);
+            } else {
+                if (prev_inner_node != nullptr) {
+                    const_cast<STNode *>(prev_inner_node)->successor = _edge_node;
+                }
+                prev_inner_node = _edge_node;
+            }
+        };
+
+        auto overflow_fix = [&]() noexcept {
+            uint16_t end = _counter;
+            uint16_t begin = end - _act_offset;
+            _edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s[_counter - _act_offset]));
+
+            int supply;
+            while (end - begin > (supply = _edge_node->to - _edge_node->from)) {
+                _act_node = _edge_node;
+                begin += supply;
+                _act_offset -= supply;
+
+                _edge_node = nodeGetSub(_act_node, char_be_uint8(curr_s[begin]));
+                _act_direct = _edge_node->from;
+            }
+        };
+
+        while (_remainder > 0) {
+            split();
+            if (!nodeIsInner(_act_node)) {
+                --_act_offset;
+                ++_act_direct;
+
+                if (_act_offset > 0) {
+                    overflow_fix();
+                }
+            } else {
+                _act_node = _act_node->successor;
+                overflow_fix();
+            }
+        }
     }
 
     void STBuilder::send(int chunk_idx_or_cmd, int s_idx, int msg_char) noexcept {
