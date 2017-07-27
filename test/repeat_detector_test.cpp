@@ -44,7 +44,6 @@ void repeat_detector_test() noexcept {
             for (int j = 0; j < len; ++j) {
                 sample += alphabet[rand() % alphabet.size()];
             }
-            sample += '.';
             sources[i] = std::move(sample);
 
             tester.setitem(LeviDB::Slice(sources[i]));

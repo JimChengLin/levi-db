@@ -129,7 +129,7 @@ namespace LeviDB {
                 _edge_node = next_edge_node;
                 _builder.send(next_edge_node->chunk_idx, next_edge_node->from, msg_char);
             } else if (_edge_node->from + _act_offset < _edge_node->to
-                       && msg_char == edge_s[_edge_node->from + _act_offset]) {
+                       && msg_char == char_be_uint8(edge_s[_edge_node->from + _act_offset])) {
                 _builder.send(_edge_node->chunk_idx, _edge_node->from + _act_offset, msg_char);
                 ++_act_offset;
             } else {
@@ -233,7 +233,7 @@ namespace LeviDB {
                         break;
                     }
                     if (_edge_node->from + _act_offset < _edge_node->to
-                        && msg_char == edge_s[_edge_node->from + _act_offset]) {
+                        && msg_char == char_be_uint8(edge_s[_edge_node->from + _act_offset])) {
                         ++_act_offset;
                         break;
                     }

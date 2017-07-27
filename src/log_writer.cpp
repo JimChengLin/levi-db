@@ -22,8 +22,8 @@ namespace LeviDB {
                 assert(leftover >= 0);
                 if (leftover < LogWriterConst::min_record_size) {
                     if (leftover > 0) {
-                        static_assert(LogWriterConst::min_record_size == 7, "trailing bytes may be wrong");
-                        _dst->append(Slice("\x00\x00\x00\x00\x00\x00", static_cast<size_t>(leftover)));
+                        static_assert(LogWriterConst::min_record_size == 8, "trailing bytes may be wrong");
+                        _dst->append(Slice("\x00\x00\x00\x00\x00\x00\00", static_cast<size_t>(leftover)));
                     }
                     _block_offset = 0;
                 }
@@ -112,8 +112,8 @@ namespace LeviDB {
                 break;
         }
 
-        res[6] = static_cast<bool>(res[1] ^ res[3] ^ res[5]);
-        res[7] = static_cast<bool>(res[0] ^ res[2] ^ res[4]);
+        res[6] = static_cast<bool>(res[1] ^ res[3]) ^ (res[5]);
+        res[7] = static_cast<bool>(res[0] ^ res[2]) ^ (res[4]);
         return static_cast<uint8_t>(res.to_ulong());
     }
 }

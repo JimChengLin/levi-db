@@ -84,7 +84,7 @@ namespace LeviDB {
             res = process(codes, cursor, compress_type/* may change */, std::move(opt_head), skip);
         }
 
-        if (!compress ||
+        if (res.empty() || res.size() >= n ||
             (compress_type != CompressorConst::NO_COMPRESS && res.size() > (length + checksum_len) * 7 / 8)) {
             compress_type = CompressorConst::NO_COMPRESS;
             length = std::min<size_t>(length + checksum_len, n);
@@ -96,8 +96,10 @@ namespace LeviDB {
             memcpy(&res[length], &checksum, checksum_len);
             next_begin = _src_begin + length;
         }
+        assert(next_begin > _src_begin);
         _src_begin = next_begin;
         assert(res.size() <= n);
+        assert(_src_begin <= _src_end);
 
         emitSpecCmd(); // no arg = reset
         if (_compressed_bytes > CompressorConst::reset_threshold) { reset(); }
@@ -105,15 +107,15 @@ namespace LeviDB {
     }
 
     void Compressor::reset() noexcept {
-        assert(!valid());
-        _src_begin = nullptr;
-        _src_end = nullptr;
-        _src = nullptr;
+        if (!valid()) {
+            _src_begin = nullptr;
+            _src_end = nullptr;
+            _src = nullptr;
+        }
 
         _arena.reset();
         _anchors.clear();
         _compressed_bytes = 0;
-
         // reset
         _tree.~SuffixTree();
         new(&_tree) SuffixTree(&_arena);

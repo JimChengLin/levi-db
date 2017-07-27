@@ -37,7 +37,7 @@ namespace LeviDB {
         };
         static constexpr int block_size = 32768; // 2^15
         static constexpr int header_size = 1/* type */+ 2/* length */;
-        static constexpr int min_record_size = header_size + sizeof(uint32_t)/* for checksum*/;
+        static constexpr int min_record_size = header_size + sizeof(uint32_t)/* for checksum*/+ 1;
     }
 
     class LogWriter {
