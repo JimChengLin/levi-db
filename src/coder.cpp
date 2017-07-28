@@ -58,7 +58,7 @@ namespace LeviDB {
     }
 
     template<bool _>
-    void SubCoder<_>::pushBit(bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept {
+    inline void SubCoder<_>::pushBit(bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept {
         if (bit) {
             output.back() |= (1 << nth_bit_out);
         }
@@ -125,8 +125,8 @@ namespace LeviDB {
     }
 
     template<bool TRUE_NYT_FALSE_NORMAL>
-    bool SubCoder<TRUE_NYT_FALSE_NORMAL>::fetchBit(const Slice & input, size_t & nth_byte_in,
-                                                   int & nth_bit_in) const {
+    inline bool SubCoder<TRUE_NYT_FALSE_NORMAL>::fetchBit(const Slice & input, size_t & nth_byte_in,
+                                                          int & nth_bit_in) const {
         bool bit;
         if (!TRUE_NYT_FALSE_NORMAL) { // normal forward
             if (nth_byte_in > input.size() - 1) {

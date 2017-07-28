@@ -3,7 +3,7 @@
 namespace LeviDB {
     namespace Coding {
         char * encodeVarint32(char * dst, uint32_t value) noexcept {
-            auto p = reinterpret_cast<uint8_t *>(dst);
+            auto * p = reinterpret_cast<uint8_t *>(dst);
             static constexpr int B = 128;
             if (value < (1 << 7)) {
                 *(p++) = (uint8_t) (value);

@@ -6,7 +6,6 @@
  */
 
 #include "arena.h"
-#include "skiplist.h"
 #include "slice.h"
 #include "util.h"
 #include <climits>
@@ -15,6 +14,8 @@ namespace LeviDB {
     struct STNode {
         const STNode * successor;
         const STNode * parent;
+        STNode * child;
+        STNode * sibling;
         uint16_t chunk_idx;
         uint16_t from;
         uint16_t to;
@@ -51,36 +52,13 @@ namespace LeviDB {
 
     class SuffixTree {
     protected: // for test
-        struct NodeCompare {
-            const std::vector<Slice> & chunk;
-
-            int operator()(const STNode & a, const STNode & b) const noexcept {
-                if (a.parent < b.parent) {
-                    return -1;
-                }
-                if (a.parent == b.parent) {
-                    uint8_t a_val = a.from > a.to ?
-                                    static_cast<uint8_t>(a.chunk_idx) : char_be_uint8(chunk[a.chunk_idx][a.from]);
-                    uint8_t b_val = b.from > b.to ?
-                                    static_cast<uint8_t>(b.chunk_idx) : char_be_uint8(chunk[b.chunk_idx][b.from]);
-                    if (a_val < b_val) {
-                        return -1;
-                    }
-                    if (a_val == b_val) {
-                        return 0;
-                    }
-                    return 1;
-                }
-                return 1;
-
-            }
-        };
-
-        Arena * const _pool;
+        STNode _root_;
+        STNode _dummy_;
         STNode * const _root;
+        STNode * const _dummy;
+        Arena * const _pool;
         const STNode * _act_node;
         const STNode * _edge_node;
-        SkipList<STNode, NodeCompare> _subs;
         STBuilder _builder;
         std::vector<Slice> _chunk;
         uint16_t _act_chunk_idx;
@@ -98,8 +76,6 @@ namespace LeviDB {
 
         std::vector<int> setitem(const Slice & src) noexcept;
 
-        void prepareNext() noexcept;
-
         std::string toString() const noexcept; // debug only
 
         // 禁止复制
@@ -112,17 +88,23 @@ namespace LeviDB {
 
         void tryExplodeRemainder(uint16_t chunk_idx) noexcept;
 
-        STNode * newNode() noexcept;
+        void prepareNext() noexcept;
+
+        STNode * newNode(const STNode & node) noexcept;
 
         const STNode * nodeSetSub(const STNode & sub) noexcept;
 
-        const STNode * nodeGetSub(const STNode * node, uint8_t key) const noexcept;
+        void nodeMove(const STNode & old_node, const STNode & new_node) noexcept;
+
+        const STNode * nodeGetSub(const STNode * node, uint8_t symbol) const noexcept;
 
         bool nodeIsRoot(const STNode * node) const noexcept;
 
         bool nodeIsInner(const STNode * node) const noexcept;
 
         bool nodeIsLeaf(const STNode * node) const noexcept;
+
+        int nodeCompare(const STNode & a, const STNode & b) const noexcept;
     };
 }
 

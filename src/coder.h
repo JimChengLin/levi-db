@@ -115,9 +115,9 @@ namespace LeviDB {
         void initDecode(const Slice & input, size_t & nth_byte_in, int & nth_bit_in);
 
     private:
-        void pushBit(bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept;
+        inline void pushBit(bool bit, std::vector<uint8_t> & output, int & nth_bit_out) const noexcept;
 
-        bool fetchBit(const Slice & input, size_t & nth_byte_in, int & nth_bit_in) const;
+        inline bool fetchBit(const Slice & input, size_t & nth_byte_in, int & nth_bit_in) const;
 
         inline bool condition_12() const noexcept {
             return static_cast<bool>(~(_lower ^ _upper) & mask_a);

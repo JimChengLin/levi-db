@@ -1,22 +1,69 @@
 #include "coder.h"
 #include "repeat_detector.h"
+#include <functional>
 
 namespace LeviDB {
-    STNode * SuffixTree::newNode() noexcept {
-        return reinterpret_cast<STNode *>(_pool->allocateAligned(sizeof(STNode)));
+    STNode * SuffixTree::newNode(const STNode & node) noexcept {
+        auto * ptr = reinterpret_cast<STNode *>(_pool->allocateAligned(sizeof(STNode)));
+        *ptr = node;
+        return ptr;
     }
 
     const STNode * SuffixTree::nodeSetSub(const STNode & sub) noexcept {
-        return _subs.insert(sub);
+        STNode * cursor = sub.parent->child;
+        while (cursor != nullptr) {
+            if (nodeCompare(*cursor, sub) == 0) {
+                STNode * child = cursor->child;
+                STNode * sibling = cursor->sibling;
+                *cursor = sub;
+                cursor->child = child;
+                cursor->sibling = sibling;
+                return cursor;
+            }
+            cursor = cursor->sibling;
+        }
+
+        STNode * node = newNode(sub);
+        node->sibling = node->parent->child;
+        const_cast<STNode *>(node->parent)->child = node;
+        return node;
     }
 
-    const STNode * SuffixTree::nodeGetSub(const STNode * node, uint8_t key) const noexcept {
-        STNode tmp;
+    void SuffixTree::nodeMove(const STNode & old_node, const STNode & new_node) noexcept {
+        STNode * cursor = nullptr;
+        STNode ** p_cursor = &const_cast<STNode *>(old_node.parent)->child;
+        while (*p_cursor != nullptr) {
+            if (nodeCompare(**p_cursor, old_node) == 0) {
+                cursor = *p_cursor;
+                *p_cursor = cursor->sibling;
+                break;
+            }
+            p_cursor = &(*p_cursor)->sibling;
+        }
+
+        assert(cursor != nullptr);
+        STNode * child = cursor->child;
+        *cursor = new_node;
+        cursor->child = child;
+        cursor->sibling = new_node.parent->child;
+        const_cast<STNode *>(new_node.parent)->child = cursor;
+    }
+
+    const STNode * SuffixTree::nodeGetSub(const STNode * node, uint8_t symbol) const noexcept {
+        STNode tmp{};
         tmp.from = 1;
         tmp.to = 0;
-        tmp.chunk_idx = key;
+        tmp.chunk_idx = symbol;
         tmp.parent = node;
-        return _subs.find(tmp);
+
+        STNode * cursor = node->child;
+        while (cursor != nullptr) {
+            if (nodeCompare(*cursor, tmp) == 0) {
+                return cursor;
+            }
+            cursor = cursor->sibling;
+        }
+        return nullptr;
     }
 
     bool SuffixTree::nodeIsRoot(const STNode * node) const noexcept {
@@ -24,31 +71,35 @@ namespace LeviDB {
     }
 
     bool SuffixTree::nodeIsInner(const STNode * node) const noexcept {
-        STNode tmp;
-        tmp.from = 1;
-        tmp.to = 0;
-        tmp.chunk_idx = 0;
-        tmp.parent = node;
-        const STNode * sub = _subs.findOrGreater(tmp);
-        return !nodeIsRoot(node) && sub != nullptr && sub->parent == node;
+        return !nodeIsRoot(node) && node->child != nullptr;
     }
 
     bool SuffixTree::nodeIsLeaf(const STNode * node) const noexcept {
-        STNode tmp;
-        tmp.from = 1;
-        tmp.to = 0;
-        tmp.chunk_idx = 0;
-        tmp.parent = node;
-        const STNode * sub = _subs.findOrGreater(tmp);
-        return !nodeIsRoot(node) && (sub == nullptr || sub->parent != node);
+        return !nodeIsRoot(node) && node->child == nullptr;
+    }
+
+    int SuffixTree::nodeCompare(const STNode & a, const STNode & b) const noexcept {
+        uint8_t a_val = a.from > a.to ?
+                        static_cast<uint8_t>(a.chunk_idx) : char_be_uint8(_chunk[a.chunk_idx][a.from]);
+        uint8_t b_val = b.from > b.to ?
+                        static_cast<uint8_t>(b.chunk_idx) : char_be_uint8(_chunk[b.chunk_idx][b.from]);
+        if (a_val < b_val) {
+            return -1;
+        }
+        if (a_val == b_val) {
+            return 0;
+        }
+        return 1;
     }
 
     SuffixTree::SuffixTree(Arena * arena) noexcept
-            : _pool(arena),
-              _root(newNode()),
+            : _root_(),
+              _dummy_(),
+              _pool(arena),
+              _root(&_root_),
+              _dummy(&_dummy_),
               _act_node(_root),
               _edge_node(nullptr),
-              _subs(arena, NodeCompare{_chunk}),
               _act_chunk_idx(0),
               _act_direct(0),
               _act_offset(0),
@@ -90,7 +141,7 @@ namespace LeviDB {
         auto case_root = [&](bool send_msg) noexcept {
             _edge_node = nodeGetSub(_root, msg_char);
             if (_edge_node == nullptr) {
-                STNode leaf_node;
+                STNode leaf_node{};
                 leaf_node.successor = _root;
                 leaf_node.chunk_idx = chunk_idx;
                 leaf_node.from = _counter;
@@ -137,7 +188,7 @@ namespace LeviDB {
                 const STNode * prev_inner_node = nullptr;
 
                 auto split_grow = [&]() noexcept {
-                    STNode leaf_node;
+                    STNode leaf_node{};
                     leaf_node.successor = _root;
                     leaf_node.chunk_idx = chunk_idx;
                     leaf_node.from = _counter;
@@ -146,13 +197,13 @@ namespace LeviDB {
 
                     if ((nodeIsLeaf(_edge_node) || _edge_node->to - _edge_node->from > 1)
                         && _edge_node->from + _act_offset != _edge_node->to) {
-                        STNode inner_node;
+                        STNode inner_node{};
                         inner_node.successor = _root;
                         inner_node.chunk_idx = _edge_node->chunk_idx;
                         inner_node.from = _edge_node->from;
                         inner_node.to = static_cast<uint16_t>(_edge_node->from + _act_offset);
 
-                        inner_node.parent = nullptr;
+                        inner_node.parent = _dummy;
                         const STNode * inner_node_ = nodeSetSub(inner_node);
                         inner_node.parent = _edge_node->parent;
 
@@ -161,15 +212,15 @@ namespace LeviDB {
                         }
                         prev_inner_node = inner_node_;
 
-                        STNode tmp;
+                        STNode tmp{};
                         tmp = *_edge_node;
                         tmp.from = inner_node.to;
                         tmp.parent = inner_node_;
-                        _subs.move_to_fit(*_edge_node, tmp);
+                        nodeMove(*_edge_node, tmp);
 
                         tmp = inner_node;
-                        tmp.parent = nullptr;
-                        _subs.move_to_fit(tmp, inner_node);
+                        tmp.parent = _dummy;
+                        nodeMove(tmp, inner_node);
 
                         leaf_node.parent = inner_node_;
                         nodeSetSub(leaf_node);
@@ -256,13 +307,13 @@ namespace LeviDB {
             --_remainder;
             if ((nodeIsLeaf(_edge_node) || _edge_node->to - _edge_node->from > 1)
                 && _edge_node->from + _act_offset != _edge_node->to) {
-                STNode inner_node;
+                STNode inner_node{};
                 inner_node.successor = _root;
                 inner_node.chunk_idx = _edge_node->chunk_idx;
                 inner_node.from = _edge_node->from;
                 inner_node.to = static_cast<uint16_t>(_edge_node->from + _act_offset);
 
-                inner_node.parent = nullptr;
+                inner_node.parent = _dummy;
                 const STNode * inner_node_ = nodeSetSub(inner_node);
                 inner_node.parent = _edge_node->parent;
 
@@ -271,15 +322,15 @@ namespace LeviDB {
                 }
                 prev_inner_node = inner_node_;
 
-                STNode tmp;
+                STNode tmp{};
                 tmp = *_edge_node;
                 tmp.from = inner_node.to;
                 tmp.parent = inner_node_;
-                _subs.move_to_fit(*_edge_node, tmp);
+                nodeMove(*_edge_node, tmp);
 
                 tmp = inner_node;
-                tmp.parent = nullptr;
-                _subs.move_to_fit(tmp, inner_node);
+                tmp.parent = _dummy;
+                nodeMove(tmp, inner_node);
             } else {
                 if (prev_inner_node != nullptr) {
                     const_cast<STNode *>(prev_inner_node)->successor = _edge_node;
@@ -381,16 +432,10 @@ namespace LeviDB {
             res += '\n';
 
             ++lv;
-            SkipList<STNode, NodeCompare>::Iterator it(&_subs);
-            STNode tmp;
-            tmp.from = 1;
-            tmp.to = 0;
-            tmp.chunk_idx = 0;
-            tmp.parent = node;
-            for (it.seek(tmp);
-                 it.valid() && it.key().parent == node;
-                 it.next()) {
-                print_tree(&it.key(), lv);
+            STNode * cursor = node->child;
+            while (cursor != nullptr) {
+                print_tree(cursor, lv);
+                cursor = cursor->sibling;
             }
         };
 
