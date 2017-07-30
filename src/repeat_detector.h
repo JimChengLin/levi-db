@@ -27,7 +27,10 @@ namespace LeviDB {
         int _compress_idx = -1;
         int _compress_to = -1;
 
+        friend class SuffixTree;
+
     public:
+        static constexpr int compress_cost = 1/* FN */+ 1/* chunk_idx */+ 1/* from */+ 1/* to */;
         enum Message {
             STREAM_ON = -1,
             STREAM_OFF = -2,
@@ -43,6 +46,8 @@ namespace LeviDB {
         void send(int chunk_idx_or_cmd = INT_MIN,
                   int s_idx = INT_MIN,
                   int msg_char = INT_MIN) noexcept;
+
+        void send(int chunk_idx, int s_to, int msg_char, int len) noexcept;
 
         // 禁止复制
         STBuilder(const STBuilder &) = delete;

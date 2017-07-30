@@ -191,7 +191,6 @@ namespace LeviDB {
                 _builder.send(_edge_node->chunk_idx, _edge_node->from + _act_offset, msg_char);
                 ++_act_offset;
             } else {
-                _builder.send(STBuilder::STREAM_PASS, 0/* placeholder */, msg_char);
                 const STNode * prev_inner_node = nullptr;
 
                 auto split_grow = [&]() noexcept {
@@ -297,9 +296,16 @@ namespace LeviDB {
                     }
                 }
 
-                if (_remainder == 1) {
-                    _builder.send(STBuilder::STREAM_POP);
-                    _builder.send(_act_chunk_idx, _act_direct, msg_char);
+                if (_remainder > 0) { // can reuse
+                    if (_builder._compress_len > STBuilder::compress_cost) { // reuse one
+                        _builder.send(STBuilder::STREAM_PASS, 0/* placeholder */, msg_char);
+                        _builder.send(STBuilder::STREAM_POP);
+                        _builder.send(_edge_node->chunk_idx, _edge_node->from + _act_offset - 1, msg_char);
+                    } else { // reuse many
+                        _builder.send(_edge_node->chunk_idx, _edge_node->from + _act_offset, msg_char, _remainder);
+                    }
+                } else { // normal
+                    _builder.send(STBuilder::STREAM_PASS, 0, msg_char);
                 }
             }
         }
@@ -380,7 +386,6 @@ namespace LeviDB {
 
     void STBuilder::send(int chunk_idx_or_cmd, int s_idx, int msg_char) noexcept {
         auto try_explode = [&]() noexcept {
-            static constexpr int compress_cost = 1/* FN */+ 1/* chunk_idx */+ 1/* from */+ 1/* to */;
             if (_compress_len > compress_cost) {
                 _data.resize(_data.size() - _compress_len);
                 _data.insert(_data.end(), {CoderConst::FN,
@@ -417,6 +422,13 @@ namespace LeviDB {
                 _data.emplace_back(msg_char);
                 break;
         }
+    }
+
+    void STBuilder::send(int chunk_idx, int s_to, int msg_char, int len) noexcept {
+        _compress_idx = chunk_idx;
+        _compress_to = s_to;
+        _compress_len = len;
+        _data.emplace_back(msg_char);
     }
 
     std::string SuffixTree::toString() const noexcept {
