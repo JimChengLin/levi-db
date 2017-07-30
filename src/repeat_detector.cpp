@@ -56,11 +56,18 @@ namespace LeviDB {
         tmp.chunk_idx = symbol;
         tmp.parent = node;
 
+        STNode * prev = nullptr;
         STNode * cursor = node->child;
         while (cursor != nullptr) {
             if (nodeCompare(*cursor, tmp) == 0) {
+                if (prev != nullptr) {
+                    prev->sibling = cursor->sibling;
+                    cursor->sibling = node->child;
+                    const_cast<STNode *>(node)->child = cursor;
+                }
                 return cursor;
             }
+            prev = cursor;
             cursor = cursor->sibling;
         }
         return nullptr;
@@ -95,9 +102,9 @@ namespace LeviDB {
     SuffixTree::SuffixTree(Arena * arena) noexcept
             : _root_(),
               _dummy_(),
-              _pool(arena),
               _root(&_root_),
               _dummy(&_dummy_),
+              _pool(arena),
               _act_node(_root),
               _edge_node(nullptr),
               _act_chunk_idx(0),
