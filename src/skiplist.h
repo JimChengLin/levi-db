@@ -14,7 +14,7 @@
 namespace LeviDB {
     struct less {
         template<typename T>
-        int operator()(T && a, T && b) const {
+        int operator()(const T & a, const T & b) const {
             if (a < b) {
                 return -1;
             }
@@ -51,9 +51,9 @@ namespace LeviDB {
 
         bool empty() const noexcept;
 
-        void move_to_fit(const K & old_key, const K & new_key) noexcept;
+        void move(const K & old_key, const K & new_key) noexcept;
 
-        void move_to_fit(const K & old_key, K && new_key) noexcept;
+        void move(const K & old_key, K && new_key) noexcept;
 
         class Iterator {
         public:
@@ -179,8 +179,6 @@ namespace LeviDB {
         while (height < max_height && _rnd.oneIn(branch_factor)) {
             ++height;
         }
-        assert(height > 0);
-        assert(height <= max_height);
         return height;
     }
 
@@ -351,7 +349,7 @@ namespace LeviDB {
     }
 
     template<typename K, class CMP>
-    void SkipList<K, CMP>::move_to_fit(const K & old_key, const K & new_key) noexcept {
+    void SkipList<K, CMP>::move(const K & old_key, const K & new_key) noexcept {
         Node * prev[max_height];
         Node * x = findGreaterOrEqual(old_key, prev);
         assert(equal(old_key, x->key));
@@ -373,7 +371,7 @@ namespace LeviDB {
     }
 
     template<typename K, class CMP>
-    void SkipList<K, CMP>::move_to_fit(const K & old_key, K && new_key) noexcept {
+    void SkipList<K, CMP>::move(const K & old_key, K && new_key) noexcept {
         Node * prev[max_height];
         Node * x = findGreaterOrEqual(old_key, prev);
         assert(equal(old_key, x->key));
