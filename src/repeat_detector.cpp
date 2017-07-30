@@ -427,7 +427,7 @@ namespace LeviDB {
     void STBuilder::send(int chunk_idx, int s_to, int msg_char, int len) noexcept {
         _compress_idx = chunk_idx;
         _compress_to = s_to;
-        _compress_len = len;
+        _compress_len = std::min(_compress_len + 1, len);
         _data.emplace_back(msg_char);
     }
 
