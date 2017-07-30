@@ -2,7 +2,8 @@
 #define LEVIDB_SKIPLIST_H
 
 /*
- * 内存使用 arena 分配的跳表
+ * 使用 arena 分配内存的跳表
+ * 在本项目中暂无实际用途(原调用处被作者定制的链表替代)
  */
 
 #include "arena.h"

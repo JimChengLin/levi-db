@@ -22,7 +22,7 @@
 namespace LeviDB {
     namespace IOEnv {
         uint64_t getFileSize(const std::string & fname) {
-            struct stat sbuf;
+            struct stat sbuf{};
             if (stat(fname.c_str(), &sbuf) != 0) {
                 throw Exception::IOErrorException(fname, error_info);
             }

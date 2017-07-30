@@ -41,15 +41,15 @@ namespace LeviDB {
             SIMPLE_COMPRESS,
         };
 
-        enum ImpossibleOffset { // min offset is 8 because of the log format
-            U8U8U16 = 0b001, // don't need U8U8U8(0b000)
-            U8U16U8 = 0b010,
-            U8U16U16 = 0b011,
+//        enum ImpossibleOffset { // min offset is 8 because of the log format
+//            U8U8U16 = 0b001, // don't need U8U8U8(0b000)
+//            U8U16U8 = 0b010,
+//            U8U16U16 = 0b011,
 //            U16U8U8   = 0b100,
 //            U16U8U16  = 0b101,
 //            U16U16U8  = 0b110,
 //            U16U16U16 = 0b111,
-        };
+//        };
     }
 
     class Compressor {
