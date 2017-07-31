@@ -6,35 +6,17 @@
 
 #include <iostream>
 
-#define LEVI_DB_BENCH
+#include "src/exception.h"
 
-void coder_test() noexcept;
+void index_test();
 
-void skiplist_test() noexcept;
-
-void repeat_detector_test() noexcept;
-
-void index_test() noexcept;
-
-void crc32c_test() noexcept;
-
-void compressor_test() noexcept;
-
-void log_writer_test() noexcept;
-
-void compress_bench() noexcept;
-
-int main() noexcept {
-    coder_test();
-    skiplist_test();
-    repeat_detector_test();
-    index_test();
-    crc32c_test();
-    compressor_test();
-    log_writer_test();
-#ifdef LEVI_DB_BENCH
-    compress_bench();
-#endif
+int main() {
+    try {
+        index_test();
+    } catch (const LeviDB::Exception & e) {
+        std::cout << e.toString() << std::endl;
+        return -1;
+    }
     std::cout << "done." << std::endl;
     return 0;
 }

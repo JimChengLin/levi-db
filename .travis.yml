@@ -65,7 +65,7 @@ matrix:
         - tail ../cov-int/build-log.txt
         - tail ../cov-int/scm_log.txt
 
-# shared
+# shared setting
 before_install:
   - eval "${MATRIX_EVAL}"
 
@@ -86,7 +86,7 @@ install:
   - cmake --version
 
 before_script:
-  # CMake => Makefile (debug)
+  # CMake => Makefile (debug mode)
   - cd ${TRAVIS_BUILD_DIR}
   - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug
 

@@ -2,13 +2,17 @@
 #define LEVIDB_ENV_IO_H
 
 /*
- * IO API 封装
+ * 封装 POSIX C IO API
+ * 出于性能方面的考量, 放弃 C++ 的 IO 标准库
+ *
+ * steal from leveldb
  */
 
-#include "slice.h"
-#include <string>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include "slice.h"
+#include "util.h"
 
 namespace LeviDB {
     namespace IOEnv {
@@ -20,7 +24,7 @@ namespace LeviDB {
             WP_M,
             AP_M,
         };
-        static constexpr int page_size = 4 * 1024; // 4KB
+        static constexpr int page_size_ = 4 * 1024; // 4KB
 
         uint64_t getFileSize(const std::string & fname);
 
@@ -37,10 +41,8 @@ namespace LeviDB {
 
         ~FileOpen() noexcept { if (_fd > 0) close(_fd); };
 
-        // 禁止复制
-        FileOpen(const FileOpen &) = delete;
-
-        void operator=(const FileOpen &) = delete;
+        DEFAULT_MOVE(FileOpen);
+        DELETE_COPY(FileOpen);
     };
 
     class FileFopen {
@@ -51,10 +53,8 @@ namespace LeviDB {
 
         ~FileFopen() noexcept { if (_f != nullptr) fclose(_f); }
 
-        // 禁止复制
-        FileFopen(const FileFopen &) = delete;
-
-        void operator=(const FileFopen &) = delete;
+        DEFAULT_MOVE(FileFopen);
+        DELETE_COPY(FileFopen);
     };
 
     class MmapFile {
@@ -69,16 +69,16 @@ namespace LeviDB {
 
         ~MmapFile() noexcept { munmap(_mmaped_region, _length); }
 
-        Slice read(uint64_t offset, size_t n) const noexcept;
-
-        void write(uint64_t offset, const Slice & data);
-
         void grow();
 
-        // 禁止复制
-        MmapFile(const MmapFile &) = delete;
+        void sync();
 
-        void operator=(const MmapFile &) = delete;
+        EXPOSE(_mmaped_region);
+
+        EXPOSE(_length);
+
+        DEFAULT_MOVE(MmapFile);
+        DELETE_COPY(MmapFile);
     };
 
     class AppendableFile {
@@ -98,12 +98,10 @@ namespace LeviDB {
 
         void sync();
 
-        uint64_t length() const noexcept { return _length; }
+        EXPOSE(_length);
 
-        // 禁止复制
-        AppendableFile(const AppendableFile &) = delete;
-
-        void operator=(const AppendableFile &) = delete;
+        DEFAULT_MOVE(AppendableFile);
+        DELETE_COPY(AppendableFile);
     };
 
     class RandomAccessFile {
@@ -118,10 +116,8 @@ namespace LeviDB {
 
         Slice read(uint64_t offset, size_t n, char * scratch) const;
 
-        // 禁止复制
-        RandomAccessFile(const RandomAccessFile &) = delete;
-
-        void operator=(const RandomAccessFile &) = delete;
+        DEFAULT_MOVE(RandomAccessFile);
+        DELETE_COPY(RandomAccessFile);
     };
 
     class SequentialFile {
@@ -138,12 +134,10 @@ namespace LeviDB {
 
         void skip(uint64_t offset);
 
-        FILE * getFILE() const noexcept { return _ffile._f; }
+        std::string readLine();
 
-        // 禁止复制
-        SequentialFile(const SequentialFile &) = delete;
-
-        void operator=(const SequentialFile &) = delete;
+        DEFAULT_MOVE(SequentialFile);
+        DELETE_COPY(SequentialFile);
     };
 }
 

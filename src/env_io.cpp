@@ -1,8 +1,9 @@
-#include "env_io.h"
-#include "exception.h"
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/stat.h>
+
+#include "env_io.h"
+#include "exception.h"
 
 #if defined(OS_MACOSX) || defined(OS_SOLARIS) || defined(OS_FREEBSD) || \
     defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLYBSD) || \
@@ -69,7 +70,7 @@ namespace LeviDB {
             case IOEnv::A_M:
             case IOEnv::WP_M:
             case IOEnv::AP_M:
-                fd = open(fname.c_str(), arg, 0644);
+                fd = open(fname.c_str(), arg, 0644/* 权限 */);
                 break;
             default:
                 fd = open(fname.c_str(), arg);
@@ -112,40 +113,41 @@ namespace LeviDB {
 
     MmapFile::MmapFile(const std::string & fname)
             : _filename(fname), _file(fname, IOEnv::WP_M), _length(IOEnv::getFileSize(fname)) {
+        if (_length == 0) { // 0 长度文件 mmap 会报错
+            _length = IOEnv::page_size_;
+            if (ftruncate(_file._fd, static_cast<off_t>(_length)) != 0) {
+                throw Exception::IOErrorException(_filename, error_info);
+            }
+        }
         _mmaped_region = mmap(nullptr, _length, PROT_READ | PROT_WRITE, MAP_SHARED, _file._fd, 0);
         if (_mmaped_region == MAP_FAILED) {
             throw Exception::IOErrorException(fname, error_info);
         }
     }
 
-    Slice MmapFile::read(uint64_t offset, size_t n) const noexcept {
-        assert(offset + n <= _length);
-        return {reinterpret_cast<char *>(_mmaped_region) + offset, n};
-    }
-
-    void MmapFile::write(uint64_t offset, const Slice & data) {
-        if (offset + data.size() > _length) {
-            grow();
-        }
-        memcpy(reinterpret_cast<char *>(_mmaped_region) + offset, data.data(), data.size());
-    }
-
     void MmapFile::grow() {
-        _length += IOEnv::page_size;
-        if (ftruncate(_file._fd, static_cast<off_t>(_length)) < 0) {
+        _length += IOEnv::page_size_;
+        if (ftruncate(_file._fd, static_cast<off_t>(_length)) != 0) {
             throw Exception::IOErrorException(_filename, error_info);
         }
+        // 主要运行在 linux 上, 每次扩容都要 munmap/mmap 的问题可以用 mremap 规避
 #ifndef __linux__
-        if (munmap(_mmaped_region, _length - IOEnv::page_size) < 0) {
+        if (munmap(_mmaped_region, _length - IOEnv::page_size_) != 0) {
             throw Exception::IOErrorException(_filename, error_info);
         }
         _mmaped_region = mmap(nullptr, _length, PROT_READ | PROT_WRITE, MAP_SHARED, _file._fd, 0);
 #else
-        _mmaped_region = mremap(_mmaped_region, _length - IOEnv::page_size, _length, 0);
+        _mmaped_region = mremap(_mmaped_region, _length - IOEnv::page_size_, _length, MREMAP_MAYMOVE);
 #endif
         if (_mmaped_region == MAP_FAILED) {
             throw Exception::IOErrorException(_filename, error_info);
         }
+    }
+
+    void MmapFile::sync() {
+        if (msync(_mmaped_region, _length, MS_SYNC) != 0) {
+            throw Exception::IOErrorException(_filename, error_info);
+        };
     }
 
     AppendableFile::AppendableFile(const std::string & fname)
@@ -189,7 +191,7 @@ namespace LeviDB {
     Slice SequentialFile::read(size_t n, char * scratch) {
         size_t r = fread_unlocked(scratch, 1, n, _ffile._f);
         if (r < n) {
-            if (feof(_ffile._f)) {
+            if (static_cast<bool>(feof(_ffile._f))) {
             } else {
                 throw Exception::IOErrorException(_filename, error_info);
             }
@@ -198,8 +200,21 @@ namespace LeviDB {
     }
 
     void SequentialFile::skip(uint64_t offset) {
-        if (fseek(_ffile._f, static_cast<long>(offset), SEEK_CUR)) {
+        if (fseek(_ffile._f, static_cast<long>(offset), SEEK_CUR) != 0) {
             throw Exception::IOErrorException(_filename, error_info);
         }
+    }
+
+    std::string SequentialFile::readLine() {
+        char * line = nullptr;
+        size_t len = 0;
+        ssize_t read = getline(&line, &len, _ffile._f);
+
+        std::string res;
+        if (read != -1) {
+            res = {line, static_cast<size_t>(read)};
+        }
+        free(line);
+        return res;
     }
 }

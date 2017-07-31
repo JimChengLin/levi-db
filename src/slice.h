@@ -3,6 +3,17 @@
 
 /*
  * 数据简单封装类
+ * 只保存对源数据的指针和长度
+ *
+ * 注意:
+ * 为了跟 std::string 有更简单的交互, _data 类型为 const char *
+ * 但绝大多数情况下应该被转化成无符号的 uint8_t *
+ * 表明这仅仅是一段数据而非 char 组成的 string
+ *
+ * char 和 uint8_t 在 static_cast 和 equality 判断的时候
+ * 常有不符合直觉的差异
+ *
+ * steal from leveldb
  */
 
 #include <cassert>
@@ -11,14 +22,14 @@
 
 namespace LeviDB {
     class Slice {
+    private:
+        const char * _data = "";
+        size_t _size = 0;
+
     public:
-        Slice() noexcept : _data(""), _size(0) {}
+        Slice() noexcept = default;
 
         Slice(const char * d, size_t n) noexcept : _data(d), _size(n) {}
-
-        Slice(const std::string & s) noexcept : _data(s.data()), _size(s.size()) {}
-
-        Slice(const char * s) noexcept : _data(s), _size(strlen(s)) {}
 
         template<typename T>
         Slice(T * s, size_t n) noexcept
@@ -26,60 +37,21 @@ namespace LeviDB {
             static_assert(sizeof(T) == sizeof(char), "args mismatch");
         }
 
+        Slice(const std::string & s) noexcept : _data(s.data()), _size(s.size()) {}
+
+        Slice(const char * s) noexcept : _data(s), _size(strlen(s)) {}
+
         const char * data() const noexcept { return _data; }
 
         size_t size() const noexcept { return _size; }
 
-        bool empty() const noexcept { return _size == 0; }
+        std::string toString() const noexcept { return std::string(_data, _size); }
 
         char operator[](size_t n) const noexcept {
             assert(n < _size);
             return _data[n];
         }
-
-        void clear() noexcept {
-            _data = "";
-            _size = 0;
-        }
-
-        void removePrefix(size_t n) noexcept {
-            assert(n <= _size);
-            _data += n;
-            _size -= n;
-        }
-
-        std::string toString() const noexcept { return std::string(_data, _size); }
-
-        inline int compare(const Slice & b) const noexcept;
-
-        bool startsWith(const Slice & x) const noexcept {
-            return ((_size >= x._size) &&
-                    (memcmp(_data, x._data, x._size) == 0));
-        }
-
-    private:
-        const char * _data;
-        size_t _size;
     };
-
-    inline int Slice::compare(const Slice & b) const noexcept {
-        size_t min_len = std::min(_size, b._size);
-        int r = memcmp(_data, b._data, min_len);
-        if (r == 0) {
-            if (_size < b._size) { r = -1; }
-            else if (_size > b._size) { r = +1; }
-        }
-        return r;
-    }
-
-    inline bool operator==(const Slice & x, const Slice & y) noexcept {
-        return ((x.size() == y.size()) &&
-                (memcmp(x.data(), y.data(), x.size()) == 0));
-    }
-
-    inline bool operator!=(const Slice & x, const Slice & y) noexcept {
-        return !(x == y);
-    }
 }
 
 #endif //LEVIDB_SLICE_H

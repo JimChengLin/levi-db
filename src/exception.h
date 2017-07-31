@@ -2,30 +2,32 @@
 #define LEVIDB_EXCEPTION_H
 
 /*
- * 提供全项目的异常
+ * 全项目不可控的异常
+ *
+ * steal from leveldb
  */
 
-#include "slice.h"
 #include <exception>
 #include <memory>
 
+#include "slice.h"
+
 namespace LeviDB {
     class Exception : public std::exception {
+    private:
+        std::unique_ptr<char[]> _state;
+
     public:
-        Exception() noexcept : _state(nullptr) {}
-
-        ~Exception() noexcept override = default;
-
         static const char * _what;
 
-        const char * what() const noexcept override {
-            return Exception::_what;
-        }
+        const char * what() const noexcept override { return Exception::_what; }
 
-        // 允许复制
+        Exception(Exception &&) noexcept = default;
+
+        Exception & operator=(Exception &&) noexcept = default;
+
         Exception(const Exception & e) noexcept
-                : _state((e._state == nullptr) ? nullptr : copyState(e._state.get())) {
-        }
+                : _state((e._state == nullptr) ? nullptr : copyState(e._state.get())) {}
 
         Exception & operator=(const Exception & e) noexcept {
             if (_state != e._state) {
@@ -33,6 +35,8 @@ namespace LeviDB {
             }
             return *this;
         }
+
+        ~Exception() noexcept override = default;
 
         static Exception notFoundException(const Slice & msg, const Slice & msg2 = Slice()) noexcept {
             return Exception(NOT_FOUND, msg, msg2);
@@ -67,8 +71,6 @@ namespace LeviDB {
         std::string toString() const noexcept;
 
     private:
-        std::unique_ptr<char[]> _state;
-
         enum Code {
             NOT_FOUND = 1,
             CORRUPTION = 2,

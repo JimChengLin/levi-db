@@ -1,7 +1,8 @@
-#include "crc32c.h"
 #include <cpuid.h>
 #include <cstring>
 #include <nmmintrin.h>
+
+#include "crc32c.h"
 
 namespace LeviDB {
     namespace CRC32C {
@@ -391,6 +392,10 @@ namespace LeviDB {
 #undef STEP4
 #undef STEP1
             return l ^ 0xffffffffu;
+        }
+
+        bool verify(const char * data, size_t n, const uint8_t * checksum) noexcept {
+            return value(data, n) == load32(checksum);
         }
     }
 }
