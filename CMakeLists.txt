@@ -14,14 +14,15 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
 endif ()
 
 set(SOURCE_FILES main.cpp
-        src/index.cpp src/index.h src/index_misc.cpp
+        src/index.cpp src/index.h src/index_misc_.cpp
         src/slice.h
         src/util.h
         src/env_io.cpp src/env_io.h
         src/exception.cpp src/exception.h
         src/crc32c.cpp src/crc32c.h
         test/index_test.cpp
-        src/index_mvcc.cpp src/index_mvcc.h
-        src/seq_gen.cpp src/seq_gen.h)
+        src/index_mvcc_rd.cpp src/index_mvcc_rd.h
+        src/seq_gen.cpp src/seq_gen.h
+        src/index_regex_iter.cpp src/index_regex_iter.h)
 
 add_executable(LeviDB ${SOURCE_FILES})

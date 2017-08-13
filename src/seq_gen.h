@@ -15,8 +15,8 @@
 namespace LeviDB {
     /*
      * doubly-linked list
-     *    |------------------|
-     *   old <-> new <-> head|
+     *    |--------------------|
+     *   old <-> new <-> d-head|
      */
     class Snapshot {
     private:
@@ -45,6 +45,10 @@ namespace LeviDB {
         std::atomic<std::uint64_t> _seq{0};
 
     public:
+        ~SeqGenerator() noexcept = default;
+        DELETE_MOVE(SeqGenerator);
+        DELETE_COPY(SeqGenerator);
+
         uint64_t uniqueSeqAtomic() noexcept { return _seq.fetch_add(1); }
 
         std::unique_ptr<Snapshot> makeSnapshot() noexcept;
