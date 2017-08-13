@@ -1,0 +1,4 @@
+#ifndef LEVIDB_COMPRESS_H
+#define LEVIDB_COMPRESS_H
+
+#endif //LEVIDB_COMPRESS_H

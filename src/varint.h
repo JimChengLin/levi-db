@@ -1,0 +1,4 @@
+#ifndef LEVIDB_VARINT_H
+#define LEVIDB_VARINT_H
+
+#endif //LEVIDB_VARINT_H

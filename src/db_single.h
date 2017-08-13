@@ -1,0 +1,5 @@
+#ifndef LEVIDB_SINGLE_DB_H
+#define LEVIDB_SINGLE_DB_H
+
+
+#endif //LEVIDB_SINGLE_DB_H
