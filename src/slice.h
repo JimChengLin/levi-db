@@ -52,6 +52,30 @@ namespace LeviDB {
             return _data[n];
         }
     };
+
+    struct SliceComparator {
+        using is_transparent = std::true_type;
+
+        bool operator()(const std::string & a, const std::string & b) const noexcept {
+            return a < b;
+        }
+
+        bool operator()(const Slice & a, const Slice & b) const noexcept {
+            int r = memcmp(a.data(), b.data(), std::min(a.size(), b.size()));
+            if (r == 0) {
+                return a.size() < b.size();
+            }
+            return r < 0;
+        }
+
+        bool operator()(const std::string & a, const Slice & b) const noexcept {
+            return operator()(Slice(a), b);
+        }
+
+        bool operator()(const Slice & a, const std::string & b) const noexcept {
+            return operator()(a, Slice(b));
+        }
+    };
 }
 
 #endif //LEVIDB_SLICE_H

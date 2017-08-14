@@ -23,6 +23,7 @@ set(SOURCE_FILES main.cpp
         src/index.cpp src/index.h src/index_.cpp
         src/index_iter_regex.cpp src/index_iter_regex.h
         src/index_mvcc_rd.cpp src/index_mvcc_rd.h
+        src/iterator.h
         src/log_reader.cpp src/log_reader.h
         src/log_writer.cpp src/log_writer.h
         src/meta_keeper.cpp src/meta_keeper.h

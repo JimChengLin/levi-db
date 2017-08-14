@@ -1,15 +1,7 @@
 #include "index_mvcc_rd.h"
 
 namespace LeviDB {
-    OffsetToData IndexMVCC::find(const Slice & k, uint64_t seq_num) const {
-
-    }
-
-    size_t IndexMVCC::size(uint64_t seq_num) const {
-
-    }
-
-    size_t IndexMVCC::size(const BDNode * node, uint64_t seq_num) const {
+    std::string IndexMVCC::find(const Slice & k, uint64_t seq_num) const {
 
     }
 
@@ -25,12 +17,33 @@ namespace LeviDB {
 
     }
 
-    std::map<std::string/* k */, OffsetToData/* v */>
-    IndexMVCC::pendingPart() const noexcept {
+    // 将多个 history 虚拟合并成单一 iterator
+    class MultiHistoryIterator : Iterator {
+
+    };
+
+    std::unique_ptr<Iterator> IndexMVCC::pendingPart(uint64_t seq_num) const noexcept {
 
     }
 
     void IndexMVCC::applyPending() {
+
+    }
+
+    // 真正的 Matcher 实现
+    class MatcherOffsetImpl : Matcher {
+
+    };
+
+    std::unique_ptr<Matcher> IndexMVCC::offToMatcher(OffsetToData data) const noexcept {
+
+    }
+
+    class MatcherSliceImpl : Matcher {
+
+    };
+
+    std::unique_ptr<Matcher> IndexMVCC::sliceToMatcher(const Slice & slice) const noexcept {
 
     }
 }

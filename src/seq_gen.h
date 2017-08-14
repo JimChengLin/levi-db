@@ -3,6 +3,7 @@
 
 /*
  * 生成全局唯一序列号并管理快照
+ * 编号从 1 开始
  */
 
 #include <atomic>
@@ -42,7 +43,7 @@ namespace LeviDB {
     class SeqGenerator {
     private:
         Snapshot _dummy_head;
-        std::atomic<std::uint64_t> _seq{0};
+        std::atomic<std::uint64_t> _seq{1};
 
     public:
         ~SeqGenerator() noexcept = default;
