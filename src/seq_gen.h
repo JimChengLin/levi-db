@@ -46,7 +46,10 @@ namespace LeviDB {
         std::atomic<std::uint64_t> _seq{1};
 
     public:
+        SeqGenerator() noexcept = default;
+
         ~SeqGenerator() noexcept = default;
+
         DELETE_MOVE(SeqGenerator);
         DELETE_COPY(SeqGenerator);
 

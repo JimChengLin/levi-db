@@ -9,11 +9,12 @@
 #include "util.h"
 
 namespace LeviDB {
+    template<typename K, typename V>
     class Iterator {
     public:
         Iterator() noexcept = default;
-        DELETE_MOVE(Iterator);
-        DELETE_COPY(Iterator);
+        DEFAULT_MOVE(Iterator);
+        DEFAULT_COPY(Iterator);
 
     public:
         virtual ~Iterator() noexcept = default;
@@ -24,15 +25,15 @@ namespace LeviDB {
 
         virtual void seekToLast() = 0;
 
-        virtual void seek(const Slice & target) = 0;
+        virtual void seek(const K & target) = 0;
 
         virtual void next() = 0;
 
         virtual void prev() = 0;
 
-        virtual Slice key() const = 0;
+        virtual K key() const = 0;
 
-        virtual Slice value() const = 0;
+        virtual V value() const = 0;
     };
 }
 

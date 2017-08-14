@@ -22,21 +22,21 @@
 #include "seq_gen.h"
 
 namespace LeviDB {
-    class IndexMVCC : private BitDegradeTree {
-    private:
+    class IndexMVCC : protected BitDegradeTree {
+    public:
         typedef std::map<std::string/* k */, OffsetToData/* v */, SliceComparator> history;
         typedef std::pair<uint64_t/* seq_num */, history> bundle;
 
+    private:
         SeqGenerator * _seq_gen;
-        RandomAccessFile * _v_file;
         std::deque<bundle> _pending;
 
     public:
-        IndexMVCC(const std::string & fname, SeqGenerator * seq_gen, RandomAccessFile * v_file)
-                : BitDegradeTree(fname), _seq_gen(seq_gen), _v_file(v_file) {};
+        IndexMVCC(const std::string & fname, SeqGenerator * seq_gen)
+                : BitDegradeTree(fname), _seq_gen(seq_gen) {};
 
-        IndexMVCC(const std::string & fname, OffsetToEmpty empty, SeqGenerator * seq_gen, RandomAccessFile * v_file)
-                : BitDegradeTree(fname, empty), _seq_gen(seq_gen), _v_file(v_file) {};
+        IndexMVCC(const std::string & fname, OffsetToEmpty empty, SeqGenerator * seq_gen)
+                : BitDegradeTree(fname, empty), _seq_gen(seq_gen) {};
 
         ~IndexMVCC() noexcept = default;
 
@@ -45,21 +45,38 @@ namespace LeviDB {
 
     public:
         // 返回最接近 k 的结果
-        std::string find(const Slice & k, uint64_t seq_num = 0) const;
+        OffsetToData find(const Slice & k, uint64_t seq_num = 0) const;
 
         // 以下方法的调用者必须有读写锁保护且快照只读
-        // 无需显式提供 seq_num
+        // 故无需显式提供 seq_num
         void insert(const Slice & k, OffsetToData v);
 
         void remove(const Slice & k);
 
-        void sync();
+        bool sync();
 
+        // 返回在 input seq_num 时间点之前的所有 pending history
+        std::unique_ptr<Iterator<Slice, OffsetToData>>
+        pendingPart(uint64_t seq_num) const noexcept;
+
+        void tryApplyPending();
+    };
+
+    class IndexRead : public IndexMVCC {
     private:
-        // 在 input seq_num 时间点之前的所有 pending history
-        std::unique_ptr<Iterator> pendingPart(uint64_t seq_num) const noexcept;
+        RandomAccessFile * _data_file;
 
-        void applyPending();
+    public:
+        IndexRead(const std::string & fname, SeqGenerator * seq_gen, RandomAccessFile * data_file)
+                : IndexMVCC(fname, seq_gen), _data_file(data_file) {}
+
+        IndexRead(const std::string & fname, OffsetToEmpty empty, SeqGenerator * seq_gen, RandomAccessFile * data_file)
+                : IndexMVCC(fname, empty, seq_gen), _data_file(data_file) {}
+
+        ~IndexRead() noexcept = default;
+
+        DEFAULT_MOVE(IndexRead);
+        DELETE_COPY(IndexRead);
 
     private:
         std::unique_ptr<Matcher> offToMatcher(OffsetToData data) const noexcept override;

@@ -51,6 +51,10 @@ namespace LeviDB {
             assert(n < _size);
             return _data[n];
         }
+
+        bool operator==(const Slice & another) const noexcept {
+            return _size == another._size && memcmp(_data, another._data, _size) == 0;
+        }
     };
 
     struct SliceComparator {

@@ -10,9 +10,12 @@
 
 void index_test();
 
+void index_mvcc_test();
+
 int main() {
     try {
         index_test();
+        index_mvcc_test();
     } catch (const LeviDB::Exception & e) {
         std::cout << e.toString() << std::endl;
         return -1;

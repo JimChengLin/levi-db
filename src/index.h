@@ -2,7 +2,7 @@
 #define LEVIDB_INDEX_H
 
 /*
- * 比特退化树
+ * 比特退化树(基类)
  * https://zhuanlan.zhihu.com/p/27071075
  */
 
@@ -74,6 +74,7 @@ namespace LeviDB {
 
         void setData(OffsetToData data) noexcept {
             setData(data.val);
+            assert(isData());
         }
 
         void setNode(uint32_t offset) noexcept {
@@ -83,6 +84,7 @@ namespace LeviDB {
 
         void setNode(OffsetToNode node) noexcept {
             setNode(node.val);
+            assert(isNode());
         }
 
         OffsetToData asData() const noexcept {
@@ -156,8 +158,8 @@ namespace LeviDB {
     public:
         Matcher() noexcept = default;
 
-        DELETE_MOVE(Matcher);
-        DELETE_COPY(Matcher);
+        DEFAULT_MOVE(Matcher);
+        DEFAULT_COPY(Matcher);
 
     public:
         virtual ~Matcher() noexcept = default;
@@ -177,7 +179,7 @@ namespace LeviDB {
     };
 
     class BitDegradeTree {
-    private:
+    protected:
         MmapFile _dst;
         OffsetToNode _root{0};
         OffsetToEmpty _empty{IndexConst::disk_null_};
@@ -230,7 +232,7 @@ namespace LeviDB {
                       size_t idx, bool direct, size_t parent_size,
                       size_t child_size) noexcept;
 
-    private:
+    protected:
         BDNode * offToMemNode(OffsetToNode node) const;
 
         BDNode * offToMemNodeUnchecked(OffsetToNode node) const noexcept;
