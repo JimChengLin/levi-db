@@ -61,8 +61,10 @@ namespace LeviDB {
             } else {
                 std::unique_ptr<Matcher> matcher = offToMatcher(ptr.asData());
                 if (*matcher == k) {
+                    ptr.setData(v);
+                    cursor->updateChecksum();
                 } else {
-                    combatInsert(matcher->toString(), k, v);
+                    combatInsert(matcher->toString(k), k, v);
                 }
                 break;
             }

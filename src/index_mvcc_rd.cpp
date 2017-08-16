@@ -2,11 +2,11 @@
 #include <algorithm>
 #endif
 
+#include "exception.h"
 #include "index_mvcc_rd.h"
+#include "log_reader.h"
 
 namespace LeviDB {
-    static constexpr uint32_t del_marker_ = IndexConst::disk_null_ - 1; // 和 disk_null_ 一样不是有效的 input
-
     OffsetToData IndexMVCC::find(const Slice & k, uint64_t seq_num) const {
         if (seq_num == 0) {
             seq_num = UINT64_MAX;
@@ -17,7 +17,8 @@ namespace LeviDB {
         auto counterpart = pendingPart(seq_num);
         counterpart->seek(k);
         if (counterpart->valid() && counterpart->key() == k) {
-            offset = counterpart->value();
+            offset = counterpart->value().val == del_marker_ ? OffsetToData{IndexConst::disk_null_}
+                                                             : counterpart->value();
         } else { // 再查 mmap
             offset = BitDegradeTree::find(k);
         }
@@ -31,9 +32,9 @@ namespace LeviDB {
             if (!_pending.empty() && _seq_gen->newest() == _pending.back().first) { // 已有相应 bundle
             } else {
                 assert(_pending.empty() || _seq_gen->newest() > _pending.back().first);
-                _pending.emplace_back(_seq_gen->newest(), history{});
+                _pending.emplace_back(_seq_gen->newest(), std::make_shared<history_type>());
             }
-            _pending.back().second.emplace(k.toString(), v);
+            (*_pending.back().second)[k.toString()] = v;
         }
     }
 
@@ -44,9 +45,9 @@ namespace LeviDB {
             if (!_pending.empty() && _seq_gen->newest() == _pending.back().first) {
             } else {
                 assert(_pending.empty() || _seq_gen->newest() > _pending.back().first);
-                _pending.emplace_back(_seq_gen->newest(), history{});
+                _pending.emplace_back(_seq_gen->newest(), std::make_shared<history_type>());
             }
-            _pending.back().second.emplace(k.toString(), OffsetToData{del_marker_});
+            (*_pending.back().second)[k.toString()] = OffsetToData{del_marker_};
         }
     }
 
@@ -61,7 +62,7 @@ namespace LeviDB {
     // 将多个 history 虚拟合并成单一 iterator
     class MultiHistoryIterator : public Iterator<Slice, OffsetToData> {
     private:
-        typedef std::pair<const IndexMVCC::history *, IndexMVCC::history::const_iterator/* state */> seq_iter;
+        typedef std::pair<const IndexMVCC::history, IndexMVCC::history_type::const_iterator/* state */> seq_iter;
 
         std::vector<seq_iter> _history_q;
         seq_iter * _cursor = nullptr;
@@ -81,7 +82,7 @@ namespace LeviDB {
 
         DEFAULT_MOVE(MultiHistoryIterator);
 
-        void addHistory(const IndexMVCC::history * history) noexcept {
+        void addHistory(const IndexMVCC::history & history) noexcept {
             assert(!history->empty());
             _history_q.emplace_back(history, history->cbegin());
         }
@@ -164,8 +165,13 @@ namespace LeviDB {
 
     private:
         void findSmallest() noexcept {
-            auto smallest = std::min_element(_history_q.cbegin(), _history_q.cend(), [](const seq_iter & a,
-                                                                                        const seq_iter & b) {
+            if (_history_q.empty()) {
+                _cursor = nullptr;
+                return;
+            }
+
+            auto smallest = (std::min_element(_history_q.crbegin(), _history_q.crend(), [](const seq_iter & a,
+                                                                                           const seq_iter & b) {
                 if (a.second == a.first->cend()) { // a is the biggest => !(a < b)
                     return false;
                 }
@@ -173,7 +179,7 @@ namespace LeviDB {
                     return true;
                 }
                 return SliceComparator{}(a.second->first, b.second->first);
-            });
+            }) + 1).base();
 
             if (smallest == _history_q.cend() || smallest->second == smallest->first->cend()) {
                 _cursor = nullptr;
@@ -183,8 +189,13 @@ namespace LeviDB {
         }
 
         void findLargest() noexcept {
-            auto largest = std::max_element(_history_q.cbegin(), _history_q.cend(), [](const seq_iter & a,
-                                                                                       const seq_iter & b) {
+            if (_history_q.empty()) {
+                _cursor = nullptr;
+                return;
+            }
+
+            auto largest = (std::max_element(_history_q.crbegin(), _history_q.crend(), [](const seq_iter & a,
+                                                                                          const seq_iter & b) {
                 if (a.second == a.first->cend()) { // a is the smallest => a < b
                     return true;
                 }
@@ -192,7 +203,7 @@ namespace LeviDB {
                     return false;
                 }
                 return SliceComparator{}(a.second->first, b.second->first);
-            });
+            }) + 1).base();
 
             if (largest == _history_q.cend() || largest->second == largest->first->cend()) {
                 _cursor = nullptr;
@@ -207,25 +218,25 @@ namespace LeviDB {
         auto iter = new MultiHistoryIterator;
         for (const bundle & b:_pending) {
             if (b.first < seq_num) {
-                iter->addHistory(&b.second);
+                iter->addHistory(b.second);
             }
         }
         return std::unique_ptr<Iterator<Slice, OffsetToData>>{iter};
     }
 
     void IndexMVCC::tryApplyPending() {
-        history merged_history;
+        history_type merged_history;
         while (!_pending.empty()) {
             const bundle & b = _pending.front();
             if (_seq_gen->empty() || b.first < _seq_gen->oldest()) {
-                for (const auto & kv:b.second) merged_history[kv.first] = kv.second;
+                for (const auto & kv:(*b.second)) merged_history[kv.first] = kv.second;
                 _pending.pop_front();
             } else {
                 break;
             }
         }
         for (const auto & kv:merged_history) {
-            if (kv.second.val == del_marker_) { // 删除,
+            if (kv.second.val == del_marker_) { // 删除
                 BitDegradeTree::remove(kv.first);
             } else { // 增改
                 BitDegradeTree::insert(kv.first, kv.second);
@@ -233,20 +244,125 @@ namespace LeviDB {
         }
     }
 
-    // 真正读取数据文件的 Matcher 实现
-    class MatcherOffsetImpl : public Matcher {
-
-    };
-
-    std::unique_ptr<Matcher> IndexRead::offToMatcher(OffsetToData data) const noexcept {
-
-    }
-
     class MatcherSliceImpl : public Matcher {
+    private:
+        Slice _slice;
 
+    public:
+        explicit MatcherSliceImpl(const Slice & slice) noexcept : _slice(slice) {}
+
+        DEFAULT_MOVE(MatcherSliceImpl);
+        DEFAULT_COPY(MatcherSliceImpl);
+
+        ~MatcherSliceImpl() noexcept override = default;
+
+        char operator[](size_t idx) const override {
+            if (idx < _slice.size()) {
+                return _slice[idx];
+            }
+            auto val = static_cast<uint32_t>(_slice.size());
+            return reinterpret_cast<char *>(&val)[idx - _slice.size()];
+        };
+
+        bool operator==(const Matcher & another) const override {
+            if (size() == another.size()) {
+                for (size_t i = 0; i < size(); ++i) {
+                    if (operator[](i) != another[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        };
+
+        bool operator==(const Slice & another) const override {
+            return operator==(MatcherSliceImpl{another});
+        };
+
+        size_t size() const override {
+            return _slice.size() + sizeof(uint32_t);
+        };
+
+        std::string toString() const override {
+            return _slice.toString();
+        };
     };
 
     std::unique_ptr<Matcher> IndexRead::sliceToMatcher(const Slice & slice) const noexcept {
+        return std::make_unique<MatcherSliceImpl>(slice);
+    }
 
+    // 读取数据文件的实现
+    class MatcherOffsetImpl : public Matcher {
+    private:
+        std::unique_ptr<Iterator<Slice, std::string>> _iter;
+
+    public:
+        MatcherOffsetImpl(RandomAccessFile * data_file, OffsetToData data) noexcept
+                : _iter(LogReader::makeIterator(data_file, data.val)) {}
+
+        DEFAULT_MOVE(MatcherOffsetImpl);
+        DEFAULT_COPY(MatcherOffsetImpl);
+
+        ~MatcherOffsetImpl() noexcept override = default;
+
+        bool operator==(const Slice & another) const override {
+            _iter->seek(another);
+            return _iter->valid() && _iter->key() == another;
+        };
+
+        std::string toString(const Slice & target) const override {
+            _iter->seek(target);
+            if (_iter->valid() && _iter->key() == target) {
+                return _iter->key().toString();
+            }
+            return {};
+        };
+
+        std::string getValue(const Slice & target) const override {
+            _iter->seek(target);
+            if (_iter->valid() && _iter->key() == target) {
+                return _iter->value();
+            }
+            return {};
+        };
+
+        // 以下方法在 BitDegradeTree 中没有用到, 所以不强行实现
+        [[noreturn]] bool operator==(const Matcher & another) const override {
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
+
+        [[noreturn]] char operator[](size_t idx) const override {
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
+
+        [[noreturn]] size_t size() const override {
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
+
+        [[noreturn]] std::string toString() const override {
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
+    };
+
+    std::unique_ptr<Matcher> IndexRead::offToMatcher(OffsetToData data) const noexcept {
+        return std::make_unique<MatcherOffsetImpl>(_data_file, data);
+    }
+
+    std::pair<std::string/* res */, bool/* success */>
+    IndexRead::find(const Slice & k, uint64_t seq_num) const {
+        OffsetToData data = IndexMVCC::find(k, seq_num);
+        if (data.val != IndexConst::disk_null_) {
+            std::unique_ptr<Matcher> m = offToMatcher(data);
+            if (*m == k) {
+                std::string res = m->getValue(k);
+                // del? 在 last char
+                auto del = static_cast<bool>(res.back());
+                res.pop_back();
+                return {std::move(res), del};
+            }
+        }
+        return {{}, false};
     }
 }

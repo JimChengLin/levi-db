@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#define LEVI_STR(x) #x
+
 #define DEFAULT_COPY(cls) \
 cls(const cls &) noexcept = default; \
 cls & operator=(const cls &) noexcept = default;

@@ -5,7 +5,6 @@
  * 迭代器接口
  */
 
-#include "slice.h"
 #include "util.h"
 
 namespace LeviDB {
@@ -34,6 +33,24 @@ namespace LeviDB {
         virtual K key() const = 0;
 
         virtual V value() const = 0;
+    };
+
+    template<typename T>
+    class SimpleIterator {
+    public:
+        SimpleIterator() noexcept = default;
+
+        DEFAULT_MOVE(SimpleIterator);
+        DEFAULT_COPY(SimpleIterator);
+
+    public:
+        virtual ~SimpleIterator() noexcept = default;
+
+        virtual bool valid() const = 0;
+
+        virtual void next() = 0;
+
+        virtual T item() const = 0;
     };
 }
 

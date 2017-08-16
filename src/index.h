@@ -23,7 +23,7 @@
 namespace LeviDB {
     namespace IndexConst {
         static constexpr int rank_ = 454;
-        // 索引和数据文件最大为 4GB, 又 sizeof(record) > 1, 所以 UINT32_MAX 可以作为 NULL 使用
+        // 索引和数据文件最大为 4GB, 又 sizeof(record) > 4, 所以 UINT32_MAX 可以作为 NULL 使用
         static constexpr uint32_t disk_null_ = UINT32_MAX;
     }
 
@@ -152,7 +152,7 @@ namespace LeviDB {
     static_assert(sizeof(BDNode) == 4096, "align for mmap");
     static_assert(std::is_standard_layout<BDNode>::value, "align for mmap");
 
-    // 用户提供的 k 和索引指向的已存 kv 的偏移量, 二者的语义相同
+    // 用户提供的 k 和索引指向的已存 kv 的偏移量, 二者的语义大体相同
     // 但实现不同, 故用接口统一
     class Matcher {
     public:
@@ -176,6 +176,8 @@ namespace LeviDB {
 
         // Matcher 有可能包装 multi-KV batch, target 用于区分
         virtual std::string toString(const Slice & target) const { return toString(); };
+
+        virtual std::string getValue(const Slice & target) const { return toString(); };
     };
 
     class BitDegradeTree {

@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_compile_options("-msse4.2")
 
+set(CMAKE_EXE_LINKER_FLAGS "-lz")
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
 endif ()
@@ -14,7 +16,7 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
 endif ()
 
 set(SOURCE_FILES main.cpp
-        src/compress.h
+        src/compress.h src/compress.cpp
         src/crc32c.cpp src/crc32c.h
         src/db.cpp src/db.h
         src/db_single.cpp src/db_single.h
