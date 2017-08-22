@@ -19,8 +19,6 @@ namespace LeviDB {
     namespace Compressor {
         std::vector<uint8_t> encode(const Slice & src) noexcept;
 
-        std::vector<uint8_t> decode(const Slice & src);
-
         std::unique_ptr<SimpleIterator<Slice>>
         makeDecodeIterator(SimpleIterator<Slice> * src_iter) noexcept;
     }

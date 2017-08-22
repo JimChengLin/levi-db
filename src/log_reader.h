@@ -19,7 +19,7 @@ namespace LeviDB {
         static std::unique_ptr<kv_iter> makeIterator(RandomAccessFile * data_file, uint32_t offset) noexcept;
 
         static
-        std::unique_ptr<SimpleIterator<Slice>>
+        std::unique_ptr<SimpleIterator<Slice/* record(FULL || FIRST || MIDDLE || LAST) */>>
         makeRawIterator(RandomAccessFile * data_file, uint32_t offset) noexcept;
     };
 }
