@@ -55,7 +55,7 @@ namespace LeviDB {
             int _line = 0;
 
         public:
-            explicit DecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter) noexcept
+            explicit DecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter)
                     : _src_iter(std::move(src_iter)) {
                 static_assert(Z_NULL == 0, "fail then strm is not initialized");
                 inflateInit(&strm);
@@ -112,7 +112,7 @@ namespace LeviDB {
         };
 
         std::unique_ptr<SimpleIterator<Slice>>
-        makeDecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter) noexcept {
+        makeDecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter) {
             return std::make_unique<DecodeIterator>(std::move(src_iter));
         };
     }

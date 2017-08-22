@@ -52,6 +52,8 @@ namespace LeviDB {
             return _data[n];
         }
 
+        char back() const noexcept { return _data[_size - 1]; }
+
         bool operator==(const Slice & another) const noexcept {
             return _size == another._size && memcmp(_data, another._data, _size) == 0;
         }

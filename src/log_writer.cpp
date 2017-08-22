@@ -4,9 +4,17 @@
 #include "varint.h"
 
 namespace LeviDB {
-    void LogWriter::addRecords(const std::vector<Slice> & bkvs, bool compress, bool del) {
+    uint32_t LogWriter::calcWritePos() const noexcept {
+        const size_t leftover = LogWriterConst::block_size_ - _block_offset;
+        return static_cast<uint32_t>(_dst->immut_length()
+                                     + (leftover < LogWriterConst::header_size_ ? leftover : 0));
+    }
+
+    void LogWriter::addRecords(const std::vector<Slice> & bkvs, bool compress, bool del,
+                               std::vector<uint32_t> * addrs) {
         bool record_begin = true;
         for (const Slice & bkv:bkvs) {
+            if (addrs != nullptr) addrs->emplace_back(_dst->immut_length());
 
             const char * ptr = bkv.data();
             size_t left = bkv.size();
@@ -124,7 +132,7 @@ namespace LeviDB {
         return res;
     }
 
-    std::vector<uint8_t> LogWriter::makeCompressRecords(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept {
+    std::vector<uint8_t> LogWriter::makeCompressRecord(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept {
         size_t bin_size = 0;
         std::vector<uint8_t> src(sizeof(uint16_t));
         for (const auto & kv:kvs) {
@@ -133,6 +141,7 @@ namespace LeviDB {
             char * p = encodeVarint32(buf, static_cast<uint32_t>(kv.first.size()));
             src.insert(src.end(), reinterpret_cast<uint8_t *>(buf), reinterpret_cast<uint8_t *>(p));
         }
+        src.emplace_back(0);
         for (const auto & kv:kvs) {
             bin_size += kv.second.size();
             char buf[5];

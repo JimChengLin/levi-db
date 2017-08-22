@@ -76,7 +76,7 @@ namespace LeviDB {
     public:
         MultiHistoryIterator() noexcept = default;
 
-        MultiHistoryIterator(const MultiHistoryIterator &) = default; // because of std::vector
+        MultiHistoryIterator(const MultiHistoryIterator &) = default;
 
         MultiHistoryIterator & operator=(const MultiHistoryIterator &) = default;
 
@@ -171,7 +171,7 @@ namespace LeviDB {
             }
 
             auto smallest = (std::min_element(_history_q.crbegin(), _history_q.crend(), [](const seq_iter & a,
-                                                                                           const seq_iter & b) {
+                                                                                           const seq_iter & b) noexcept {
                 if (a.second == a.first->cend()) { // a is the biggest => !(a < b)
                     return false;
                 }
@@ -195,7 +195,7 @@ namespace LeviDB {
             }
 
             auto largest = (std::max_element(_history_q.crbegin(), _history_q.crend(), [](const seq_iter & a,
-                                                                                          const seq_iter & b) {
+                                                                                          const seq_iter & b) noexcept {
                 if (a.second == a.first->cend()) { // a is the smallest => a < b
                     return true;
                 }
@@ -358,7 +358,7 @@ namespace LeviDB {
             std::unique_ptr<Matcher> m = offToMatcher(data);
             if (*m == k) {
                 std::string res = m->getValue(k);
-                // del? 在 last char
+                // del 在 last char
                 auto del = static_cast<bool>(res.back());
                 res.pop_back();
                 return {std::move(res), del};

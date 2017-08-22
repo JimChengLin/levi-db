@@ -28,7 +28,7 @@
  * k_len = varint32
  *
  * compressed content 格式:
- * content = size_from_A_to_B + <A>[k_len, ...] + [v_len, ...]<B> + [k, ...] + [v, ...]
+ * content = size_from_A_to_B + <A>[k_len, ...] + 0 + [v_len, ...]<B> + [k, ...] + [v, ...]
  * size_from_A_to_B = uint16_t
  */
 
@@ -67,23 +67,29 @@ namespace LeviDB {
 
     public:
         void addRecord(const Slice & bkv) {
-            return addRecords({bkv});
+            addRecords({bkv}, false, false);
         };
 
         void addCompressRecord(const Slice & bkv) {
-            return addRecords({bkv}, true, false);
+            addRecords({bkv}, true, false);
         };
 
         void addDelRecord(const Slice & bkv) {
-            return addRecords({bkv}, false, true);
+            addRecords({bkv}, false, true);
         };
 
-        void addRecords(const std::vector<Slice> & bkvs) {
-            return addRecords(bkvs, false, false);
+        uint32_t calcWritePos() const noexcept;
+
+        std::vector<uint32_t> addRecords(const std::vector<Slice> & bkvs) {
+            std::vector<uint32_t> addrs;
+            addrs.reserve(bkvs.size());
+            addRecords(bkvs, false, false, &addrs);
+            return addrs;
         };
 
     private:
-        void addRecords(const std::vector<Slice> & bkvs, bool compress, bool del);
+        void addRecords(const std::vector<Slice> & bkvs, bool compress, bool del,
+                        std::vector<uint32_t> * addrs = nullptr);
 
         std::bitset<8> getCombinedType(LogWriterConst::ConcatType record_type,
                                        LogWriterConst::ConcatType kv_type,
@@ -94,7 +100,7 @@ namespace LeviDB {
     public:
         static std::vector<uint8_t> makeRecord(const Slice & k, const Slice & v) noexcept;
 
-        static std::vector<uint8_t> makeCompressRecords(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept;
+        static std::vector<uint8_t> makeCompressRecord(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept;
     };
 }
 

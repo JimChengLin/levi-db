@@ -33,7 +33,8 @@ set(SOURCE_FILES main.cpp
         src/varint.cpp src/varint.h
         test/index_test.cpp
         test/index_mvcc_test.cpp
-        test/compress_test.cpp)
+        test/compress_test.cpp
+        test/log_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
 
