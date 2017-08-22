@@ -52,7 +52,6 @@ namespace LeviDB {
             int ret{};
             z_stream strm{};
             unsigned char out[CHUNK]{};
-
             int _line = 0;
 
         public:
@@ -73,7 +72,7 @@ namespace LeviDB {
             Slice item() const override { return _item; };
 
 #define GEN_INIT() switch(_line) { case 0:;
-#define YIELD() _line = __LINE__; case __LINE__:;
+#define YIELD() _line = __LINE__; return; case __LINE__:;
 #define GEN_STOP() default:; } _line = -1;
 
             void next() override {
