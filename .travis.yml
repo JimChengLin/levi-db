@@ -12,7 +12,6 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
-            - zlib1g
             - zlib1g-dev
       env:
         - COVERAGE="on"
@@ -34,7 +33,6 @@ matrix:
           packages:
             - valgrind
             - g++-6
-            - zlib1g
             - zlib1g-dev
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
@@ -53,7 +51,6 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-6
-            - zlib1g
             - zlib1g-dev
         coverity_scan:
           project:

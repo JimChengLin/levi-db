@@ -5,8 +5,6 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_compile_options("-msse4.2")
 
-set(CMAKE_EXE_LINKER_FLAGS "-lz")
-
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
 endif ()
@@ -37,3 +35,9 @@ set(SOURCE_FILES main.cpp
         test/index_mvcc_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
+
+find_package(ZLIB)
+if (ZLIB_FOUND)
+    include_directories(${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(LeviDB ${ZLIB_LIBRARIES})
+endif ()
