@@ -41,6 +41,7 @@ namespace LeviDB {
             return Exception(NOT_FOUND, msg, msg2);
         }
 
+        // 状态异常
         static Exception corruptionException(const Slice & msg, const Slice & msg2 = Slice()) noexcept {
             return Exception(CORRUPTION, msg, msg2);
         }
@@ -49,6 +50,7 @@ namespace LeviDB {
             return Exception(NOT_SUPPORTED, msg, msg2);
         }
 
+        // 用户错误输入
         static Exception invalidArgumentException(const Slice & msg, const Slice & msg2 = Slice()) noexcept {
             return Exception(INVALID_ARGUMENT, msg, msg2);
         }

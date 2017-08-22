@@ -10,16 +10,14 @@
 #include "slice.h"
 
 namespace LeviDB {
-    class LogReader {
-    public:
+    namespace LogReader {
         using kv_iter = Iterator<Slice, std::string>; // because of CLion
 
         // 重复 seek 有优化
         // 结尾为 0 则不是 explicit del
-        static std::unique_ptr<kv_iter> makeIterator(RandomAccessFile * data_file, uint32_t offset) noexcept;
+        std::unique_ptr<kv_iter> makeIterator(RandomAccessFile * data_file, uint32_t offset) noexcept;
 
-        static
-        std::unique_ptr<SimpleIterator<Slice/* record(FULL || FIRST || MIDDLE || LAST) */>>
+        std::unique_ptr<SimpleIterator<Slice/* record(FULL || FIRST || MIDDLE || LAST) > 0 byte */>>
         makeRawIterator(RandomAccessFile * data_file, uint32_t offset) noexcept;
     };
 }

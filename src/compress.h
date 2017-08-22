@@ -20,7 +20,7 @@ namespace LeviDB {
         std::vector<uint8_t> encode(const Slice & src) noexcept;
 
         std::unique_ptr<SimpleIterator<Slice>>
-        makeDecodeIterator(SimpleIterator<Slice> * src_iter) noexcept;
+        makeDecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter) noexcept;
     }
 }
 
