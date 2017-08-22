@@ -3,13 +3,13 @@ project(LeviDB)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_compile_options("-msse4.2")
+add_compile_options(-msse4.2)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
 endif ()
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif ()
 

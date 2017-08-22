@@ -265,8 +265,9 @@ namespace LeviDB {
         };
 
         bool operator==(const Matcher & another) const override {
-            if (size() == another.size()) {
-                for (size_t i = 0; i < size(); ++i) {
+            size_t num = size();
+            if (num == another.size()) {
+                for (size_t i = 0; i < num; ++i) {
                     if (operator[](i) != another[i]) {
                         return false;
                     }
