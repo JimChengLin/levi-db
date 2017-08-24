@@ -32,7 +32,7 @@ namespace LeviDB {
         uint32_t res = 0;
         for (uint32_t shift = 0; shift <= 28 && p < limit; shift += 7) {
             uint32_t byte = *(reinterpret_cast<const uint8_t *>(p));
-            p++;
+            ++p;
             if ((byte & 128) != 0) {
                 res |= ((byte & 127) << shift);
             } else {

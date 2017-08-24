@@ -221,7 +221,7 @@ namespace LeviDB {
                 iter->addHistory(b.second);
             }
         }
-        return std::unique_ptr<Iterator<Slice, OffsetToData>>{iter};
+        return std::unique_ptr<Iterator<Slice, OffsetToData>>(iter);
     }
 
     void IndexMVCC::tryApplyPending() {
@@ -278,7 +278,7 @@ namespace LeviDB {
         };
 
         bool operator==(const Slice & another) const override {
-            return operator==(MatcherSliceImpl{another});
+            return operator==(MatcherSliceImpl(another));
         };
 
         size_t size() const override {

@@ -28,7 +28,8 @@
  * k_len = varint32
  *
  * compressed content 格式:
- * content = size_from_A_to_B + <A>[k_len, ...] + 0 + [v_len, ...]<B> + [k, ...] + [v, ...]
+ * content = size_from_A_to_B + <A>[k_len, ...] + [v_len, ...]<B> + [k, ...] + [v, ...]
+ * content 必须有序
  * size_from_A_to_B = uint16_t
  */
 

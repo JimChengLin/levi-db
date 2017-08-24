@@ -141,7 +141,6 @@ namespace LeviDB {
             char * p = encodeVarint32(buf, static_cast<uint32_t>(kv.first.size()));
             src.insert(src.end(), reinterpret_cast<uint8_t *>(buf), reinterpret_cast<uint8_t *>(p));
         }
-        src.emplace_back(0);
         for (const auto & kv:kvs) {
             bin_size += kv.second.size();
             char buf[5];
