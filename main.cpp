@@ -14,11 +14,14 @@ void index_mvcc_test();
 
 void compress_test();
 
+void log_test();
+
 int main() {
     try {
         index_test();
         index_mvcc_test();
         compress_test();
+        log_test();
     } catch (const LeviDB::Exception & e) {
         std::cout << e.toString() << std::endl;
         return -1;

@@ -39,7 +39,6 @@ namespace LeviDB {
             };
 
             void next() override {
-                size_t n_block = _cursor / LogWriterConst::block_size_;
                 size_t block_offset = _cursor % LogWriterConst::block_size_;
                 size_t remaining_bytes = LogWriterConst::block_size_ - block_offset;
 
@@ -51,7 +50,10 @@ namespace LeviDB {
 
                 try {
                     char buf[LogWriterConst::header_size_]{};
-                    _dst->read(_cursor, LogWriterConst::header_size_, buf);
+                    if (_dst->read(_cursor, LogWriterConst::header_size_, buf).size() < LogWriterConst::header_size_) {
+                        _eof = true;
+                        return;
+                    };
                     _cursor += LogWriterConst::header_size_;
                     remaining_bytes -= LogWriterConst::header_size_;
 
@@ -61,7 +63,10 @@ namespace LeviDB {
                         throw Exception::corruptionException("bad record length");
                     }
 
-                    _dst->read(_cursor, length, _backing_store);
+                    if (_dst->read(_cursor, length, _backing_store).size() < length) {
+                        _eof = true;
+                        return;
+                    };
                     _cursor += length;
                     remaining_bytes -= length;
 
@@ -123,6 +128,7 @@ namespace LeviDB {
             RawIterator * _raw_iter_ob;
             std::unique_ptr<SimpleIterator<Slice>> _decode_iter;
             std::vector<uint8_t> _buffer;
+            bool _valid = false;
 
         public:
             explicit UncompressIterator(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
@@ -136,7 +142,7 @@ namespace LeviDB {
             ~UncompressIterator() noexcept override = default;
 
             bool valid() const override {
-                return _decode_iter->valid();
+                return _valid;
             };
 
             Slice item() const override {
@@ -145,6 +151,8 @@ namespace LeviDB {
 
             void next() override {
                 _buffer.clear();
+                _valid = _decode_iter->valid();
+
                 char type = _raw_iter_ob->item().back();
                 uint32_t cursor = _raw_iter_ob->immut_cursor();
                 while (_raw_iter_ob->immut_cursor() == cursor && _decode_iter->valid()) { // 必须解压完当前 block
@@ -192,16 +200,18 @@ namespace LeviDB {
             explicit RecordIteratorBase(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
                     : _raw_iter(std::move(raw_iter)) { initCheck(_raw_iter->item().back()); }
 
+            EXPOSE(_raw_iter);
+
             EXPOSE(_buffer);
 
             EXPOSE(_meet_all);
 
             void ensureDataLoad(uint32_t length) const {
-                while (!_meet_all && length > _buffer.size() && _raw_iter->valid()) {
+                while (length > _buffer.size() && !_meet_all && _raw_iter->valid()) {
                     fetchData();
                 }
                 if (_buffer.size() < length) {
-                    throw Exception::IOErrorException("EOF / meet all too early");
+                    throw Exception::IOErrorException("EOF");
                 }
             }
 
@@ -216,6 +226,8 @@ namespace LeviDB {
                 if (_raw_iter->valid()) {
                     char type_b = _raw_iter->item().back();
                     dependencyCheck(type_a, type_b);
+                } else {
+                    dependencyCheck(type_a, 0/* FULL */);
                 }
             }
 
@@ -225,7 +237,10 @@ namespace LeviDB {
                     return;
                 }
                 if (is_record_middle(type_b) || is_record_last(type_b)) {
-                    return;
+                    // same compress, same del
+                    if ((((type_a ^ type_b) >> 4) & 1) == 0 && (((type_a ^ type_b) >> 5) & 1) == 0) {
+                        return;
+                    }
                 }
                 throw Exception::corruptionException("fragmented record");
             }
@@ -242,13 +257,12 @@ namespace LeviDB {
         private:
             uint32_t _k_len = 0;
             uint8_t _k_from = 0;
-            bool _v_load = false;
             bool _done = true;
             bool _del;
 
         public:
             explicit RecordIterator(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
-                    : RecordIteratorBase(std::move(raw_iter)), _del(is_record_del(raw_iter->item().back())) {}
+                    : RecordIteratorBase(std::move(raw_iter)), _del(is_record_del(immut_raw_iter()->item().back())) {}
 
             DEFAULT_MOVE(RecordIterator);
             DELETE_COPY(RecordIterator);
@@ -298,11 +312,8 @@ namespace LeviDB {
             };
 
             std::string value() const override {
-                if (!_v_load) {
-                    assert(immut_buffer().empty());
-                    while (!immut_meet_all()) {
-                        ensureDataLoad(static_cast<uint32_t>(immut_buffer().size() + 1));
-                    }
+                while (!immut_meet_all()) {
+                    ensureDataLoad(static_cast<uint32_t>(immut_buffer().size() + 1));
                 }
                 return std::string(reinterpret_cast<const char *>(&immut_buffer()[_k_from + _k_len]),
                                    reinterpret_cast<const char *>(&immut_buffer().back() + 1))
@@ -320,7 +331,8 @@ namespace LeviDB {
 
         public:
             explicit RecordIteratorCompress(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
-                    : RecordIteratorBase(std::move(raw_iter)), _cursor(_rep.cend()) {}
+                    : RecordIteratorBase(std::make_unique<UncompressIterator>(std::move(raw_iter))),
+                      _cursor(_rep.cend()) {}
 
             DEFAULT_MOVE(RecordIteratorCompress);
             DELETE_COPY(RecordIteratorCompress);
@@ -348,7 +360,7 @@ namespace LeviDB {
                         uint32_t val;
                         p = decodeVarint32(p, limit, &val);
                         if (p == nullptr) {
-                            throw Exception::corruptionException("");
+                            throw Exception::corruptionException("meta area of CompressRecord broken");
                         }
                         ranges.emplace_back(from_to(offset, offset + val));
                         offset += val;

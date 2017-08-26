@@ -91,9 +91,6 @@ namespace LeviDB {
 
         res[4] = compress;
         res[5] = del;
-
-        res[6] = static_cast<bool>(res[1] ^ res[3] ^ static_cast<int>(res[5]));
-        res[7] = static_cast<bool>(res[0] ^ res[2] ^ static_cast<int>(res[4]));
         return res;
     }
 

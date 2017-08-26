@@ -298,10 +298,16 @@ namespace LeviDB {
     class MatcherOffsetImpl : public Matcher {
     private:
         std::unique_ptr<Iterator<Slice, std::string>> _iter;
+        std::exception_ptr _e;
 
     public:
-        MatcherOffsetImpl(RandomAccessFile * data_file, OffsetToData data) noexcept
-                : _iter(LogReader::makeIterator(data_file, data.val)) {}
+        MatcherOffsetImpl(RandomAccessFile * data_file, OffsetToData data) noexcept {
+            try { // other interfaces require noexcept, so defer it
+                _iter = LogReader::makeIterator(data_file, data.val);
+            } catch (const std::exception & e) {
+                _e = std::current_exception();
+            }
+        }
 
         DEFAULT_MOVE(MatcherOffsetImpl);
         DEFAULT_COPY(MatcherOffsetImpl);
@@ -309,11 +315,13 @@ namespace LeviDB {
         ~MatcherOffsetImpl() noexcept override = default;
 
         bool operator==(const Slice & another) const override {
+            if (_e) { std::rethrow_exception(_e); }
             _iter->seek(another);
             return _iter->valid() && _iter->key() == another;
         };
 
         std::string toString(const Slice & target) const override {
+            if (_e) { std::rethrow_exception(_e); }
             _iter->seek(target);
             if (_iter->valid() && _iter->key() == target) {
                 return _iter->key().toString();
@@ -322,6 +330,7 @@ namespace LeviDB {
         };
 
         std::string getValue(const Slice & target) const override {
+            if (_e) { std::rethrow_exception(_e); }
             _iter->seek(target);
             if (_iter->valid() && _iter->key() == target) {
                 return _iter->value();
