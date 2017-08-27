@@ -15,13 +15,13 @@ void log_test() {
     writer.addRecord({bkv.data(), bkv.size()});
 
     LeviDB::RandomAccessFile rf(fname);
-    size_t len = 0;
+    size_t length = 0;
     auto iter = LeviDB::LogReader::makeRawIterator(&rf, 0);
     while (iter->valid()) {
-        len += iter->item().size();
+        length += iter->item().size();
         iter->next();
     }
-    assert(len == bkv.size() + 3/* last char meta */);
+    assert(length == bkv.size() + 3/* last char meta */);
 
     auto kv_iter = LeviDB::LogReader::makeIterator(&rf, 0);
     kv_iter->seekToFirst();

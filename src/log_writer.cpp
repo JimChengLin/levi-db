@@ -5,8 +5,9 @@
 
 namespace LeviDB {
     uint32_t LogWriter::calcWritePos() const noexcept {
-        const size_t leftover = LogWriterConst::block_size_ - _block_offset;
+        const size_t leftover = LogWriterConst::block_size_ - _block_offset - (_dst->immut_length() & 1);
         return static_cast<uint32_t>(_dst->immut_length()
+                                     + (_dst->immut_length() & 1)
                                      + (leftover < LogWriterConst::header_size_ ? leftover : 0));
     }
 
@@ -14,7 +15,12 @@ namespace LeviDB {
                                std::vector<uint32_t> * addrs) {
         bool record_begin = true;
         for (const Slice & bkv:bkvs) {
-            if (addrs != nullptr) addrs->emplace_back(_dst->immut_length());
+            if (addrs != nullptr) addrs->emplace_back(calcWritePos());
+            if ((_block_offset & 1) == 1) { // 不允许奇数地址
+                assert((_dst->immut_length() & 1) == 1);
+                _dst->append({"\x00", 1});
+                ++_block_offset;
+            }
 
             const char * ptr = bkv.data();
             size_t left = bkv.size();
