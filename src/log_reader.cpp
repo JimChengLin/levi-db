@@ -28,7 +28,7 @@ namespace LeviDB {
 
             ~RawIterator() noexcept override = default;
 
-            EXPOSE(_cursor); // for ob
+            EXPOSE(_cursor);
 
             bool valid() const override {
                 return !_eof;

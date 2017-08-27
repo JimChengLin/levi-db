@@ -326,6 +326,11 @@ namespace LeviDB {
             if (_iter->valid() && _iter->key() == target) {
                 return _iter->key().toString();
             }
+            // 尽量返回最接近的值
+            _iter->seekToLast();
+            if (_iter->valid()) {
+                return _iter->key().toString();
+            }
             return {};
         };
 
