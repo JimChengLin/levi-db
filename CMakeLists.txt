@@ -34,7 +34,8 @@ set(SOURCE_FILES main.cpp
         test/index_test.cpp
         test/index_mvcc_test.cpp
         test/compress_test.cpp
-        test/log_test.cpp)
+        test/log_test.cpp
+        test/index_rd_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
 
