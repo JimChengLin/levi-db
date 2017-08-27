@@ -40,6 +40,7 @@ namespace LeviDB {
 
             void next() override {
                 size_t block_offset = _cursor % LogWriterConst::block_size_;
+                block_offset += (block_offset & 1);
                 size_t remaining_bytes = LogWriterConst::block_size_ - block_offset;
 
                 // skip trailer
