@@ -10,6 +10,30 @@ namespace LeviDB {
             throw e;
         };
 
+        static inline bool is_record_full(char t) noexcept {
+            return ((t >> 2) & 1) == 0 && ((t >> 3) & 1) == 0;
+        }
+
+        static inline bool is_record_first(char t) noexcept {
+            return ((t >> 2) & 1) == 1 && ((t >> 3) & 1) == 0;
+        }
+
+        static inline bool is_record_middle(char t) noexcept {
+            return ((t >> 2) & 1) == 0 && ((t >> 3) & 1) == 1;
+        }
+
+        static inline bool is_record_last(char t) noexcept {
+            return ((t >> 2) & 1) == 1 && ((t >> 3) & 1) == 1;
+        }
+
+        static inline bool is_record_compress(char t) noexcept {
+            return ((t >> 4) & 1) == 1;
+        }
+
+        static inline bool is_record_del(char t) noexcept {
+            return ((t >> 5) & 1) == 1;
+        }
+
         class RawIterator : public SimpleIterator<Slice> {
         private:
             RandomAccessFile * _dst;
@@ -40,7 +64,11 @@ namespace LeviDB {
 
             void next() override {
                 size_t block_offset = _cursor % LogWriterConst::block_size_;
-                block_offset += (block_offset & 1);
+                bool pad = (_item.size() != 0
+                            && (is_record_full(_item.back()) || is_record_last(_item.back()))
+                            && (block_offset & 1) == 1);
+                _cursor += pad;
+                block_offset += pad;
                 size_t remaining_bytes = LogWriterConst::block_size_ - block_offset;
 
                 // skip trailer
@@ -167,39 +195,16 @@ namespace LeviDB {
             }
         };
 
-        static inline bool is_record_full(char t) noexcept {
-            return ((t >> 2) & 1) == 0 && ((t >> 3) & 1) == 0;
-        }
-
-        static inline bool is_record_first(char t) noexcept {
-            return ((t >> 2) & 1) == 1 && ((t >> 3) & 1) == 0;
-        }
-
-        static inline bool is_record_middle(char t) noexcept {
-            return ((t >> 2) & 1) == 0 && ((t >> 3) & 1) == 1;
-        }
-
-        static inline bool is_record_last(char t) noexcept {
-            return ((t >> 2) & 1) == 1 && ((t >> 3) & 1) == 1;
-        }
-
-        static inline bool is_record_compress(char t) noexcept {
-            return ((t >> 4) & 1) == 1;
-        }
-
-        static inline bool is_record_del(char t) noexcept {
-            return ((t >> 5) & 1) == 1;
-        }
-
         class RecordIteratorBase {
         private:
             mutable std::unique_ptr<SimpleIterator<Slice>> _raw_iter;
             mutable std::vector<uint8_t> _buffer;
+            mutable char _prev_type = 0; // dummy FULL
             mutable bool _meet_all = false;
 
         protected:
             explicit RecordIteratorBase(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
-                    : _raw_iter(std::move(raw_iter)) { initCheck(_raw_iter->item().back()); }
+                    : _raw_iter(std::move(raw_iter)) {}
 
             EXPOSE(_raw_iter);
 
@@ -218,39 +223,37 @@ namespace LeviDB {
 
         private:
             void fetchData() const {
+                dependencyCheck(_prev_type, _raw_iter->item().back());
+                _prev_type = _raw_iter->item().back();
+
                 _buffer.insert(_buffer.end(),
                                reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
                                reinterpret_cast<const uint8_t *>(
                                        _raw_iter->item().data() + _raw_iter->item().size() - 1));
-                char type_a = _raw_iter->item().back();
-                _raw_iter->next();
-                if (_raw_iter->valid()) {
-                    char type_b = _raw_iter->item().back();
-                    dependencyCheck(type_a, type_b);
-                } else {
-                    dependencyCheck(type_a, 0/* FULL */);
+                if (!_meet_all) {
+                    _raw_iter->next();
                 }
             }
 
             void dependencyCheck(char type_a, char type_b) const {
-                if (is_record_full(type_a) || is_record_last(type_a)) {
-                    _meet_all = true;
-                    return;
-                }
-                if (is_record_middle(type_b) || is_record_last(type_b)) {
-                    // same compress, same del
-                    if ((((type_a ^ type_b) >> 4) & 1) == 0 && (((type_a ^ type_b) >> 5) & 1) == 0) {
+                _meet_all = (is_record_full(type_b) || is_record_last(type_b));
+
+                if (is_record_full(type_a) || is_record_last(type_a)) { // prev is completed
+                    if (is_record_full(type_b) || is_record_first(type_b)) {
                         return;
                     }
                 }
-                throw Exception::corruptionException("fragmented record");
-            }
 
-            void initCheck(char type) const {
-                if (is_record_full(type) || is_record_first(type)) {
-                } else {
-                    throw Exception::corruptionException("missing start of fragmented record");
-                };
+                if (is_record_first(type_a) || is_record_middle(type_a)) { // prev is starting
+                    if (is_record_middle(type_b) || is_record_last(type_b)) {
+                        // same compress, same del
+                        if ((((type_a ^ type_b) >> 4) & 1) == 0 && (((type_a ^ type_b) >> 5) & 1) == 0) {
+                            return;
+                        }
+                    }
+                }
+
+                throw Exception::corruptionException("fragmented record");
             }
         };
 
@@ -294,9 +297,7 @@ namespace LeviDB {
 
             void seek(const Slice & target) override {
                 seekToFirst();
-                if (SliceComparator{}(key(), target)) {
-                    _done = true;
-                }
+                _done = SliceComparator{}(key(), target);
             };
 
             void next() override {
