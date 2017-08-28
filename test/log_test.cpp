@@ -28,6 +28,8 @@ void log_test() {
     assert(kv_iter->valid());
     assert(kv_iter->key() == LeviDB::Slice(bkv.data() + 3/* varint k_len */, bkv.size() - 3));
     assert(kv_iter->value()[0] == false); // no del
+    kv_iter->next();
+    assert(!kv_iter->valid());
 
     std::vector<uint8_t> compress_bkvs = LeviDB::LogWriter::makeCompressRecord({{"A", "B"},
                                                                                 {"C", "D"},
@@ -52,6 +54,13 @@ void log_test() {
     compress_kv_iter->next();
     assert(!compress_kv_iter->valid());
 
+    compress_kv_iter->seekToLast();
+    assert(compress_kv_iter->key() == "E");
+    compress_kv_iter->seek("C");
+    assert(compress_kv_iter->key() == "C");
+    compress_kv_iter->prev();
+    assert(compress_kv_iter->key() == "A");
+
     pos = writer.calcWritePos();
     std::string value_input(UINT16_MAX, 'B');
     bkv = LeviDB::LogWriter::makeRecord("KEY", value_input);
@@ -64,6 +73,8 @@ void log_test() {
     std::string value = kv_iter->value();
     value.pop_back();
     assert(value == value_input);
+    kv_iter->prev();
+    assert(!kv_iter->valid());
 
     std::cout << __FUNCTION__ << std::endl;
 }

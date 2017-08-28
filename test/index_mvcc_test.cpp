@@ -69,6 +69,10 @@ void index_mvcc_test() {
         assert(verify(index, 0, ctrl_group));
     }
     index.tryApplyPending();
+    uint32_t val = ctrl_group.back();
+    ctrl_group.pop_back();
+    index.remove({reinterpret_cast<char *>(&val), sizeof(val)});
+
     bool res = index.sync();
     assert(res);
     assert(verify(index, 0, ctrl_group));
