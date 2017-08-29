@@ -10,27 +10,27 @@ namespace LeviDB {
             throw e;
         };
 
-        static inline bool is_record_full(char t) noexcept {
+        static inline bool isRecordFull(char t) noexcept {
             return ((t >> 2) & 1) == 0 && ((t >> 3) & 1) == 0;
         }
 
-        static inline bool is_record_first(char t) noexcept {
+        static inline bool isRecordFirst(char t) noexcept {
             return ((t >> 2) & 1) == 1 && ((t >> 3) & 1) == 0;
         }
 
-        static inline bool is_record_middle(char t) noexcept {
+        static inline bool isRecordMiddle(char t) noexcept {
             return ((t >> 2) & 1) == 0 && ((t >> 3) & 1) == 1;
         }
 
-        static inline bool is_record_last(char t) noexcept {
+        static inline bool isRecordLast(char t) noexcept {
             return ((t >> 2) & 1) == 1 && ((t >> 3) & 1) == 1;
         }
 
-        static inline bool is_record_compress(char t) noexcept {
+        static inline bool isRecordCompress(char t) noexcept {
             return ((t >> 4) & 1) == 1;
         }
 
-        static inline bool is_record_del(char t) noexcept {
+        static inline bool isRecordDel(char t) noexcept {
             return ((t >> 5) & 1) == 1;
         }
 
@@ -65,7 +65,7 @@ namespace LeviDB {
             void next() override {
                 size_t block_offset = _cursor % LogWriterConst::block_size_;
                 bool pad = (_item.size() != 0
-                            && (is_record_full(_item.back()) || is_record_last(_item.back()))
+                            && (isRecordFull(_item.back()) || isRecordLast(_item.back()))
                             && (block_offset & 1) == 1);
                 _cursor += pad;
                 block_offset += pad;
@@ -236,16 +236,16 @@ namespace LeviDB {
             }
 
             void dependencyCheck(char type_a, char type_b) const {
-                _meet_all = (is_record_full(type_b) || is_record_last(type_b));
+                _meet_all = (isRecordFull(type_b) || isRecordLast(type_b));
 
-                if (is_record_full(type_a) || is_record_last(type_a)) { // prev is completed
-                    if (is_record_full(type_b) || is_record_first(type_b)) {
+                if (isRecordFull(type_a) || isRecordLast(type_a)) { // prev is completed
+                    if (isRecordFull(type_b) || isRecordFirst(type_b)) {
                         return;
                     }
                 }
 
-                if (is_record_first(type_a) || is_record_middle(type_a)) { // prev is starting
-                    if (is_record_middle(type_b) || is_record_last(type_b)) {
+                if (isRecordFirst(type_a) || isRecordMiddle(type_a)) { // prev is starting
+                    if (isRecordMiddle(type_b) || isRecordLast(type_b)) {
                         // same compress, same del
                         if ((((type_a ^ type_b) >> 4) & 1) == 0 && (((type_a ^ type_b) >> 5) & 1) == 0) {
                             return;
@@ -266,7 +266,7 @@ namespace LeviDB {
 
         public:
             explicit RecordIterator(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
-                    : RecordIteratorBase(std::move(raw_iter)), _del(is_record_del(immut_raw_iter()->item().back())) {}
+                    : RecordIteratorBase(std::move(raw_iter)), _del(isRecordDel(immut_raw_iter()->item().back())) {}
 
             DEFAULT_MOVE(RecordIterator);
             DELETE_COPY(RecordIterator);
@@ -422,10 +422,92 @@ namespace LeviDB {
         std::unique_ptr<kv_iter>
         makeIterator(RandomAccessFile * data_file, uint32_t offset, reporter_t reporter) {
             auto raw_iter = makeRawIterator(data_file, offset, std::move(reporter));
-            if (is_record_compress(raw_iter->item().back())) {
+            if (isRecordCompress(raw_iter->item().back())) {
                 return std::make_unique<RecordIteratorCompress>(std::move(raw_iter));
             }
             return std::make_unique<RecordIterator>(std::move(raw_iter));
         }
+
+        static inline bool isBatchFull(char t) noexcept {
+            return (t & 1) == 0 && ((t >> 1) & 1) == 0;
+        }
+
+        static inline bool isBatchFirst(char t) noexcept {
+            return (t & 1) == 1 && ((t >> 1) & 1) == 0;
+        }
+
+        static inline bool isBatchMiddle(char t) noexcept {
+            return (t & 1) == 0 && ((t >> 1) & 1) == 1;
+        }
+
+        static inline bool isBatchLast(char t) noexcept {
+            return (t & 1) == 1 && ((t >> 1) & 1) == 1;
+        }
+
+        // 确保 batch dependency 的 RawIterator
+        class RawIteratorBatchChecked : public SimpleIterator<Slice> {
+        private:
+            std::unique_ptr<SimpleIterator<Slice>> _raw_iter;
+
+            std::vector<std::vector<uint8_t>> _cache;
+            std::vector<std::vector<uint8_t>>::const_iterator _cache_cursor;
+            char _prev_type = 0; // dummy FULL
+
+        public:
+            explicit RawIteratorBatchChecked(std::unique_ptr<SimpleIterator<Slice>> && raw_iter) noexcept
+                    : _raw_iter(std::move(raw_iter)), _cache_cursor(_cache.cend()) { next(); }
+
+            DEFAULT_MOVE(RawIteratorBatchChecked);
+            DELETE_COPY(RawIteratorBatchChecked);
+
+            ~RawIteratorBatchChecked() noexcept override = default;
+
+            bool valid() const override {
+                return _cache_cursor != _cache.cend();
+            };
+
+            Slice item() const override {
+                return {(*_cache_cursor).data(), (*_cache_cursor).size()};
+            };
+
+            void next() override {
+                if (_cache_cursor == _cache.cend() || ++_cache_cursor == _cache.cend()) {
+                    _cache.clear();
+
+                    while (_raw_iter->valid()) {
+                        dependencyCheck(_prev_type, _raw_iter->item().back());
+                        _prev_type = _raw_iter->item().back();
+
+                        _cache.emplace_back({reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
+                                             reinterpret_cast<const uint8_t *>(
+                                                     _raw_iter->item().data() + _raw_iter->item().size())});
+                        _raw_iter->next();
+
+                        if (isBatchFull(_prev_type) || isBatchLast(_prev_type)) {
+                            _cache_cursor = _cache.cbegin();
+                            return;
+                        }
+                    }
+
+                    throw Exception::IOErrorException("EOF");
+                }
+            }
+
+            void dependencyCheck(char type_a, char type_b) const {
+                if (isBatchFull(type_a) || isBatchLast(type_a)) { // prev is completed
+                    if (isBatchFull(type_b) || isBatchFirst(type_b)) {
+                        return;
+                    }
+                }
+
+                if (isBatchFirst(type_a) || isBatchMiddle(type_a)) { // prev is starting
+                    if (isBatchMiddle(type_b) || isBatchLast(type_b)) {
+                        return;
+                    }
+                }
+
+                throw Exception::corruptionException("fragmented batch");
+            }
+        };
     }
 }
