@@ -455,7 +455,11 @@ namespace LeviDB {
 
         public:
             explicit RawIteratorBatchChecked(std::unique_ptr<SimpleIterator<Slice>> && raw_iter) noexcept
-                    : _raw_iter(std::move(raw_iter)), _cache_cursor(_cache.cend()) { next(); }
+                    : _raw_iter(std::move(raw_iter)), _cache_cursor(_cache.cend()) {
+                if (_raw_iter != nullptr) { // safe swapping
+                    next();
+                }
+            }
 
             DEFAULT_MOVE(RawIteratorBatchChecked);
             DELETE_COPY(RawIteratorBatchChecked);
@@ -478,9 +482,10 @@ namespace LeviDB {
                         dependencyCheck(_prev_type, _raw_iter->item().back());
                         _prev_type = _raw_iter->item().back();
 
-                        _cache.emplace_back({reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
-                                             reinterpret_cast<const uint8_t *>(
-                                                     _raw_iter->item().data() + _raw_iter->item().size())});
+                        _cache.emplace_back(std::vector<uint8_t>(
+                                reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
+                                reinterpret_cast<const uint8_t *>(_raw_iter->item().data() + _raw_iter->item().size())
+                        ));
                         _raw_iter->next();
 
                         if (isBatchFull(_prev_type) || isBatchLast(_prev_type)) {
@@ -508,6 +513,58 @@ namespace LeviDB {
 
                 throw Exception::corruptionException("fragmented batch");
             }
+        };
+
+        class TableIterator : public SimpleIterator<std::pair<Slice, std::string>> {
+        private:
+            RawIteratorBatchChecked * _raw_iter_batch_ob;
+            std::unique_ptr<kv_iter> _kv_iter;
+
+        public:
+            explicit TableIterator(RawIteratorBatchChecked * raw_iter_batch)
+                    : _raw_iter_batch_ob(raw_iter_batch),
+                      _kv_iter(makeKVIter(raw_iter_batch)) { // transfer ownership
+                _kv_iter->seekToFirst();
+            }
+
+            DEFAULT_MOVE(TableIterator);
+            DELETE_COPY(TableIterator);
+
+            ~TableIterator() noexcept override = default;
+
+            bool valid() const override {
+                return _kv_iter->valid();
+            };
+
+            std::pair<Slice, std::string> item() const override {
+                return {_kv_iter->key(), _kv_iter->value()};
+            };
+
+            void next() override {
+                _kv_iter->next();
+                if (!_kv_iter->valid() && _raw_iter_batch_ob->valid()) { // slip to next kv_iter
+                    RawIteratorBatchChecked * new_iter = new RawIteratorBatchChecked({nullptr});
+                    std::swap(*new_iter, *_raw_iter_batch_ob);
+                    _raw_iter_batch_ob = new_iter;
+                    _kv_iter = makeKVIter(new_iter);
+                    _kv_iter->seekToFirst();
+                }
+            }
+
+        private:
+            static std::unique_ptr<kv_iter> makeKVIter(RawIteratorBatchChecked * p) {
+                return isRecordCompress(p->item().back())
+                       ? (std::unique_ptr<kv_iter>) std::make_unique<RecordIteratorCompress>(
+                                std::unique_ptr<SimpleIterator<Slice>>(p))
+                       : (std::unique_ptr<kv_iter>) std::make_unique<RecordIterator>(
+                                std::unique_ptr<SimpleIterator<Slice>>(p));
+            }
+        };
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
+        makeTableIterator(RandomAccessFile * data_file, reporter_t reporter) {
+            return std::make_unique<TableIterator>(
+                    new RawIteratorBatchChecked(makeRawIterator(data_file, 0, std::move(reporter))));
         };
     }
 }

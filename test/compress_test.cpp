@@ -39,7 +39,7 @@ void compress_test() {
     std::vector<uint8_t> src;
     src.reserve(65535);
     for (int i = 0; i < src.capacity(); ++i) {
-        src.push_back(std::uniform_int_distribution<uint8_t>(0, UINT8_MAX)(gen));
+        src.emplace_back(std::uniform_int_distribution<uint8_t>(0, UINT8_MAX)(gen));
     }
 
     std::vector<uint8_t> compress_data = LeviDB::Compressor::encode(LeviDB::Slice(src.data(), src.size()));
