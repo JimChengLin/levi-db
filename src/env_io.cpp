@@ -112,7 +112,9 @@ namespace LeviDB {
     }
 
     MmapFile::MmapFile(const std::string & fname)
-            : _filename(fname), _file(fname, IOEnv::WP_M), _length(IOEnv::getFileSize(fname)) {
+            : _filename(fname),
+              _file(fname, IOEnv::fileExists(fname) ? IOEnv::RP_M : IOEnv::WP_M),
+              _length(IOEnv::getFileSize(fname)) {
         if (_length == 0) { // 0 长度文件 mmap 会报错
             _length = IOEnv::page_size_;
             if (ftruncate(_file._fd, static_cast<off_t>(_length)) != 0) {

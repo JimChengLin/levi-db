@@ -20,6 +20,8 @@ void index_rd_test();
 
 void kv_write_bench();
 
+void kv_read_bench();
+
 int main() {
     try {
         index_test();
@@ -29,6 +31,7 @@ int main() {
         index_rd_test();
 #ifdef LEVI_BENCH
         kv_write_bench();
+        kv_read_bench();
 #endif
     } catch (const LeviDB::Exception & e) {
         std::cout << e.toString() << std::endl;

@@ -4,27 +4,20 @@
 #include <iostream>
 
 #include "../src/index_mvcc_rd.h"
-#include "../src/log_writer.h"
 
 #define src_fname "/Users/yuanjinlin/Desktop/curr_proj/LeviDB/cmake-build-debug/movies.txt"
 
-void kv_write_bench() {
+void kv_read_bench() {
     if (LeviDB::IOEnv::fileExists(src_fname)) {
         const std::string index_fname = "/tmp/levi_bench_index";
         const std::string data_fname = "/tmp/levi_bench_data";
-        if (LeviDB::IOEnv::fileExists(index_fname)) {
-            LeviDB::IOEnv::deleteFile(index_fname);
+        if (!LeviDB::IOEnv::fileExists(index_fname) || !LeviDB::IOEnv::fileExists(data_fname)) {
+            return;
         }
-        if (LeviDB::IOEnv::fileExists(data_fname)) {
-            LeviDB::IOEnv::deleteFile(data_fname);
-        }
-
-        LeviDB::AppendableFile af(data_fname);
-        LeviDB::RandomAccessFile rf(data_fname);
 
         LeviDB::SeqGenerator seq_g;
-        LeviDB::IndexRead bdt(index_fname, &seq_g, &rf);
-        LeviDB::LogWriter writer(&af);
+        LeviDB::RandomAccessFile rf(data_fname);
+        const LeviDB::IndexRead bdt(index_fname, LeviDB::OffsetToEmpty{LeviDB::IndexConst::disk_null_}, &seq_g, &rf);
 
         constexpr int test_time_ = 100000;
         LeviDB::SequentialFile src(src_fname);
@@ -43,10 +36,8 @@ void kv_write_bench() {
                 const std::string key = que[0] + que[1] + std::to_string(nth);
                 const std::string val = que[2] + que[3] + que[4] + que[5] + que[6] + que[7];
 
-                uint32_t pos = writer.calcWritePos();
-                std::vector<uint8_t> b = LeviDB::LogWriter::makeRecord(key, val);
-                writer.addRecord({b.data(), b.size()});
-                bdt.insert(key, LeviDB::OffsetToData{pos});
+                auto r = bdt.find(key);
+                assert(r.first.size() == val.size());
             }
         }
 
