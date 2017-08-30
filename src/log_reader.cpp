@@ -461,7 +461,20 @@ namespace LeviDB {
                 }
             }
 
-            DELETE_MOVE(RawIteratorBatchChecked);
+            RawIteratorBatchChecked(RawIteratorBatchChecked && rhs) noexcept {
+                operator=(std::move(rhs));
+            }
+
+            RawIteratorBatchChecked & operator=(RawIteratorBatchChecked && rhs) noexcept {
+                auto nth = rhs._cache_cursor == rhs._cache.cend() ? -1 : rhs._cache_cursor - rhs._cache.cbegin();
+                std::swap(_raw_iter, rhs._raw_iter);
+                std::swap(_cache, rhs._cache);
+                std::swap(_cache_cursor, rhs._cache_cursor);
+                std::swap(_prev_type, rhs._prev_type);
+                _cache_cursor = nth != -1 ? (_cache.cbegin() + nth) : _cache.cend();
+                return *this;
+            }
+
             DELETE_COPY(RawIteratorBatchChecked);
 
             ~RawIteratorBatchChecked() noexcept override = default;
@@ -478,6 +491,7 @@ namespace LeviDB {
                 if (_cache_cursor == _cache.cend() || ++_cache_cursor == _cache.cend()) {
                     _cache.clear();
                     if (!_raw_iter->valid()) {
+                        _cache_cursor = _cache.cend();
                         return;
                     }
 
@@ -548,10 +562,12 @@ namespace LeviDB {
                 if (!_kv_iter->valid() && _raw_iter_batch_ob->valid()) { // slip to next kv_iter
                     RawIteratorBatchChecked * new_iter = new RawIteratorBatchChecked({nullptr});
                     std::swap(*new_iter, *_raw_iter_batch_ob);
-                    new_iter->next(); // discard residual
-                    _raw_iter_batch_ob = new_iter;
-                    _kv_iter = makeKVIter(new_iter);
-                    _kv_iter->seekToFirst();
+                    new_iter->next(); // init
+                    if (new_iter->valid()) {
+                        _raw_iter_batch_ob = new_iter;
+                        _kv_iter = makeKVIter(new_iter);
+                        _kv_iter->seekToFirst();
+                    }
                 }
             }
 
