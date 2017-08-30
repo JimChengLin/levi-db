@@ -350,17 +350,41 @@ namespace LeviDB {
         parent = offToMemNode({off});
         auto child = new(offToMemNodeUnchecked(offset)) BDNode;
 
-        child->mut_diffs()[0] = parent->immut_diffs()[idx];
-        child->mut_masks()[0] = parent->immut_masks()[idx];
-        child->mut_ptrs()[0] = parent->immut_ptrs()[idx];
-        child->mut_ptrs()[1] = parent->immut_ptrs()[idx + 1];
+        // find nearly half range
+        const uint32_t * cbegin = parent->immut_diffs().cbegin();
+        const uint32_t * cend = parent->immut_diffs().cend();
 
-        size_t size = parent->immut_ptrs().size();
-        del_gap(parent->mut_diffs(), idx, size - 1);
-        del_gap(parent->mut_masks(), idx, size - 1);
-        del_gap(parent->mut_ptrs(), idx + 1, size);
-        parent->mut_ptrs()[size - 1].setNull();
-        parent->mut_ptrs()[idx].setNode(offset);
+        auto cmp = parent->functor();
+        do {
+            const uint32_t * min_it = std::min_element(cbegin, cend, cmp);
+            if (min_it - cbegin < cend - min_it) { // go right
+                cbegin = min_it + 1;
+            } else { // go left
+                cend = min_it;
+            }
+        } while (cend - cbegin > parent->immut_diffs().size() / 2);
+
+        size_t item_num = cend - cbegin;
+        size_t nth = cbegin - parent->immut_diffs().cbegin();
+
+        static constexpr size_t diff_size_ = sizeof(parent->immut_diffs()[0]);
+        static constexpr size_t mask_size_ = sizeof(parent->immut_masks()[0]);
+        static constexpr size_t ptr_size_ = sizeof(parent->immut_ptrs()[0]);
+
+        memcpy(child->mut_diffs().begin(), &parent->immut_diffs()[nth], diff_size_ * item_num);
+        memcpy(child->mut_masks().begin(), &parent->immut_masks()[nth], mask_size_ * item_num);
+        memcpy(child->mut_ptrs().begin(), &parent->immut_ptrs()[nth], ptr_size_ * (item_num + 1));
+
+        size_t left = parent->immut_diffs().cend() - (&parent->immut_diffs()[nth] + item_num);
+        memmove(&parent->mut_diffs()[nth], &parent->immut_diffs()[nth] + item_num, diff_size_ * left);
+        memmove(&parent->mut_masks()[nth], &parent->immut_masks()[nth] + item_num, mask_size_ * left);
+        memmove(&parent->mut_ptrs()[nth + 1], &parent->immut_ptrs()[nth] + item_num + 1, ptr_size_ * left);
+
+        parent->mut_ptrs()[nth].setNode(offset);
+        for (size_t i = item_num; i != 0; --i) {
+            (parent->mut_ptrs().end() - i)->setNull();
+        }
+        assert(parent->size() == parent->immut_ptrs().size() - item_num);
 
         parent->updateChecksum();
         child->updateChecksum();
