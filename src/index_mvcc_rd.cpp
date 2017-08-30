@@ -80,7 +80,7 @@ namespace LeviDB {
 
         MultiHistoryIterator & operator=(const MultiHistoryIterator &) = default;
 
-        DEFAULT_MOVE(MultiHistoryIterator);
+        DELETE_MOVE(MultiHistoryIterator);
 
         void addHistory(const IndexMVCC::history & history) noexcept {
             assert(!history->empty());

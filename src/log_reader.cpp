@@ -47,7 +47,7 @@ namespace LeviDB {
             RawIterator(RandomAccessFile * dst, uint32_t offset, reporter_t reporter)
                     : _dst(dst), _reporter(std::move(reporter)), _cursor(offset) { next(); }
 
-            DEFAULT_MOVE(RawIterator);
+            DELETE_MOVE(RawIterator);
             DELETE_COPY(RawIterator);
 
             ~RawIterator() noexcept override = default;
@@ -336,7 +336,7 @@ namespace LeviDB {
                     : RecordIteratorBase(std::make_unique<UncompressIterator>(std::move(raw_iter))),
                       _cursor(_rep.cend()) {}
 
-            DEFAULT_MOVE(RecordIteratorCompress);
+            DELETE_MOVE(RecordIteratorCompress);
             DELETE_COPY(RecordIteratorCompress);
 
             ~RecordIteratorCompress() noexcept override = default;
@@ -461,7 +461,7 @@ namespace LeviDB {
                 }
             }
 
-            DEFAULT_MOVE(RawIteratorBatchChecked);
+            DELETE_MOVE(RawIteratorBatchChecked);
             DELETE_COPY(RawIteratorBatchChecked);
 
             ~RawIteratorBatchChecked() noexcept override = default;
@@ -477,8 +477,11 @@ namespace LeviDB {
             void next() override {
                 if (_cache_cursor == _cache.cend() || ++_cache_cursor == _cache.cend()) {
                     _cache.clear();
+                    if (!_raw_iter->valid()) {
+                        return;
+                    }
 
-                    while (_raw_iter->valid()) {
+                    do {
                         dependencyCheck(_prev_type, _raw_iter->item().back());
                         _prev_type = _raw_iter->item().back();
 
@@ -492,7 +495,7 @@ namespace LeviDB {
                             _cache_cursor = _cache.cbegin();
                             return;
                         }
-                    }
+                    } while (_raw_iter->valid());
 
                     throw Exception::IOErrorException("EOF");
                 }
@@ -545,6 +548,7 @@ namespace LeviDB {
                 if (!_kv_iter->valid() && _raw_iter_batch_ob->valid()) { // slip to next kv_iter
                     RawIteratorBatchChecked * new_iter = new RawIteratorBatchChecked({nullptr});
                     std::swap(*new_iter, *_raw_iter_batch_ob);
+                    new_iter->next(); // discard residual
                     _raw_iter_batch_ob = new_iter;
                     _kv_iter = makeKVIter(new_iter);
                     _kv_iter->seekToFirst();

@@ -12,7 +12,7 @@ public:
     explicit CompressDataIter(std::vector<uint8_t> compress_data) noexcept
             : _compress_data(std::move(compress_data)), _cursor(_compress_data.cbegin()) {}
 
-    DEFAULT_MOVE(CompressDataIter);
+    DELETE_MOVE(CompressDataIter);
 
     CompressDataIter(const CompressDataIter &) = default;
 

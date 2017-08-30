@@ -62,7 +62,7 @@ namespace LeviDB {
                 next();
             }
 
-            DEFAULT_MOVE(DecodeIterator);
+            DELETE_MOVE(DecodeIterator);
             DELETE_COPY(DecodeIterator);
 
             ~DecodeIterator() noexcept override { inflateEnd(&strm); };
@@ -84,7 +84,6 @@ namespace LeviDB {
                         strm.next_in = const_cast<Bytef *>(reinterpret_cast<const Bytef *>(_src_iter->item().data()));
                         strm.avail_in = static_cast<uInt>(_src_iter->item().size());
                         assert(strm.avail_in > 0);
-                        _src_iter->next();
 
                         do {
                             strm.next_out = out;
@@ -102,7 +101,13 @@ namespace LeviDB {
                             _item = Slice(out, CHUNK - strm.avail_out);
                             YIELD();
                         } while (strm.avail_out == 0);
-                    } while (ret != Z_STREAM_END);
+
+                        if (ret != Z_STREAM_END) {
+                            _src_iter->next();
+                        } else {
+                            break;
+                        }
+                    } while (true);
 
                     if (ret != Z_STREAM_END) {
                         throw Exception::corruptionException("zlib", zerr(Z_DATA_ERROR));

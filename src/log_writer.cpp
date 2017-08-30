@@ -39,8 +39,11 @@ namespace LeviDB {
                 const size_t avail = LogWriterConst::block_size_ - _block_offset - LogWriterConst::header_size_;
                 const size_t fragment_length = std::min(left, avail);
 
+                LogWriterConst::ConcatType kv_type = LogWriterConst::FULL;
+                const bool kv_end = (fragment_length == left);
                 LogWriterConst::ConcatType record_type = LogWriterConst::FULL;
-                const bool record_end = (&bkv == &bkvs.back());
+                const bool record_end = (&bkv == &bkvs.back()) && kv_end;
+
                 if (record_begin && record_end) {
                 } else if (record_begin) {
                     record_type = LogWriterConst::FIRST;
@@ -50,8 +53,6 @@ namespace LeviDB {
                     record_type = LogWriterConst::MIDDLE;
                 }
 
-                LogWriterConst::ConcatType kv_type = LogWriterConst::FULL;
-                const bool kv_end = (fragment_length == left);
                 if (kv_begin && kv_end) {
                 } else if (kv_begin) {
                     kv_type = LogWriterConst::FIRST;
@@ -66,8 +67,8 @@ namespace LeviDB {
                 left -= fragment_length;
 
                 kv_begin = false;
+                record_begin = false;
             } while (left > 0);
-            record_begin = false;
         }
     }
 
