@@ -76,5 +76,13 @@ void log_test() {
     kv_iter->prev();
     assert(!kv_iter->valid());
 
+    length = 0;
+    auto table_iter = LeviDB::LogReader::makeTableIterator(&rf);
+    while (table_iter->valid()) {
+        length += table_iter->item().first.size() + table_iter->item().second.size();
+        table_iter->next();
+    }
+    assert(length == UINT16_MAX + 1 + 3 + 3 + 3 + UINT16_MAX + 3 + 1);
+
     std::cout << __FUNCTION__ << std::endl;
 }

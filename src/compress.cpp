@@ -49,10 +49,10 @@ namespace LeviDB {
             Slice _item;
             std::unique_ptr<SimpleIterator<Slice>> _src_iter;
 
-            int ret{};
             z_stream strm{};
-            unsigned char out[CHUNK]{};
+            int ret{};
             int _line = 0;
+            unsigned char out[CHUNK]{};
 
         public:
             explicit DecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter)
@@ -108,10 +108,6 @@ namespace LeviDB {
                             break;
                         }
                     } while (true);
-
-                    if (ret != Z_STREAM_END) {
-                        throw Exception::corruptionException("zlib", zerr(Z_DATA_ERROR));
-                    }
                 GEN_STOP();
             };
         };

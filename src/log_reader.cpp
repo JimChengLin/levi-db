@@ -367,8 +367,9 @@ namespace LeviDB {
                         ranges.emplace_back(from_to(offset, offset + val));
                         offset += val;
                     }
-                    for (int i = 0; i < ranges.size() / 2; ++i) {
-                        _rep.emplace_back(kv_pair(ranges[i], ranges[i + ranges.size() / 2]));
+                    size_t half = ranges.size() / 2;
+                    for (int i = 0; i < half; ++i) {
+                        _rep.emplace_back(kv_pair(ranges[i], ranges[i + half]));
                     }
                 }
 
@@ -471,7 +472,7 @@ namespace LeviDB {
                 std::swap(_cache, rhs._cache);
                 std::swap(_cache_cursor, rhs._cache_cursor);
                 std::swap(_prev_type, rhs._prev_type);
-                _cache_cursor = nth != -1 ? (_cache.cbegin() + nth) : _cache.cend();
+                _cache_cursor = nth != -1 ? _cache.cbegin() + nth : _cache.cend();
                 return *this;
             }
 
@@ -490,8 +491,8 @@ namespace LeviDB {
             void next() override {
                 if (_cache_cursor == _cache.cend() || ++_cache_cursor == _cache.cend()) {
                     _cache.clear();
+                    _cache_cursor = _cache.cend();
                     if (!_raw_iter->valid()) {
-                        _cache_cursor = _cache.cend();
                         return;
                     }
 
@@ -503,7 +504,7 @@ namespace LeviDB {
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data() + _raw_iter->item().size())
                         ));
-                        _raw_iter->next();
+                        _raw_iter->next(); // 永远预读一页
 
                         if (isBatchFull(_prev_type) || isBatchLast(_prev_type)) {
                             _cache_cursor = _cache.cbegin();
@@ -559,13 +560,13 @@ namespace LeviDB {
 
             void next() override {
                 _kv_iter->next();
-                if (!_kv_iter->valid() && _raw_iter_batch_ob->valid()) { // slip to next kv_iter
-                    RawIteratorBatchChecked * new_iter = new RawIteratorBatchChecked({nullptr});
-                    std::swap(*new_iter, *_raw_iter_batch_ob);
-                    new_iter->next(); // init
-                    if (new_iter->valid()) {
-                        _raw_iter_batch_ob = new_iter;
-                        _kv_iter = makeKVIter(new_iter);
+                if (!_kv_iter->valid() && _raw_iter_batch_ob->valid()) { // 切换到下个 kv_iter
+                    RawIteratorBatchChecked * it = new RawIteratorBatchChecked({nullptr});
+                    std::swap(*it, *_raw_iter_batch_ob);
+                    it->next(); // 再次 next 保持 invariant, 因为 record iterator 在 meet all 之后不会有别的副作用
+                    if (it->valid()) {
+                        _raw_iter_batch_ob = it;
+                        _kv_iter = makeKVIter(it);
                         _kv_iter->seekToFirst();
                     }
                 }
