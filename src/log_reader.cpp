@@ -448,14 +448,15 @@ namespace LeviDB {
         // 确保 batch dependency 的 RawIterator
         class RawIteratorBatchChecked : public SimpleIterator<Slice> {
         private:
-            std::unique_ptr<SimpleIterator<Slice>> _raw_iter;
+            std::unique_ptr<RawIterator> _raw_iter;
 
+            std::vector<uint32_t> _disk_offsets;
             std::vector<std::vector<uint8_t>> _cache;
             std::vector<std::vector<uint8_t>>::const_iterator _cache_cursor;
             char _prev_type = 0; // dummy FULL
 
         public:
-            explicit RawIteratorBatchChecked(std::unique_ptr<SimpleIterator<Slice>> && raw_iter) noexcept
+            explicit RawIteratorBatchChecked(std::unique_ptr<RawIterator> && raw_iter)
                     : _raw_iter(std::move(raw_iter)), _cache_cursor(_cache.cend()) {
                 if (_raw_iter != nullptr) { // safe swapping
                     next();
@@ -500,6 +501,14 @@ namespace LeviDB {
                         dependencyCheck(_prev_type, _raw_iter->item().back());
                         _prev_type = _raw_iter->item().back();
 
+                        if (isRecordFull(_prev_type) || isRecordFirst(_prev_type)) {
+                            _disk_offsets.emplace_back(_raw_iter->immut_cursor()
+                                                       - (_raw_iter->item().size() - 1/* meta char */)
+                                                       - LogWriterConst::header_size_);
+                        } else {
+                            _disk_offsets.emplace_back(_disk_offsets.back());
+                        }
+
                         _cache.emplace_back(std::vector<uint8_t>(
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data() + _raw_iter->item().size())
@@ -515,6 +524,11 @@ namespace LeviDB {
                 }
             }
 
+            uint32_t diskOffset() const noexcept {
+                return _disk_offsets[_cache_cursor - _cache.cbegin()];
+            }
+
+        private:
             void dependencyCheck(char type_a, char type_b) const {
                 if (isBatchFull(type_a) || isBatchLast(type_a)) { // prev is completed
                     if (isBatchFull(type_b) || isBatchFirst(type_b)) {
@@ -537,8 +551,10 @@ namespace LeviDB {
             RawIteratorBatchChecked * _raw_iter_batch_ob;
             std::unique_ptr<kv_iter> _kv_iter;
 
+            friend class TableIteratorOffset;
+
         public:
-            explicit TableIterator(std::unique_ptr<RawIteratorBatchChecked> raw_iter_batch)
+            explicit TableIterator(std::unique_ptr<RawIteratorBatchChecked> && raw_iter_batch)
                     : _raw_iter_batch_ob(raw_iter_batch.get()),
                       _kv_iter(makeKVIter(std::move(raw_iter_batch))) { // transfer ownership
                 _kv_iter->seekToFirst();
@@ -579,7 +595,7 @@ namespace LeviDB {
             }
 
         private:
-            static std::unique_ptr<kv_iter> makeKVIter(std::unique_ptr<RawIteratorBatchChecked> p) {
+            static std::unique_ptr<kv_iter> makeKVIter(std::unique_ptr<RawIteratorBatchChecked> && p) {
                 if (isRecordCompress(p->item().back())) {
                     return std::make_unique<RecordIteratorCompress>(std::move(p));
                 }
@@ -590,7 +606,36 @@ namespace LeviDB {
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
         makeTableIterator(RandomAccessFile * data_file, reporter_t reporter) {
             return std::make_unique<TableIterator>(
-                    std::make_unique<RawIteratorBatchChecked>(makeRawIterator(data_file, 0, std::move(reporter))));
+                    std::make_unique<RawIteratorBatchChecked>(
+                            std::make_unique<RawIterator>(data_file, 0, std::move(reporter))));
+        };
+
+        class TableIteratorOffset : public SimpleIterator<std::pair<Slice, uint32_t>> {
+        private:
+            TableIterator _table;
+
+        public:
+            explicit TableIteratorOffset(std::unique_ptr<RawIteratorBatchChecked> && raw_iter_batch)
+                    : _table(std::move(raw_iter_batch)) {}
+
+            bool valid() const override {
+                return _table.valid();
+            };
+
+            std::pair<Slice, uint32_t> item() const override {
+                return {_table._kv_iter->key(), _table._raw_iter_batch_ob->diskOffset()};
+            };
+
+            void next() override {
+                _table.next();
+            }
+        };
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
+        makeTableIteratorOffset(RandomAccessFile * data_file, reporter_t reporter) {
+            return std::make_unique<TableIteratorOffset>(
+                    std::make_unique<RawIteratorBatchChecked>(
+                            std::make_unique<RawIterator>(data_file, 0, std::move(reporter))));
         };
     }
 }

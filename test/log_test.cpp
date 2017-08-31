@@ -82,7 +82,18 @@ void log_test() {
         length += table_iter->item().first.size() + table_iter->item().second.size();
         table_iter->next();
     }
-    assert(length == UINT16_MAX + 1 + 3 + 3 + 3 + UINT16_MAX + 3 + 1);
+    assert(length == UINT16_MAX + 1 + 3 + 3 + 3 + UINT16_MAX + 1 + 3);
+
+    auto table_offset_iter = LeviDB::LogReader::makeTableIteratorOffset(&rf);
+    assert(table_offset_iter->item().second == 0);
+    table_offset_iter->next();
+    for (int i = 0; i < 3; ++i) {
+        assert(table_offset_iter->item().second == 65560);
+        table_offset_iter->next();
+    }
+    assert(table_offset_iter->item().second == 65586);
+    table_offset_iter->next();
+    assert(!table_offset_iter->valid());
 
     std::cout << __FUNCTION__ << std::endl;
 }

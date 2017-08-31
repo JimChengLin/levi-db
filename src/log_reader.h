@@ -37,9 +37,11 @@ namespace LeviDB {
         makeRawIterator(RandomAccessFile * data_file, uint32_t offset, reporter_t reporter = defaultReporter);
 
         // V.back() == del
-        // 这里的 reporter 不应该抛出异常, 而是打日志
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
         makeTableIterator(RandomAccessFile * data_file, reporter_t reporter = defaultReporter);
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
+        makeTableIteratorOffset(RandomAccessFile * data_file, reporter_t reporter = defaultReporter);
     };
 }
 
