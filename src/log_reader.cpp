@@ -504,15 +504,14 @@ namespace LeviDB {
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data() + _raw_iter->item().size())
                         ));
-                        _raw_iter->next(); // 永远预读一页
+                        _raw_iter->next(); // 永远多读一页
 
                         if (isBatchFull(_prev_type) || isBatchLast(_prev_type)) {
                             _cache_cursor = _cache.cbegin();
                             return;
                         }
                     } while (_raw_iter->valid());
-
-                    throw Exception::IOErrorException("EOF");
+                    // exit as EOF(not valid)
                 }
             }
 
@@ -539,9 +538,9 @@ namespace LeviDB {
             std::unique_ptr<kv_iter> _kv_iter;
 
         public:
-            explicit TableIterator(RawIteratorBatchChecked * raw_iter_batch)
-                    : _raw_iter_batch_ob(raw_iter_batch),
-                      _kv_iter(makeKVIter(raw_iter_batch)) { // transfer ownership
+            explicit TableIterator(std::unique_ptr<RawIteratorBatchChecked> raw_iter_batch)
+                    : _raw_iter_batch_ob(raw_iter_batch.get()),
+                      _kv_iter(makeKVIter(std::move(raw_iter_batch))) { // transfer ownership
                 _kv_iter->seekToFirst();
             }
 
@@ -561,31 +560,37 @@ namespace LeviDB {
             void next() override {
                 _kv_iter->next();
                 if (!_kv_iter->valid() && _raw_iter_batch_ob->valid()) { // 切换到下个 kv_iter
-                    RawIteratorBatchChecked * it = new RawIteratorBatchChecked({nullptr});
+                    auto it = std::make_unique<RawIteratorBatchChecked>(nullptr);
                     std::swap(*it, *_raw_iter_batch_ob);
-                    it->next(); // 再次 next 保持 invariant, 因为 record iterator 在 meet all 之后不会有别的副作用
-                    if (it->valid()) {
-                        _raw_iter_batch_ob = it;
-                        _kv_iter = makeKVIter(it);
-                        _kv_iter->seekToFirst();
-                    }
+                    do { // 再次 next 以保持 invariant, 因为 record iterator 在 meet all 之后不会有副作用
+                        it->next();
+                        if (it->valid()) { // 确保 seek 到 next record
+                            if (isRecordFull(it->item().back()) || isRecordFirst(it->item().back())) {
+                                _raw_iter_batch_ob = it.get();
+                                _kv_iter = makeKVIter(std::move(it));
+                                _kv_iter->seekToFirst();
+                                return;
+                            }
+                        } else {
+                            break;
+                        }
+                    } while (true);
                 }
             }
 
         private:
-            static std::unique_ptr<kv_iter> makeKVIter(RawIteratorBatchChecked * p) {
-                return isRecordCompress(p->item().back())
-                       ? (std::unique_ptr<kv_iter>) std::make_unique<RecordIteratorCompress>(
-                                std::unique_ptr<SimpleIterator<Slice>>(p))
-                       : (std::unique_ptr<kv_iter>) std::make_unique<RecordIterator>(
-                                std::unique_ptr<SimpleIterator<Slice>>(p));
+            static std::unique_ptr<kv_iter> makeKVIter(std::unique_ptr<RawIteratorBatchChecked> p) {
+                if (isRecordCompress(p->item().back())) {
+                    return std::make_unique<RecordIteratorCompress>(std::move(p));
+                }
+                return std::make_unique<RecordIterator>(std::move(p));
             }
         };
 
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
         makeTableIterator(RandomAccessFile * data_file, reporter_t reporter) {
             return std::make_unique<TableIterator>(
-                    new RawIteratorBatchChecked(makeRawIterator(data_file, 0, std::move(reporter))));
+                    std::make_unique<RawIteratorBatchChecked>(makeRawIterator(data_file, 0, std::move(reporter))));
         };
     }
 }
