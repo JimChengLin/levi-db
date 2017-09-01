@@ -19,9 +19,6 @@ namespace LeviDB {
     namespace LogReader {
         using kv_iter = Iterator<Slice, std::string>;
 
-        // 如果没有传入 reporter, 直接抛出异常
-        // 除非在 recovery, 大部分情况下这都是合理的
-        // 自定义 reporter 捕获 IOError 时也应继续抛出
         using reporter_t = std::function<void(const Exception &)>;
 
         [[noreturn]] void defaultReporter(const Exception & e);
@@ -30,18 +27,21 @@ namespace LeviDB {
         // 重复 seek 有优化
         // 结尾为 0 == del
         std::unique_ptr<kv_iter>
-        makeIterator(RandomAccessFile * data_file, uint32_t offset, reporter_t reporter = defaultReporter);
+        makeIterator(RandomAccessFile * data_file, uint32_t offset);
 
         // 结尾 == type(std::bitset<8>)
         std::unique_ptr<SimpleIterator<Slice>>
-        makeRawIterator(RandomAccessFile * data_file, uint32_t offset, reporter_t reporter = defaultReporter);
+        makeRawIterator(RandomAccessFile * data_file, uint32_t offset);
 
         // V.back() == del
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
-        makeTableIterator(RandomAccessFile * data_file, reporter_t reporter = defaultReporter);
+        makeTableIterator(RandomAccessFile * data_file);
 
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
-        makeTableIteratorOffset(RandomAccessFile * data_file, reporter_t reporter = defaultReporter);
+        makeTableIteratorOffset(RandomAccessFile * data_file);
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
+        makeTableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter = defaultReporter) noexcept;
     };
 }
 

@@ -5,8 +5,12 @@
 
 void log_test() {
     const std::string fname = "/tmp/levi_log";
+    const std::string mirror_fname = "/tmp/levi_log_";
     if (LeviDB::IOEnv::fileExists(fname)) {
         LeviDB::IOEnv::deleteFile(fname);
+    }
+    if (LeviDB::IOEnv::fileExists(mirror_fname)) {
+        LeviDB::IOEnv::deleteFile(mirror_fname);
     }
 
     LeviDB::AppendableFile f(fname);
@@ -94,6 +98,21 @@ void log_test() {
     assert(table_offset_iter->item().second == 65586);
     table_offset_iter->next();
     assert(!table_offset_iter->valid());
+
+    LeviDB::AppendableFile mirror(mirror_fname);
+    std::vector<uint8_t> bin(LeviDB::IOEnv::getFileSize(fname));
+    rf.read(0, bin.size(), reinterpret_cast<char *>(bin.data()));
+    bin.back() = 6;
+    mirror.append({bin.data(), bin.size()});
+    mirror.flush();
+
+    LeviDB::RandomAccessFile r_mirror(mirror_fname);
+    auto table_recovery_iter = LeviDB::LogReader::makeTableRecoveryIterator(&r_mirror, [](const LeviDB::Exception & e) {
+    });
+    for (int i = 0; i < 4; ++i) {
+        table_recovery_iter->next();
+    }
+    assert(!table_recovery_iter->valid());
 
     std::cout << __FUNCTION__ << std::endl;
 }

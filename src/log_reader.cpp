@@ -38,14 +38,13 @@ namespace LeviDB {
         private:
             RandomAccessFile * _dst;
             Slice _item;
-            reporter_t _reporter;
             uint32_t _cursor;
             bool _eof = false;
             char _backing_store[LogWriterConst::block_size_]{};
 
         public:
-            RawIterator(RandomAccessFile * dst, uint32_t offset, reporter_t reporter)
-                    : _dst(dst), _reporter(std::move(reporter)), _cursor(offset) { next(); }
+            RawIterator(RandomAccessFile * dst, uint32_t offset)
+                    : _dst(dst), _cursor(offset) { next(); }
 
             DELETE_MOVE(RawIterator);
             DELETE_COPY(RawIterator);
@@ -67,8 +66,8 @@ namespace LeviDB {
                 bool pad = (_item.size() != 0
                             && (isRecordFull(_item.back()) || isRecordLast(_item.back()))
                             && (block_offset & 1) == 1);
-                _cursor += pad;
-                block_offset += pad;
+                _cursor += static_cast<uint32_t>(pad);
+                block_offset += static_cast<size_t>(pad);
                 size_t remaining_bytes = LogWriterConst::block_size_ - block_offset;
 
                 // skip trailer
@@ -97,9 +96,9 @@ namespace LeviDB {
                         return;
                     };
                     _cursor += length;
-                    remaining_bytes -= length;
 
-                    uint32_t calc_checksum = CRC32C::extend(CRC32C::value(buf + 4, 1 + 2), _backing_store, length);
+                    uint32_t calc_checksum = CRC32C::extend(CRC32C::value(buf + 4, 1 + sizeof(length)),
+                                                            _backing_store, length);
                     uint32_t store_checksum;
                     memcpy(&store_checksum, buf, sizeof(store_checksum));
                     if (calc_checksum != store_checksum) {
@@ -113,15 +112,14 @@ namespace LeviDB {
                     if (e.isIOError()) {
                         _eof = true;
                     }
-                    _reporter(e);
-                    _cursor += remaining_bytes;
+                    throw e;
                 }
             };
         };
 
         std::unique_ptr<SimpleIterator<Slice>>
-        makeRawIterator(RandomAccessFile * data_file, uint32_t offset, reporter_t reporter) {
-            return std::make_unique<RawIterator>(data_file, offset, std::move(reporter));
+        makeRawIterator(RandomAccessFile * data_file, uint32_t offset) {
+            return std::make_unique<RawIterator>(data_file, offset);
         }
 
         // RawIterator 的结尾是 meta char, 掩盖掉然后传给解压器
@@ -421,8 +419,8 @@ namespace LeviDB {
         };
 
         std::unique_ptr<kv_iter>
-        makeIterator(RandomAccessFile * data_file, uint32_t offset, reporter_t reporter) {
-            auto raw_iter = makeRawIterator(data_file, offset, std::move(reporter));
+        makeIterator(RandomAccessFile * data_file, uint32_t offset) {
+            auto raw_iter = makeRawIterator(data_file, offset);
             if (isRecordCompress(raw_iter->item().back())) {
                 return std::make_unique<RecordIteratorCompress>(std::move(raw_iter));
             }
@@ -553,6 +551,8 @@ namespace LeviDB {
 
             friend class TableIteratorOffset;
 
+            friend class TableRecoveryIterator;
+
         public:
             explicit TableIterator(std::unique_ptr<RawIteratorBatchChecked> && raw_iter_batch)
                     : _raw_iter_batch_ob(raw_iter_batch.get()),
@@ -591,6 +591,7 @@ namespace LeviDB {
                             break;
                         }
                     } while (true);
+                    // exit as EOF(not valid)
                 }
             }
 
@@ -604,19 +605,26 @@ namespace LeviDB {
         };
 
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
-        makeTableIterator(RandomAccessFile * data_file, reporter_t reporter) {
+        makeTableIterator(RandomAccessFile * data_file) {
             return std::make_unique<TableIterator>(
                     std::make_unique<RawIteratorBatchChecked>(
-                            std::make_unique<RawIterator>(data_file, 0, std::move(reporter))));
+                            std::make_unique<RawIterator>(data_file, 0)));
         };
 
         class TableIteratorOffset : public SimpleIterator<std::pair<Slice, uint32_t>> {
         private:
             TableIterator _table;
 
+            friend class TableRecoveryIterator;
+
         public:
             explicit TableIteratorOffset(std::unique_ptr<RawIteratorBatchChecked> && raw_iter_batch)
                     : _table(std::move(raw_iter_batch)) {}
+
+            DEFAULT_MOVE(TableIteratorOffset);
+            DELETE_COPY(TableIteratorOffset);
+
+            ~TableIteratorOffset() noexcept override = default;
 
             bool valid() const override {
                 return _table.valid();
@@ -632,10 +640,91 @@ namespace LeviDB {
         };
 
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
-        makeTableIteratorOffset(RandomAccessFile * data_file, reporter_t reporter) {
+        makeTableIteratorOffset(RandomAccessFile * data_file) {
             return std::make_unique<TableIteratorOffset>(
                     std::make_unique<RawIteratorBatchChecked>(
-                            std::make_unique<RawIterator>(data_file, 0, std::move(reporter))));
+                            std::make_unique<RawIterator>(data_file, 0)));
+        };
+
+        class TableRecoveryIterator : public SimpleIterator<std::pair<Slice, uint32_t>> {
+        private:
+            RandomAccessFile * _data_file;
+            mutable std::unique_ptr<TableIteratorOffset> _t;
+            reporter_t _reporter;
+
+        public:
+            explicit TableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept
+                    : _data_file(data_file), _reporter(std::move(reporter)) {
+                try {
+                    _t = std::make_unique<TableIteratorOffset>(
+                            std::make_unique<RawIteratorBatchChecked>(
+                                    std::make_unique<RawIterator>(data_file, 0)));
+                } catch (const Exception & e) {
+                    _reporter(e);
+                }
+            }
+
+            DEFAULT_MOVE(TableRecoveryIterator);
+            DELETE_COPY(TableRecoveryIterator);
+
+            ~TableRecoveryIterator() noexcept override = default;
+
+            bool valid() const override {
+                return _t != nullptr && _t->valid();
+            };
+
+            std::pair<Slice, uint32_t> item() const override {
+                try {
+                    return _t->item();
+                } catch (const Exception & e) {
+                    handle(e);
+                    return {};
+                }
+            };
+
+            void next() override {
+                try {
+                    _t->next();
+                } catch (const Exception & e) {
+                    handle(e);
+                }
+            }
+
+        private:
+            void handle(const Exception & e) const noexcept {
+                _reporter(e);
+
+                // must success, otherwise we are done in the constructor
+                uint32_t curr_disk_offset = _t->_table._raw_iter_batch_ob->diskOffset();
+                while (true) {
+                    // skip to next block
+                    curr_disk_offset += (LogWriterConst::block_size_ - curr_disk_offset % LogWriterConst::block_size_);
+
+                    try { // resync
+                        auto raw_it = std::make_unique<RawIterator>(_data_file, curr_disk_offset);
+                        while (raw_it->valid()) {
+                            if (isBatchFull(raw_it->item().back()) || isBatchFirst(raw_it->item().back())) {
+                                _t = std::make_unique<TableIteratorOffset>(
+                                        std::make_unique<RawIteratorBatchChecked>(std::move(raw_it)));
+                                return;
+                            }
+                            raw_it->next();
+                        }
+                        break;
+                    } catch (const Exception & exception) {
+                        _reporter(exception);
+                        if (exception.isIOError()) {
+                            break;
+                        }
+                    }
+                }
+                _t = nullptr;
+            }
+        };
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
+        makeTableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept {
+            return std::make_unique<TableRecoveryIterator>(data_file, std::move(reporter));
         };
     }
 }
