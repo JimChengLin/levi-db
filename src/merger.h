@@ -1,0 +1,4 @@
+#ifndef LEVIDB_MERGER_H
+#define LEVIDB_MERGER_H
+
+#endif //LEVIDB_MERGER_H

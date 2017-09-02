@@ -380,7 +380,7 @@ namespace LeviDB {
             };
 
             void seek(const Slice & target) override {
-                if (target == key()) {
+                if (_cursor >= _rep.cbegin() && _cursor < _rep.cend() && target == key()) {
                     return;
                 }
                 seekToFirst();
@@ -511,7 +511,7 @@ namespace LeviDB {
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data() + _raw_iter->item().size())
                         ));
-                        _raw_iter->next(); // 永远多读一页
+                        _raw_iter->next(); // 多读一页
 
                         if (isBatchFull(_prev_type) || isBatchLast(_prev_type)) {
                             _cache_cursor = _cache.cbegin();

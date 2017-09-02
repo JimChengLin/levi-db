@@ -15,7 +15,8 @@ namespace LeviDB {
             std::tie(idx, direct, std::ignore) = pos;
 
             CritPtr ptr = cursor->immut_ptrs()[idx + static_cast<size_t>(direct)];
-            if (ptr.isNull()) {
+            if (ptr.isNull()
+                || (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
                 return {IndexConst::disk_null_};
             }
             if (ptr.isNode()) {
@@ -51,7 +52,8 @@ namespace LeviDB {
             std::tie(idx, direct, std::ignore) = pos;
 
             CritPtr & ptr = cursor->mut_ptrs()[idx + static_cast<size_t>(direct)];
-            if (ptr.isNull()) {
+            if (ptr.isNull() ||
+                (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
                 ptr.setData(v);
                 cursor->updateChecksum();
                 break;
@@ -60,11 +62,13 @@ namespace LeviDB {
                 cursor = offToMemNode(ptr.asNode());
             } else {
                 std::unique_ptr<Matcher> matcher = offToMatcher(ptr.asData());
-                if (*matcher == k) {
+                std::string exist = matcher->toString(ptr.asData().val != v.val ? k // compress record case
+                                                                                : mostSimilarUsr(k).toSlice());
+                if (k == exist) {
                     ptr.setData(v);
                     cursor->updateChecksum();
                 } else {
-                    combatInsert(matcher->toString(k), k, v);
+                    combatInsert(exist, k, v);
                 }
                 break;
             }
@@ -83,8 +87,9 @@ namespace LeviDB {
             size_t size;
             std::tie(idx, direct, size) = pos;
 
-            CritPtr ptr = cursor->immut_ptrs()[idx + static_cast<size_t>(direct)];
-            if (ptr.isNull()) {
+            CritPtr & ptr = cursor->mut_ptrs()[idx + static_cast<size_t>(direct)];
+            if (ptr.isNull() ||
+                (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
                 break;
             }
             if (ptr.isNode()) {
@@ -94,11 +99,16 @@ namespace LeviDB {
             } else {
                 std::unique_ptr<Matcher> matcher = offToMatcher(ptr.asData());
                 if (*matcher == k) {
-                    nodeRemove(cursor, idx, direct, size);
-                    if (parent != nullptr) {
-                        tryMerge(parent, cursor,
-                                 std::get<0>(parent_info), std::get<1>(parent_info), std::get<2>(parent_info),
-                                 size - 1);
+                    if (matcher->size() == 0) { // compress record case
+                        ptr.setData(IndexConst::del_marker_);
+                        cursor->updateChecksum();
+                    } else {
+                        nodeRemove(cursor, idx, direct, size);
+                        if (parent != nullptr) {
+                            tryMerge(parent, cursor,
+                                     std::get<0>(parent_info), std::get<1>(parent_info), std::get<2>(parent_info),
+                                     size - 1);
+                        }
                     }
                 }
                 break;
@@ -440,5 +450,27 @@ namespace LeviDB {
                 freeNode(offset);
             }
         }
+    }
+
+    USR BitDegradeTree::mostSimilarUsr(const Slice & k) const noexcept {
+        USR res;
+        const BDNode * cursor = offToMemNode(_root);
+
+        while (true) {
+            auto pos = findBestMatch(cursor, k);
+            size_t idx;
+            bool direct;
+            std::tie(idx, direct, std::ignore) = pos;
+            res.reveal(cursor->immut_diffs()[idx], direct ? uint8ToChar(cursor->immut_masks()[idx])
+                                                          : static_cast<char>(0));
+
+            CritPtr ptr = cursor->immut_ptrs()[idx + static_cast<size_t>(direct)];
+            if (ptr.isNode()) {
+                cursor = offToMemNode(ptr.asNode());
+            } else {
+                break;
+            }
+        }
+        return res;
     }
 }

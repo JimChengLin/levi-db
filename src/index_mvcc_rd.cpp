@@ -17,8 +17,8 @@ namespace LeviDB {
         auto counterpart = pendingPart(seq_num);
         counterpart->seek(k);
         if (counterpart->valid() && counterpart->key() == k) {
-            offset = counterpart->value().val == del_marker_ ? OffsetToData{IndexConst::disk_null_}
-                                                             : counterpart->value();
+            offset = counterpart->value().val == IndexConst::del_marker_ ? OffsetToData{IndexConst::disk_null_}
+                                                                         : counterpart->value();
         } else { // 再查 mmap
             offset = BitDegradeTree::find(k);
         }
@@ -47,7 +47,7 @@ namespace LeviDB {
                 assert(_pending.empty() || _seq_gen->newest() > _pending.back().first);
                 _pending.emplace_back(_seq_gen->newest(), std::make_shared<history_type>());
             }
-            (*_pending.back().second)[k.toString()] = OffsetToData{del_marker_};
+            (*_pending.back().second)[k.toString()] = OffsetToData{IndexConst::del_marker_};
         }
     }
 
@@ -236,7 +236,7 @@ namespace LeviDB {
             }
         }
         for (const auto & kv:merged_history) {
-            if (kv.second.val == del_marker_) { // 删除
+            if (kv.second.val == IndexConst::del_marker_) { // 删除
                 BitDegradeTree::remove(kv.first);
             } else { // 增改
                 BitDegradeTree::insert(kv.first, kv.second);
@@ -252,7 +252,7 @@ namespace LeviDB {
         explicit MatcherSliceImpl(const Slice & slice) noexcept : _slice(slice) {}
 
         DEFAULT_MOVE(MatcherSliceImpl);
-        DEFAULT_COPY(MatcherSliceImpl);
+        DELETE_COPY(MatcherSliceImpl);
 
         ~MatcherSliceImpl() noexcept override = default;
 
@@ -297,7 +297,7 @@ namespace LeviDB {
     // 读取数据文件的实现
     class MatcherOffsetImpl : public Matcher {
     private:
-        std::unique_ptr<Iterator<Slice, std::string>> _iter;
+        mutable std::unique_ptr<Iterator<Slice, std::string>> _iter; // size() method
         std::exception_ptr _e;
 
     public:
@@ -310,7 +310,7 @@ namespace LeviDB {
         }
 
         DEFAULT_MOVE(MatcherOffsetImpl);
-        DEFAULT_COPY(MatcherOffsetImpl);
+        DELETE_COPY(MatcherOffsetImpl);
 
         ~MatcherOffsetImpl() noexcept override = default;
 
@@ -323,7 +323,7 @@ namespace LeviDB {
         std::string toString(const Slice & target) const override {
             if (_e) { std::rethrow_exception(_e); }
             _iter->seek(target);
-            if (_iter->valid() && _iter->key() == target) {
+            if (_iter->valid()) {
                 return _iter->key().toString();
             }
             // 尽量返回最接近的值
@@ -343,16 +343,33 @@ namespace LeviDB {
             return {};
         };
 
+        // dirty hack, 原是无用的接口方法, 现用来表示是否压缩, 0 = 是, 其余 = 否
+        size_t size() const override {
+            Slice curr;
+            if (_iter->valid()) { // next 之后, curr 肯定可用
+                curr = _iter->key();
+            }
+
+            _iter->seekToFirst();
+            _iter->next();
+            auto res = static_cast<size_t>(!_iter->valid()); // compress => valid => false => 0
+
+            if (curr.size()) {
+                _iter->seek(curr);
+            } else {
+                _iter->seekToLast();
+                _iter->next();
+                assert(!_iter->valid());
+            }
+            return res;
+        };
+
         // 以下方法在 BitDegradeTree 中没有用到, 所以不强行实现
         [[noreturn]] bool operator==(const Matcher & another) const override {
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };
 
         [[noreturn]] char operator[](size_t idx) const override {
-            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
-        };
-
-        [[noreturn]] size_t size() const override {
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };
 

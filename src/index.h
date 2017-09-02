@@ -16,15 +16,18 @@
 #include <tuple>
 #endif
 
-#include "util.h"
-#include "slice.h"
 #include "env_io.h"
+#include "slice.h"
+#include "usr.h"
+#include "util.h"
 
 namespace LeviDB {
     namespace IndexConst {
         static constexpr int rank_ = 454;
         // 索引和数据文件最大为 4GB, 又 sizeof(record) > 4, 所以 UINT32_MAX 可以作为 NULL 使用
         static constexpr uint32_t disk_null_ = UINT32_MAX;
+        // 无效的 input, 用于显式删除, 输出时过滤
+        static constexpr uint32_t del_marker_ = disk_null_ - 1;
     }
 
     // 数据文件中单条 record 的偏移量
@@ -233,6 +236,8 @@ namespace LeviDB {
         void tryMerge(BDNode * parent, BDNode * child,
                       size_t idx, bool direct, size_t parent_size,
                       size_t child_size) noexcept;
+
+        USR mostSimilarUsr(const Slice & k) const noexcept;
 
     protected:
         BDNode * offToMemNode(OffsetToNode node) const;

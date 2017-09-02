@@ -15,24 +15,22 @@ void index_rd_test() {
         LeviDB::IOEnv::deleteFile(data_fname);
     }
 
-    {
-        LeviDB::AppendableFile af(data_fname);
-        LeviDB::RandomAccessFile rf(data_fname);
+    LeviDB::AppendableFile af(data_fname);
+    LeviDB::RandomAccessFile rf(data_fname);
 
-        LeviDB::SeqGenerator seq_g;
-        LeviDB::IndexRead bdt_rd(index_fname, &seq_g, &rf);
-        LeviDB::LogWriter writer(&af);
+    LeviDB::SeqGenerator seq_g;
+    LeviDB::IndexRead bdt_rd(index_fname, &seq_g, &rf);
+    LeviDB::LogWriter writer(&af);
 
-        for (int i = 0; i < test_times_; ++i) {
-            uint32_t pos = writer.calcWritePos();
-            std::vector<uint8_t> b = LeviDB::LogWriter::makeRecord(std::to_string(i), std::to_string(i + test_times_));
-            writer.addRecord({b.data(), b.size()});
-            bdt_rd.insert(std::to_string(i), LeviDB::OffsetToData{pos});
+    for (int i = 0; i < test_times_; ++i) {
+        uint32_t pos = writer.calcWritePos();
+        std::vector<uint8_t> b = LeviDB::LogWriter::makeRecord(std::to_string(i), std::to_string(i + test_times_));
+        writer.addRecord({b.data(), b.size()});
+        bdt_rd.insert(std::to_string(i), LeviDB::OffsetToData{pos});
 
-            for (int j = 0; j <= i; ++j) {
-                auto r = bdt_rd.find(std::to_string(j));
-                assert(r.first == std::to_string(j + test_times_));
-            }
+        for (int j = 0; j <= i; ++j) {
+            auto r = bdt_rd.find(std::to_string(j));
+            assert(r.first == std::to_string(j + test_times_));
         }
     }
 
