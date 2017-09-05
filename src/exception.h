@@ -15,11 +15,10 @@
 namespace LeviDB {
     class Exception : public std::exception {
     private:
-        static const char * _what;
         std::unique_ptr<char[]> _state;
 
     public:
-        const char * what() const noexcept override { return Exception::_what; }
+        const char * what() const noexcept override { return "LeviDBException"; }
 
         Exception(Exception &&) noexcept = default;
 

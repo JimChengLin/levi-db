@@ -6,7 +6,7 @@
 void index_rd_test() {
     const std::string index_fname = "/tmp/bdt_rd_index";
     const std::string data_fname = "/tmp/bdt_rd_data";
-    constexpr int test_times_ = 100;
+    static constexpr int test_times_ = 100;
 
     if (LeviDB::IOEnv::fileExists(index_fname)) {
         LeviDB::IOEnv::deleteFile(index_fname);

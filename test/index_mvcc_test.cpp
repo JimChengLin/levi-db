@@ -4,7 +4,7 @@
 
 void index_mvcc_test() {
     const std::string fname = "/tmp/bdt_mvcc";
-    constexpr int test_times_ = 10;
+    static constexpr int test_times_ = 10;
 
     if (LeviDB::IOEnv::fileExists(fname)) {
         LeviDB::IOEnv::deleteFile(fname);

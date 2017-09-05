@@ -26,7 +26,7 @@ void kv_write_bench() {
         LeviDB::IndexRead bdt(index_fname, &seq_g, &rf);
         LeviDB::LogWriter writer(&af);
 
-        constexpr int test_time_ = 100000;
+        static constexpr int test_time_ = 100000;
         LeviDB::SequentialFile src(src_fname);
 
         int nth = 0;
@@ -44,8 +44,8 @@ void kv_write_bench() {
                 const std::string val = que[2] + que[3] + que[4] + que[5] + que[6] + que[7];
 
                 uint32_t pos = writer.calcWritePos();
-                std::vector<uint8_t> b = LeviDB::LogWriter::makeRecord(key, val);
-                writer.addRecord({b.data(), b.size()});
+                std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(key, val);
+                writer.addRecord({bin.data(), bin.size()});
                 bdt.insert(key, LeviDB::OffsetToData{pos});
             }
         }

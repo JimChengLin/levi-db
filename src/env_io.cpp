@@ -180,7 +180,7 @@ namespace LeviDB {
             : _filename(fname), _file(fname, IOEnv::R_M) {}
 
     Slice RandomAccessFile::read(uint64_t offset, size_t n, char * scratch) const {
-        ssize_t r = pread(_file._fd, scratch, n, static_cast<off_t >(offset));
+        ssize_t r = pread(_file._fd, scratch, n, static_cast<off_t>(offset));
         if (r < 0) {
             throw Exception::IOErrorException(_filename, error_info);
         }

@@ -461,8 +461,7 @@ namespace LeviDB {
             size_t idx;
             bool direct;
             std::tie(idx, direct, std::ignore) = pos;
-            res.reveal(cursor->immut_diffs()[idx], direct ? uint8ToChar(cursor->immut_masks()[idx])
-                                                          : static_cast<char>(0));
+            res.reveal(cursor->immut_diffs()[idx], uint8ToChar(cursor->immut_masks()[idx]), direct);
 
             CritPtr ptr = cursor->immut_ptrs()[idx + static_cast<size_t>(direct)];
             if (ptr.isNode()) {

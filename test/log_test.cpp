@@ -13,8 +13,8 @@ void log_test() {
         LeviDB::IOEnv::deleteFile(mirror_fname);
     }
 
-    LeviDB::AppendableFile f(fname);
-    LeviDB::LogWriter writer(&f);
+    LeviDB::AppendableFile af(fname);
+    LeviDB::LogWriter writer(&af);
     std::vector<uint8_t> bkv = LeviDB::LogWriter::makeRecord(std::string(UINT16_MAX, 'A'), "");
     writer.addRecord({bkv.data(), bkv.size()});
 

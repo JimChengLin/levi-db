@@ -4,7 +4,7 @@
 
 void index_test() {
     const std::string fname = "/tmp/bdt";
-    constexpr int test_times_ = 1000;
+    static constexpr int test_times_ = 1000;
 
     if (LeviDB::IOEnv::fileExists(fname)) {
         LeviDB::IOEnv::deleteFile(fname);

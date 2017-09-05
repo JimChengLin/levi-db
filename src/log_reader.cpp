@@ -692,10 +692,10 @@ namespace LeviDB {
 
         private:
             void handle(const Exception & e) const noexcept {
-                _reporter(e);
-
                 // must success, otherwise we are done in the constructor
                 uint32_t curr_disk_offset = _t->_table._raw_iter_batch_ob->diskOffset();
+                _reporter(Exception::invalidArgumentException(e.toString(), std::to_string(curr_disk_offset)));
+
                 while (true) {
                     // skip to next block
                     curr_disk_offset += (LogWriterConst::block_size_ - curr_disk_offset % LogWriterConst::block_size_);

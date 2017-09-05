@@ -297,7 +297,7 @@ namespace LeviDB {
     // 读取数据文件的实现
     class MatcherOffsetImpl : public Matcher {
     private:
-        mutable std::unique_ptr<Iterator<Slice, std::string>> _iter; // size() method
+        mutable std::unique_ptr<Iterator<Slice, std::string>> _iter; // 侦测是否压缩会短时间改变 _iter
         std::exception_ptr _e;
 
     public:

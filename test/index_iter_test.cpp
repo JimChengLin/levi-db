@@ -10,7 +10,7 @@
 void index_iter_test() {
     const std::string index_fname = "/tmp/bdt_iter_index";
     const std::string data_fname = "/tmp/bdt_iter_data";
-    constexpr int test_times_ = 100;
+    static constexpr int test_times_ = 100;
 
     if (LeviDB::IOEnv::fileExists(index_fname)) {
         LeviDB::IOEnv::deleteFile(index_fname);
@@ -58,6 +58,28 @@ void index_iter_test() {
     index.insert("E", LeviDB::OffsetToData{pos});
     expect_keys.insert(expect_keys.end(), {"A", "C", "E"});
     verify();
+
+    {
+        auto iter = index.makeIterator();
+        iter->seek("C");
+        assert(iter->key() == "C");
+        iter->next();
+        assert(iter->key() == "E");
+
+        iter->seek("C");
+        assert(iter->value()[0] == 'D');
+        iter->prev();
+        assert(iter->value()[0] == 'B');
+        iter->next();
+        assert(iter->value()[0] == 'D');
+
+        iter->seekToLast();
+        assert(iter->value()[0] == 'F');
+        iter->prev();
+        assert(iter->value()[0] == 'D');
+        iter->prev();
+        assert(iter->value()[0] == 'B');
+    }
 
     std::cout << __FUNCTION__ << std::endl;
 }

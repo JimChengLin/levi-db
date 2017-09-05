@@ -33,15 +33,35 @@ namespace LeviDB {
 
         ~UniversalStringRepresentation() noexcept = default;
 
-        // mask == 0 表示 no-op
-        void reveal(size_t idx, char mask) noexcept;
+    public:
+        EXPOSE(_src);
+
+        void reveal(size_t idx, char mask, bool bit) noexcept;
 
         void reveal(const Slice & slice) noexcept;
+
+        bool possible(const std::string & input) const noexcept;
+
+        void clear() noexcept;
 
         Slice toSlice() const noexcept { return {*_src}; }
     };
 
     using USR = UniversalStringRepresentation;
+
+    class UsrJudge {
+    public:
+        UsrJudge() noexcept = default;
+        DEFAULT_MOVE(UsrJudge);
+        DEFAULT_COPY(UsrJudge);
+
+    public:
+        virtual ~UsrJudge() noexcept = default;
+
+        virtual bool possible(const USR & input) const = 0;
+
+        virtual bool match(const USR & input) const = 0;
+    };
 }
 
 #endif //LEVIDB_USR_H

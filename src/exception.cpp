@@ -1,8 +1,6 @@
 #include "exception.h"
 
 namespace LeviDB {
-    const char * Exception::_what = "LeviDBException";
-
     // header: uint32_t len + uint8_t code
     std::unique_ptr<char[]> Exception::copyState(const char * s) noexcept {
         uint32_t size;

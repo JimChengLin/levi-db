@@ -27,7 +27,11 @@
 namespace LeviDB {
     class IndexIter : public IndexRead {
     private:
+        template<bool RIGHT_FIRST>
         class BitDegradeTreeNodeIter;
+
+        typedef BitDegradeTreeNodeIter<false> ForwardNodeIter;
+        typedef BitDegradeTreeNodeIter<true> BackwardNodeIter;
 
         class BitDegradeTreeIterator;
 
@@ -47,23 +51,12 @@ namespace LeviDB {
 
     public:
         std::unique_ptr<Iterator<Slice, std::string>>
-        makeIterator(std::unique_ptr<Snapshot> && snapshot = nullptr) const noexcept;
+        makeIterator(std::unique_ptr<Snapshot> && snapshot) const noexcept;
+
+        std::unique_ptr<Iterator<Slice, std::string>>
+        makeIterator() const noexcept { return makeIterator(_seq_gen->makeSnapshot()); };
 
         void tryApplyPending();
-    };
-
-    class UsrJudge {
-    public:
-        UsrJudge() noexcept = default;
-        DEFAULT_COPY(UsrJudge);
-        DEFAULT_MOVE(UsrJudge);
-
-    public:
-        virtual ~UsrJudge() noexcept = default;
-
-        virtual bool possible(const USR & input) const = 0;
-
-        virtual bool match(const USR & input) const = 0;
     };
 }
 

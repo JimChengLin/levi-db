@@ -19,7 +19,7 @@ void kv_read_bench() {
         LeviDB::RandomAccessFile rf(data_fname);
         const LeviDB::IndexRead bdt(index_fname, LeviDB::OffsetToEmpty{LeviDB::IndexConst::disk_null_}, &seq_g, &rf);
 
-        constexpr int test_time_ = 100000;
+        static constexpr int test_time_ = 100000;
         LeviDB::SequentialFile src(src_fname);
 
         int nth = 0;

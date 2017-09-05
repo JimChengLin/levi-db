@@ -13,7 +13,6 @@
 #include "env_io.h"
 #include "exception.h"
 #include "iterator.h"
-#include "slice.h"
 
 namespace LeviDB {
     namespace LogReader {
@@ -25,7 +24,7 @@ namespace LeviDB {
 
         // 注意: const 方法不线程安全(buffer is mutable)
         // 重复 seek 有优化
-        // 结尾为 0 == del
+        // 结尾 == del
         std::unique_ptr<kv_iter>
         makeIterator(RandomAccessFile * data_file, uint32_t offset);
 
@@ -33,7 +32,7 @@ namespace LeviDB {
         std::unique_ptr<SimpleIterator<Slice>>
         makeRawIterator(RandomAccessFile * data_file, uint32_t offset);
 
-        // V.back() == del
+        // 结尾 == del
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
         makeTableIterator(RandomAccessFile * data_file);
 
