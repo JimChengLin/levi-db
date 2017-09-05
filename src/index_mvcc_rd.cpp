@@ -392,7 +392,7 @@ namespace LeviDB {
                 // del 在 last char
                 auto del = static_cast<bool>(res.back());
                 res.pop_back();
-                return {std::move(res), del};
+                return {std::move(res), !del};
             }
         }
         return {{}, false};

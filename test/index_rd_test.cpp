@@ -34,5 +34,40 @@ void index_rd_test() {
         }
     }
 
+    std::vector<uint8_t> bin = LeviDB::LogWriter::makeCompressRecord({{"A", "B"},
+                                                                      {"C", "D"},
+                                                                      {"E", "F"}});
+    uint32_t pos = writer.calcWritePos();
+    writer.addCompressRecord({bin.data(), bin.size()});
+    bdt_rd.insert("A", LeviDB::OffsetToData{pos});
+    bdt_rd.insert("C", LeviDB::OffsetToData{pos});
+    bdt_rd.insert("E", LeviDB::OffsetToData{pos});
+    bdt_rd.remove("A");
+    bdt_rd.remove("A");
+
+    assert(!bdt_rd.find("A").second);
+    auto a = bdt_rd.find("E");
+    assert(a.first.front() == 'F' && a.second);
+
+    bin = LeviDB::LogWriter::makeRecord("C", "");
+    pos = writer.calcWritePos();
+    writer.addDelRecord({bin.data(), bin.size()});
+
+    assert(bdt_rd.find("C").second);
+    bdt_rd.insert("C", LeviDB::OffsetToData{pos});
+    assert(!bdt_rd.find("C").second);
+
+    std::vector<uint8_t> bin_batch_a = LeviDB::LogWriter::makeRecord("A", "A_");
+    std::vector<uint8_t> bin_batch_b = LeviDB::LogWriter::makeRecord("C", "C_");
+    std::vector<uint32_t> addrs = writer.addRecords({{bin_batch_a.data(), bin_batch_a.size()},
+                                                     {bin_batch_b.data(), bin_batch_b.size()}});
+    bdt_rd.insert("A", LeviDB::OffsetToData{addrs.front()});
+    bdt_rd.insert("C", LeviDB::OffsetToData{addrs.back()});
+
+    auto b = bdt_rd.find("A");
+    assert(b.first == "A_");
+    auto c = bdt_rd.find("C");
+    assert(c.first == "C_");
+
     std::cout << __FUNCTION__ << std::endl;
 }
