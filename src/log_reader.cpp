@@ -11,19 +11,19 @@ namespace LeviDB {
         };
 
         static inline bool isRecordFull(char t) noexcept {
-            return ((t >> 2) & 1) == 0 && ((t >> 3) & 1) == 0;
+            return ((t >> 2) & 0b11) == 0b00;
         }
 
         static inline bool isRecordFirst(char t) noexcept {
-            return ((t >> 2) & 1) == 1 && ((t >> 3) & 1) == 0;
+            return ((t >> 2) & 0b11) == 0b01;
         }
 
         static inline bool isRecordMiddle(char t) noexcept {
-            return ((t >> 2) & 1) == 0 && ((t >> 3) & 1) == 1;
+            return ((t >> 2) & 0b11) == 0b10;
         }
 
         static inline bool isRecordLast(char t) noexcept {
-            return ((t >> 2) & 1) == 1 && ((t >> 3) & 1) == 1;
+            return ((t >> 2) & 0b11) == 0b11;
         }
 
         static inline bool isRecordCompress(char t) noexcept {
@@ -245,7 +245,7 @@ namespace LeviDB {
                 if (isRecordFirst(type_a) || isRecordMiddle(type_a)) { // prev is starting
                     if (isRecordMiddle(type_b) || isRecordLast(type_b)) {
                         // same compress, same del
-                        if ((((type_a ^ type_b) >> 4) & 1) == 0 && (((type_a ^ type_b) >> 5) & 1) == 0) {
+                        if ((((type_a ^ type_b) >> 4) & 0b11) == 0) {
                             return;
                         }
                     }
@@ -428,19 +428,19 @@ namespace LeviDB {
         }
 
         static inline bool isBatchFull(char t) noexcept {
-            return (t & 1) == 0 && ((t >> 1) & 1) == 0;
+            return (t & 0b11) == 0b00;
         }
 
         static inline bool isBatchFirst(char t) noexcept {
-            return (t & 1) == 1 && ((t >> 1) & 1) == 0;
+            return (t & 0b11) == 0b01;
         }
 
         static inline bool isBatchMiddle(char t) noexcept {
-            return (t & 1) == 0 && ((t >> 1) & 1) == 1;
+            return (t & 0b11) == 0b10;
         }
 
         static inline bool isBatchLast(char t) noexcept {
-            return (t & 1) == 1 && ((t >> 1) & 1) == 1;
+            return (t & 0b11) == 0b11;
         }
 
         // 确保 batch dependency 的 RawIterator
