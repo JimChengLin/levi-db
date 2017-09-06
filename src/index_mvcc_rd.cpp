@@ -297,7 +297,7 @@ namespace LeviDB {
     // 读取数据文件的实现
     class MatcherOffsetImpl : public Matcher {
     private:
-        mutable std::unique_ptr<Iterator<Slice, std::string>> _iter; // 侦测是否压缩会短时间改变 _iter
+        std::unique_ptr<Iterator<Slice, std::string>> _iter;
         std::exception_ptr _e;
 
     public:
@@ -343,25 +343,9 @@ namespace LeviDB {
             return {};
         };
 
-        // dirty hack, 原是无用的接口方法, 现用来表示是否压缩, 0 = 是, 其余 = 否
+        // dirty hack, 原是无用的接口方法, 现用来表示是否压缩, 0 = 是, 1 = 否
         size_t size() const override {
-            Slice curr;
-            if (_iter->valid()) { // next 之后, curr 肯定可用
-                curr = _iter->key();
-            }
-
-            _iter->seekToFirst();
-            _iter->next();
-            auto res = static_cast<size_t>(!_iter->valid()); // compress => valid => false => 0
-
-            if (curr.size()) {
-                _iter->seek(curr);
-            } else {
-                _iter->seekToLast();
-                _iter->next();
-                assert(!_iter->valid());
-            }
-            return res;
+            return static_cast<size_t>(!LogReader::isRecordIteratorCompress(_iter.get()));
         };
 
         // 以下方法在 BitDegradeTree 中没有用到, 所以不强行实现

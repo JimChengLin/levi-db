@@ -28,9 +28,6 @@ namespace LeviDB {
     }
 
     bool BDNode::verify() const noexcept {
-        if (immut_ptrs()[0].isNull()) {
-            return true;
-        }
         return _padding_[0] == 0 && _padding_[1] == 0
                && CRC32C::verify(reinterpret_cast<const char *>(this), offsetof(BDNode, _checksum), &_checksum[0]);
     }

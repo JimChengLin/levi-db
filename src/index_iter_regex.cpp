@@ -20,7 +20,7 @@ namespace LeviDB {
 
         const uint32_t * min_it = nullptr;
         std::unique_ptr<BitDegradeTreeNodeIter> node_iter;
-        std::unique_ptr<LogReader::kv_iter> log_iter;
+        std::unique_ptr<LogReader::kv_iter_t> log_iter;
         int _line = 0;
         bool go_right = RIGHT_FIRST;
 
@@ -81,8 +81,7 @@ namespace LeviDB {
                                         (_index->offToMemNode(ptr.asNode()), _index, _judge, _reveal_info);
                                 while (node_iter->valid()) {
                                     // steal ownership
-                                    _item = std::move(
-                                            const_cast<std::pair<Slice, std::string> &>(node_iter->itemRef()));
+                                    _item = std::move(node_iter->itemRef());
                                     if (_judge == nullptr
                                         || (_reveal_info->reveal(_item.first), _judge->match(*_reveal_info))) {
                                         YIELD();
@@ -119,7 +118,7 @@ namespace LeviDB {
 
                             while (node_iter->valid()) {
                                 // steal ownership
-                                _item = std::move(const_cast<std::pair<Slice, std::string> &>(node_iter->itemRef()));
+                                _item = std::move(node_iter->itemRef());
                                 if (_judge == nullptr
                                     || (_reveal_info->reveal(_item.first), _judge->match(*_reveal_info))) {
                                     YIELD();
@@ -136,7 +135,7 @@ namespace LeviDB {
         }
 
     private:
-        const std::pair<Slice, std::string> & itemRef() const noexcept {
+        std::pair<Slice, std::string> & itemRef() noexcept {
             return _item;
         };
     };

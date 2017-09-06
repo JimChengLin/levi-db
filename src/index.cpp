@@ -30,7 +30,8 @@ namespace LeviDB {
     size_t BitDegradeTree::size(const BDNode * node) const {
         size_t cnt = 0;
         for (CritPtr ptr:node->immut_ptrs()) {
-            if (ptr.isNull()) {
+            if (ptr.isNull()
+                || (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
                 break;
             }
             if (ptr.isData()) {
@@ -52,8 +53,8 @@ namespace LeviDB {
             std::tie(idx, direct, std::ignore) = pos;
 
             CritPtr & ptr = cursor->mut_ptrs()[idx + static_cast<size_t>(direct)];
-            if (ptr.isNull() ||
-                (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
+            if (ptr.isNull()
+                || (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
                 ptr.setData(v);
                 cursor->updateChecksum();
                 break;
@@ -88,8 +89,8 @@ namespace LeviDB {
             std::tie(idx, direct, size) = pos;
 
             CritPtr & ptr = cursor->mut_ptrs()[idx + static_cast<size_t>(direct)];
-            if (ptr.isNull() ||
-                (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
+            if (ptr.isNull()
+                || (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
                 break;
             }
             if (ptr.isNode()) {
@@ -314,10 +315,7 @@ namespace LeviDB {
         } while (i != rnd);
 
         if (parent->full()) {
-            const uint32_t * biggest = std::max_element(parent->immut_diffs().cbegin(),
-                                                        parent->immut_diffs().cend(),
-                                                        cmp);
-            makeNewRoom(parent, biggest - parent->immut_diffs().cbegin());
+            makeNewRoom(parent);
         }
     }
 
@@ -353,7 +351,7 @@ namespace LeviDB {
         child->updateChecksum();
     }
 
-    void BitDegradeTree::makeNewRoom(BDNode * parent, size_t idx) {
+    void BitDegradeTree::makeNewRoom(BDNode * parent) {
         auto off = static_cast<uint32_t>(reinterpret_cast<char *>(parent) -
                                          reinterpret_cast<char *>(_dst.immut_mmaped_region()));
         OffsetToNode offset = mallocNode();

@@ -11,27 +11,27 @@ namespace LeviDB {
         };
 
         static inline bool isRecordFull(char t) noexcept {
-            return ((t >> 2) & 0b11) == 0b00;
+            return (t & (0b11 << 2)) == (0b00 << 2);
         }
 
         static inline bool isRecordFirst(char t) noexcept {
-            return ((t >> 2) & 0b11) == 0b01;
+            return (t & (0b11 << 2)) == (0b01 << 2);
         }
 
         static inline bool isRecordMiddle(char t) noexcept {
-            return ((t >> 2) & 0b11) == 0b10;
+            return (t & (0b11 << 2)) == (0b10 << 2);
         }
 
         static inline bool isRecordLast(char t) noexcept {
-            return ((t >> 2) & 0b11) == 0b11;
+            return (t & (0b11 << 2)) == (0b11 << 2);
         }
 
         static inline bool isRecordCompress(char t) noexcept {
-            return ((t >> 4) & 1) == 1;
+            return (t & (1 << 4)) == (1 << 4);
         }
 
         static inline bool isRecordDel(char t) noexcept {
-            return ((t >> 5) & 1) == 1;
+            return (t & (1 << 5)) == (1 << 5);
         }
 
         class RawIterator : public SimpleIterator<Slice> {
@@ -245,7 +245,7 @@ namespace LeviDB {
                 if (isRecordFirst(type_a) || isRecordMiddle(type_a)) { // prev is starting
                     if (isRecordMiddle(type_b) || isRecordLast(type_b)) {
                         // same compress, same del
-                        if ((((type_a ^ type_b) >> 4) & 0b11) == 0) {
+                        if (((type_a ^ type_b) & (0b11 << 4)) == 0) {
                             return;
                         }
                     }
@@ -418,7 +418,7 @@ namespace LeviDB {
             };
         };
 
-        std::unique_ptr<kv_iter>
+        std::unique_ptr<kv_iter_t>
         makeIterator(RandomAccessFile * data_file, uint32_t offset) {
             auto raw_iter = makeRawIterator(data_file, offset);
             if (isRecordCompress(raw_iter->item().back())) {
@@ -426,6 +426,10 @@ namespace LeviDB {
             }
             return std::make_unique<RecordIterator>(std::move(raw_iter));
         }
+
+        bool isRecordIteratorCompress(kv_iter_t * it) noexcept {
+            return dynamic_cast<RecordIteratorCompress *>(it) != nullptr;
+        };
 
         static inline bool isBatchFull(char t) noexcept {
             return (t & 0b11) == 0b00;
@@ -547,7 +551,7 @@ namespace LeviDB {
         class TableIterator : public SimpleIterator<std::pair<Slice, std::string>> {
         private:
             RawIteratorBatchChecked * _raw_iter_batch_ob;
-            std::unique_ptr<kv_iter> _kv_iter;
+            std::unique_ptr<kv_iter_t> _kv_iter;
 
             friend class TableIteratorOffset;
 
@@ -596,7 +600,7 @@ namespace LeviDB {
             }
 
         private:
-            static std::unique_ptr<kv_iter> makeKVIter(std::unique_ptr<RawIteratorBatchChecked> && p) {
+            static std::unique_ptr<kv_iter_t> makeKVIter(std::unique_ptr<RawIteratorBatchChecked> && p) {
                 if (isRecordCompress(p->item().back())) {
                     return std::make_unique<RecordIteratorCompress>(std::move(p));
                 }

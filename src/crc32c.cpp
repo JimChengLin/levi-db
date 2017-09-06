@@ -341,10 +341,10 @@ namespace LeviDB {
         }
 
         static bool canAccelerateCRC32C() noexcept {
-            static constexpr char buf[] = "TestCRCBuffer";
-            static constexpr unsigned char buf_size = sizeof(buf) - 1;
-            static constexpr uint32_t crc_val = 0xdcbc59fa;
-            return acceleratedCRC32C(0, buf, buf_size) == crc_val;
+            static constexpr char buf_[] = "TestCRCBuffer";
+            static constexpr unsigned char buf_size_ = sizeof(buf_) - 1;
+            static constexpr uint32_t crc_val_ = 0xdcbc59fa;
+            return acceleratedCRC32C(0, buf_, buf_size_) == crc_val_;
         }
 
         uint32_t extend(uint32_t crc, const char * buf, size_t size) noexcept {

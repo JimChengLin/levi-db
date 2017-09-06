@@ -16,7 +16,7 @@
 
 namespace LeviDB {
     namespace LogReader {
-        using kv_iter = Iterator<Slice, std::string>;
+        using kv_iter_t = Iterator<Slice, std::string>;
 
         using reporter_t = std::function<void(const Exception &)>;
 
@@ -25,8 +25,10 @@ namespace LeviDB {
         // 注意: const 方法不线程安全(buffer is mutable)
         // 重复 seek 有优化
         // 结尾 == del
-        std::unique_ptr<kv_iter>
+        std::unique_ptr<kv_iter_t>
         makeIterator(RandomAccessFile * data_file, uint32_t offset);
+
+        bool isRecordIteratorCompress(kv_iter_t * it) noexcept;
 
         // 结尾 == type(std::bitset<8>)
         std::unique_ptr<SimpleIterator<Slice>>

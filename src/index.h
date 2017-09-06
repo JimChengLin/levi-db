@@ -160,7 +160,6 @@ namespace LeviDB {
     class Matcher {
     public:
         Matcher() noexcept = default;
-
         DEFAULT_MOVE(Matcher);
         DEFAULT_COPY(Matcher);
 
@@ -229,7 +228,7 @@ namespace LeviDB {
 
         void makeRoomPush(BDNode * parent, BDNode * child, size_t idx, bool direct) noexcept;
 
-        void makeNewRoom(BDNode * parent, size_t idx);
+        void makeNewRoom(BDNode * parent);
 
         void nodeRemove(BDNode * node, size_t idx, bool direct, size_t size) noexcept;
 
