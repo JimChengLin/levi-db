@@ -380,9 +380,6 @@ namespace LeviDB {
             };
 
             void seek(const Slice & target) override {
-                if (_cursor >= _rep.cbegin() && _cursor < _rep.cend() && target == key()) {
-                    return;
-                }
                 seekToFirst();
                 while (valid() && SliceComparator{}(key(), target)) {
                     next();

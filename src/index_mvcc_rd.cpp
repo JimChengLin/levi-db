@@ -149,7 +149,11 @@ namespace LeviDB {
                 _direction = REVERSE;
             }
 
-            --_cursor->second;
+            if (_cursor->second == _cursor->first->cbegin()) {
+                _cursor->second = _cursor->first->cend();
+            } else {
+                --_cursor->second;
+            }
             findLargest();
         };
 

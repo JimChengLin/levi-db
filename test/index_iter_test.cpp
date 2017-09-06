@@ -31,8 +31,8 @@ void index_iter_test() {
     for (int i = 0; i < test_times_; ++i) {
         expect_keys.emplace_back(std::to_string(i));
         uint32_t pos = writer.calcWritePos();
-        std::vector<uint8_t> b = LeviDB::LogWriter::makeRecord(expect_keys.back(), std::to_string(i + test_times_));
-        writer.addRecord({b.data(), b.size()});
+        std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(expect_keys.back(), std::to_string(i + test_times_));
+        writer.addRecord({bin.data(), bin.size()});
         index.insert(expect_keys.back(), LeviDB::OffsetToData{pos});
     }
     std::sort(expect_keys.begin(), expect_keys.end());
@@ -67,18 +67,50 @@ void index_iter_test() {
         assert(iter->key() == "E");
 
         iter->seek("C");
-        assert(iter->value()[0] == 'D');
+        assert(iter->value() == "D");
         iter->prev();
-        assert(iter->value()[0] == 'B');
+        assert(iter->value() == "B");
         iter->next();
-        assert(iter->value()[0] == 'D');
+        assert(iter->value() == "D");
 
         iter->seekToLast();
-        assert(iter->value()[0] == 'F');
+        assert(iter->value() == "F");
         iter->prev();
-        assert(iter->value()[0] == 'D');
+        assert(iter->value() == "D");
         iter->prev();
-        assert(iter->value()[0] == 'B');
+        assert(iter->value() == "B");
+
+        index.remove("0");
+        index.remove("E");
+        pos = writer.calcWritePos();
+        std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord("A", "_");
+        writer.addRecord({bin.data(), bin.size()});
+        index.insert("A", LeviDB::OffsetToData{pos});
+
+        auto mvcc_iter = index.makeIterator();
+        mvcc_iter->seekToFirst();
+        assert(mvcc_iter->key() == "1");
+        mvcc_iter->seekToLast();
+        assert(mvcc_iter->key() == "C");
+        mvcc_iter->seek("A");
+        assert(mvcc_iter->value() == "_");
+
+        mvcc_iter->seek("0");
+        assert(mvcc_iter->key() == "1");
+        assert(mvcc_iter->value() == "101");
+
+        mvcc_iter->seek("C");
+        mvcc_iter->next();
+        assert(!mvcc_iter->valid());
+        mvcc_iter->seek("1");
+        mvcc_iter->prev();
+        assert(!mvcc_iter->valid());
+    }
+    index.tryApplyPending();
+    {
+        auto iter = index.makeIterator();
+        iter->seekToFirst();
+        assert(iter->key() == "1");
     }
 
     std::cout << __FUNCTION__ << std::endl;

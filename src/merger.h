@@ -16,7 +16,7 @@
 #include "util.h"
 
 namespace LeviDB {
-    template<typename K, typename V, typename CMP=std::less>
+    template<typename K, typename V, typename CMP=std::less<K>>
     class MergingIterator : public Iterator<K, V> {
     private:
         Iterator<K, V> * _current = nullptr;
@@ -37,6 +37,14 @@ namespace LeviDB {
 
         void addIterator(std::unique_ptr<Iterator<K, V>> && iter) noexcept {
             _children.emplace_back(std::move(iter));
+        }
+
+        bool doForward() const noexcept {
+            return _direction == FORWARD;
+        }
+
+        bool doBackward() const noexcept {
+            return _direction == REVERSE;
         }
 
     public:
@@ -75,7 +83,7 @@ namespace LeviDB {
 
             if (_direction != FORWARD) {
                 for (auto & child : _children) {
-                    if (child != _current) {
+                    if (child.get() != _current) {
                         child->seek(key());
                         // ensure that all children are positioned after key()
                         if (child->valid() && key() == child->key()) {
@@ -95,7 +103,7 @@ namespace LeviDB {
 
             if (_direction != REVERSE) {
                 for (auto & child : _children) {
-                    if (child != _current) {
+                    if (child.get() != _current) {
                         child->seek(key());
                         if (child->valid()) {
                             // entry >= key(), step back one

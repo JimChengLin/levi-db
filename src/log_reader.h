@@ -23,7 +23,6 @@ namespace LeviDB {
         [[noreturn]] void defaultReporter(const Exception & e);
 
         // 注意: const 方法不线程安全(buffer is mutable)
-        // 重复 seek 有优化
         // 结尾 == del
         std::unique_ptr<kv_iter_t>
         makeIterator(RandomAccessFile * data_file, uint32_t offset);

@@ -24,8 +24,8 @@ void index_rd_test() {
 
     for (int i = 0; i < test_times_; ++i) {
         uint32_t pos = writer.calcWritePos();
-        std::vector<uint8_t> b = LeviDB::LogWriter::makeRecord(std::to_string(i), std::to_string(i + test_times_));
-        writer.addRecord({b.data(), b.size()});
+        std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(std::to_string(i), std::to_string(i + test_times_));
+        writer.addRecord({bin.data(), bin.size()});
         bdt_rd.insert(std::to_string(i), LeviDB::OffsetToData{pos});
 
         for (int j = 0; j <= i; ++j) {

@@ -4,6 +4,7 @@
 
 #include "index_iter_regex.h"
 #include "log_reader.h"
+#include "merger.h"
 
 namespace LeviDB {
     template<bool RIGHT_FIRST>
@@ -89,12 +90,14 @@ namespace LeviDB {
                                     node_iter->next();
                                 }
                             } else {
-                                log_iter = LogReader::makeIterator(_index->_data_file, ptr.asData().val);
-                                log_iter->seek(_reveal_info->toSlice());
-                                _item = {log_iter->key(), log_iter->value()};
-                                if (_judge == nullptr
-                                    || (_reveal_info->reveal(_item.first), _judge->match(*_reveal_info))) {
-                                    YIELD();
+                                if (ptr.asData().val != IndexConst::del_marker_) {
+                                    log_iter = LogReader::makeIterator(_index->_data_file, ptr.asData().val);
+                                    log_iter->seek(_reveal_info->toSlice());
+                                    _item = {log_iter->key(), log_iter->value()};
+                                    if (_judge == nullptr
+                                        || (_reveal_info->reveal(_item.first), _judge->match(*_reveal_info))) {
+                                        YIELD();
+                                    }
                                 }
                             }
                         }
@@ -187,17 +190,13 @@ namespace LeviDB {
     class IndexIter::BitDegradeTreeIterator : public Iterator<Slice, std::string> {
     private:
         const IndexIter * _index;
-        std::unique_ptr<Snapshot> _snapshot;
-        std::unique_ptr<Iterator<Slice, OffsetToData>> _pending;
-
         std::unique_ptr<SimpleIterator<std::pair<Slice, Slice>>> _gen;
         std::unique_ptr<UsrJudge> _judge;
         USR _info;
 
     public:
-        explicit BitDegradeTreeIterator(const IndexIter * index, std::unique_ptr<Snapshot> && snapshot) noexcept
-                : _index(index), _snapshot(std::move(snapshot)),
-                  _pending(_index->pendingPart(_snapshot->immut_seq_num())) { ++_index->operating_iters; }
+        explicit BitDegradeTreeIterator(const IndexIter * index) noexcept
+                : _index(index) { ++_index->operating_iters; }
 
         DEFAULT_MOVE(BitDegradeTreeIterator);
         DELETE_COPY(BitDegradeTreeIterator);
@@ -271,9 +270,170 @@ namespace LeviDB {
         };
     };
 
+    class OffsetToStringIterator : public Iterator<Slice, std::string> {
+    private:
+        std::unique_ptr<Iterator<Slice, OffsetToData>> _offset_iter;
+        RandomAccessFile * _data_file;
+
+    public:
+        OffsetToStringIterator(std::unique_ptr<Iterator<Slice, OffsetToData>> && offset_iter,
+                               RandomAccessFile * data_file) noexcept
+                : _offset_iter(std::move(offset_iter)), _data_file(data_file) {}
+
+        DEFAULT_MOVE(OffsetToStringIterator);
+        DELETE_COPY(OffsetToStringIterator);
+
+    public:
+        ~OffsetToStringIterator() noexcept override = default;
+
+        bool valid() const override {
+            return _offset_iter->valid();
+        };
+
+        void seekToFirst() override {
+            _offset_iter->seekToFirst();
+        };
+
+        void seekToLast() override {
+            _offset_iter->seekToLast();
+        };
+
+        void seek(const Slice & target) override {
+            _offset_iter->seek(target);
+        };
+
+        void next() override {
+            assert(valid());
+            _offset_iter->next();
+        };
+
+        void prev() override {
+            assert(valid());
+            _offset_iter->prev();
+        };
+
+        Slice key() const override {
+            assert(valid());
+            return _offset_iter->key();
+        };
+
+        std::string value() const override {
+            assert(valid());
+            if (_offset_iter->value().val == IndexConst::del_marker_) { // 显式删除
+                return "\1"; // del
+            }
+            auto kv_iter = LogReader::makeIterator(_data_file, _offset_iter->value().val);
+            kv_iter->seek(key());
+            return kv_iter->value();
+        };
+    };
+
+    class IndexIter::TreeIteratorMerged : public MergingIterator<Slice, std::string, SliceComparator> {
+    private:
+        std::unique_ptr<Snapshot> _snapshot;
+
+    public:
+        TreeIteratorMerged(std::unique_ptr<BitDegradeTreeIterator> && tree_iter,
+                           std::unique_ptr<OffsetToStringIterator> && pending_iter,
+                           std::unique_ptr<Snapshot> && snapshot) noexcept : _snapshot(std::move(snapshot)) {
+            addIterator(std::move(pending_iter));
+            addIterator(std::move(tree_iter));
+        }
+    };
+
+    class IndexIter::TreeIteratorFiltered : public Iterator<Slice, std::string> {
+    private:
+        TreeIteratorMerged _tree;
+
+        std::string _key;
+        std::string _value;
+        bool _valid = false;
+
+    public:
+        TreeIteratorFiltered(std::unique_ptr<BitDegradeTreeIterator> && tree_iter,
+                             std::unique_ptr<OffsetToStringIterator> && pending_iter,
+                             std::unique_ptr<Snapshot> && snapshot) noexcept
+                : _tree(std::move(tree_iter), std::move(pending_iter), std::move(snapshot)) {}
+
+        DELETE_MOVE(TreeIteratorFiltered);
+        DELETE_COPY(TreeIteratorFiltered);
+
+    public:
+        ~TreeIteratorFiltered() noexcept override = default;
+
+        bool valid() const override {
+            return _valid;
+        };
+
+        void seekToFirst() override {
+            _tree.seekToFirst();
+            update();
+        };
+
+        void seekToLast() override {
+            _tree.seekToLast();
+            update();
+        };
+
+        void seek(const Slice & target) override {
+            _tree.seek(target);
+            update();
+        };
+
+        void next() override {
+            assert(valid());
+            _tree.next();
+            update();
+        };
+
+        void prev() override {
+            assert(valid());
+            _tree.prev();
+            update();
+        };
+
+        Slice key() const override {
+            assert(valid());
+            return _key;
+        };
+
+        std::string value() const override {
+            assert(valid());
+            return _value;
+        };
+
+    private:
+        void update() {
+            bool should_break = false;
+            while (_tree.valid() && !should_break) {
+                std::string key = _tree.key().toString();
+                std::string value = _tree.value();
+
+                if (_key == key/* dup */|| value.back() == 1/* del */) {
+                    if (_tree.doForward()) {
+                        _tree.next();
+                    } else {
+                        assert(_tree.doBackward());
+                        _tree.prev();
+                    }
+                } else {
+                    should_break = true;
+                }
+
+                _key = std::move(key);
+                _value = std::move(value);
+                _value.pop_back();
+            }
+            _valid = _tree.valid();
+        }
+    };
+
     std::unique_ptr<Iterator<Slice, std::string>>
     IndexIter::makeIterator(std::unique_ptr<Snapshot> && snapshot) const noexcept {
-        return std::make_unique<BitDegradeTreeIterator>(this, std::move(snapshot));
+        return std::make_unique<TreeIteratorFiltered>(
+                std::make_unique<BitDegradeTreeIterator>(this),
+                std::make_unique<OffsetToStringIterator>(pendingPart(snapshot->immut_seq_num()), _data_file),
+                std::move(snapshot));
     }
 
     void IndexIter::tryApplyPending() {

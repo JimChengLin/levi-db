@@ -35,6 +35,10 @@ namespace LeviDB {
 
         class BitDegradeTreeIterator;
 
+        class TreeIteratorMerged;
+
+        class TreeIteratorFiltered;
+
         mutable std::atomic<int> operating_iters{0};
 
     public:
@@ -50,6 +54,7 @@ namespace LeviDB {
         DELETE_COPY(IndexIter);
 
     public:
+        // 注意: const 方法不线程安全(lazy eval)
         std::unique_ptr<Iterator<Slice, std::string>>
         makeIterator(std::unique_ptr<Snapshot> && snapshot) const noexcept;
 
