@@ -29,7 +29,7 @@ set(SOURCE_FILES main.cpp
         src/iterator.h
         src/log_reader.cpp src/log_reader.h
         src/log_writer.cpp src/log_writer.h
-        src/merger.cpp src/merger.h
+        src/merger.h
         src/meta_keeper.cpp src/meta_keeper.h
         src/seq_gen.cpp src/seq_gen.h
         src/slice.h
@@ -46,7 +46,7 @@ set(SOURCE_FILES main.cpp
 
 add_executable(LeviDB ${SOURCE_FILES})
 
-find_package(ZLIB)
+find_package(ZLIB REQUIRED)
 if (ZLIB_FOUND)
     include_directories(${ZLIB_INCLUDE_DIRS})
     target_link_libraries(LeviDB ${ZLIB_LIBRARIES})
