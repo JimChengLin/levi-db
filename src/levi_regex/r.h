@@ -7,6 +7,92 @@
  * https://github.com/JimChengLin/EasyRegex
  */
 
+#include <memory>
 
+#include "../iterator.h"
+#include "../usr.h"
+#include "result.h"
+#include "state_machine.h"
+
+namespace LeviDB {
+    namespace Regex {
+        enum Mode {
+            GREEDY,
+            LAZY,
+        };
+
+        class R : public UsrJudge {
+        private:
+            enum Relation {
+                AND,
+                OR,
+                XOR,
+                INVERT,
+                NEXT,
+                NONE,
+            };
+
+            // _r 和 _pattern 二者不可能同时有效
+            std::unique_ptr<R> _r;
+            std::string _pattern;
+
+            size_t _num_from = 1;
+            size_t _num_to = 1;
+
+            std::unique_ptr<R> _other;
+            Relation _relation = NONE;
+            Mode _mode = GREEDY;
+
+        public:
+            explicit R(std::unique_ptr<R> && r) noexcept : _r(std::move(r)) {}
+
+            explicit R(std::string pattern) noexcept : _pattern(std::move(pattern)) {}
+
+            R(std::unique_ptr<R> && r, size_t num_from, size_t num_to, Mode mode) noexcept
+                    : _r(std::move(r)), _num_from(num_from), _num_to(num_to), _mode(mode) {}
+
+            R(std::string pattern, size_t num_from, size_t num_to, Mode mode) noexcept
+                    : _pattern(std::move(pattern)), _num_from(num_from), _num_to(num_to), _mode(mode) {}
+
+            DEFAULT_MOVE(R);
+
+            R(const R & another) noexcept { operator=(another); };
+
+            R & operator=(const R & another) noexcept;
+
+        public:
+            R operator&(R another) const & noexcept;
+
+            R operator&(R another) && noexcept;
+
+            R operator|(R another) const & noexcept;
+
+            R operator|(R another) && noexcept;
+
+            R operator^(R another) const & noexcept;
+
+            R operator^(R another) && noexcept;
+
+            R operator~() const & noexcept;
+
+            R operator~() && noexcept;
+
+            R operator<<(R another) const & noexcept;
+
+            R operator<<(R another) && noexcept;
+
+        public:
+            ~R() noexcept override = default;
+
+            bool possible(const USR & input) const override;
+
+            bool match(const USR & input) const override;
+
+        private:
+            std::unique_ptr<SimpleIterator<Result>>
+            imatch(const USR & input, Result prev_result) const noexcept;
+        };
+    }
+}
 
 #endif //LEVIDB_R_H
