@@ -27,6 +27,9 @@ set(SOURCE_FILES main.cpp
         src/index_iter_regex.cpp src/index_iter_regex.h
         src/index_mvcc_rd.cpp src/index_mvcc_rd.h
         src/iterator.h
+        src/levi_regex/r.cpp src/levi_regex/r.h
+        src/levi_regex/result.h
+        src/levi_regex/state_machine.cpp src/levi_regex/state_machine.h
         src/log_reader.cpp src/log_reader.h
         src/log_writer.cpp src/log_writer.h
         src/merger.h
@@ -42,7 +45,8 @@ set(SOURCE_FILES main.cpp
         test/index_rd_test.cpp
         test/index_regex_test.cpp
         test/index_test.cpp
-        test/log_test.cpp)
+        test/log_test.cpp
+        test/regex_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
 

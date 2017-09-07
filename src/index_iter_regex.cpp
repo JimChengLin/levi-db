@@ -409,15 +409,13 @@ namespace LeviDB {
                 std::string key = _tree.key().toString();
                 std::string value = _tree.value();
 
-                if (_key == key/* dup */|| value.back() == 1/* del */) {
+                if (not(should_break = not(_key == key/* dup */|| value.back() == 1/* del */))) {
                     if (_tree.doForward()) {
                         _tree.next();
                     } else {
                         assert(_tree.doBackward());
                         _tree.prev();
                     }
-                } else {
-                    should_break = true;
                 }
 
                 _key = std::move(key);

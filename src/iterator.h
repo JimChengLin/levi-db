@@ -39,7 +39,6 @@ namespace LeviDB {
     class SimpleIterator {
     public:
         SimpleIterator() noexcept = default;
-
         DEFAULT_MOVE(SimpleIterator);
         DEFAULT_COPY(SimpleIterator);
 
