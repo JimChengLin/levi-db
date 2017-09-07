@@ -11,7 +11,7 @@ namespace LeviDB {
     private:
         std::string _src_;
         std::string _extra;
-        std::string * _src;
+        std::string * _src = nullptr;
 
     public:
         // default

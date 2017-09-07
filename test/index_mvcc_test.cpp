@@ -67,8 +67,12 @@ void index_mvcc_test() {
         assert(verify(index, s2->immut_seq_num(), ctrl_group2));
         assert(verify(index, s3->immut_seq_num(), ctrl_group3));
         assert(verify(index, 0, ctrl_group));
+        assert(!index.sync());
     }
-    index.tryApplyPending();
+    {
+        auto guard = seq_g.makeSnapshot();
+        index.tryApplyPending();
+    }
     uint32_t val = ctrl_group.back();
     ctrl_group.pop_back();
     index.remove({reinterpret_cast<char *>(&val), sizeof(val)});

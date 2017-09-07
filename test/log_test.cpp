@@ -113,6 +113,7 @@ void log_test() {
         table_recovery_iter->next();
     }
     assert(!table_recovery_iter->valid());
+    af.sync();
 
     std::cout << __FUNCTION__ << std::endl;
 }

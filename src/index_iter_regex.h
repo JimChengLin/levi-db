@@ -42,11 +42,7 @@ namespace LeviDB {
         mutable std::atomic<int> operating_iters{0};
 
     public:
-        IndexIter(const std::string & fname, SeqGenerator * seq_gen, RandomAccessFile * data_file)
-                : IndexRead(fname, seq_gen, data_file) {}
-
-        IndexIter(const std::string & fname, OffsetToEmpty empty, SeqGenerator * seq_gen, RandomAccessFile * data_file)
-                : IndexRead(fname, empty, seq_gen, data_file) {}
+        using IndexRead::IndexRead;
 
         ~IndexIter() noexcept = default;
 

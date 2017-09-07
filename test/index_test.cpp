@@ -19,6 +19,7 @@ void index_test() {
             assert(tree.find({reinterpret_cast<char *>(&val), sizeof(val)}).val == val);
         }
     }
+    assert(tree.size() == test_times_ / 2);
 
     for (int i = 0; i < test_times_; i += 2) {
         auto val = static_cast<uint32_t>(i);

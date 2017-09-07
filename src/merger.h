@@ -19,8 +19,10 @@ namespace LeviDB {
     template<typename K, typename V, typename CMP=std::less<K>>
     class MergingIterator : public Iterator<K, V> {
     private:
-        Iterator<K, V> * _current = nullptr;
-        std::vector<std::unique_ptr<Iterator<K, V>>> _children;
+        using inner_iter_t = Iterator<K, V>;
+
+        Iterator <K, V> * _current = nullptr;
+        std::vector<std::unique_ptr<inner_iter_t>> _children;
         CMP _cmp{};
 
         enum Direction {
@@ -35,7 +37,7 @@ namespace LeviDB {
         DELETE_MOVE(MergingIterator);
         DELETE_COPY(MergingIterator);
 
-        void addIterator(std::unique_ptr<Iterator<K, V>> && iter) noexcept {
+        void addIterator(std::unique_ptr<inner_iter_t> && iter) noexcept {
             _children.emplace_back(std::move(iter));
         }
 
@@ -130,7 +132,7 @@ namespace LeviDB {
 
     private:
         void findSmallest() {
-            Iterator<K, V> * smallest = nullptr;
+            inner_iter_t * smallest = nullptr;
             for (const auto & child : _children) {
                 if (child->valid()) {
                     if (smallest == nullptr || _cmp(child->key(), smallest->key())) {
@@ -142,7 +144,7 @@ namespace LeviDB {
         }
 
         void findLargest() {
-            Iterator<K, V> * largest = nullptr;
+            inner_iter_t * largest = nullptr;
             for (const auto & child : _children) {
                 if (child->valid()) {
                     if (largest == nullptr || _cmp(largest->key(), child->key())) {

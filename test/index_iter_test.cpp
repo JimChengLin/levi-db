@@ -82,10 +82,12 @@ void index_iter_test() {
 
         index.remove("0");
         index.remove("E");
-        pos = writer.calcWritePos();
-        std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord("A", "_");
-        writer.addRecord({bin.data(), bin.size()});
-        index.insert("A", LeviDB::OffsetToData{pos});
+        for (const std::string & k:{"A", "6"}) {
+            pos = writer.calcWritePos();
+            std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(k, "_");
+            writer.addRecord({bin.data(), bin.size()});
+            index.insert(k, LeviDB::OffsetToData{pos});
+        }
 
         auto mvcc_iter = index.makeIterator();
         mvcc_iter->seekToFirst();
