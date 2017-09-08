@@ -27,7 +27,7 @@ set(SOURCE_FILES main.cpp
         src/index_iter_regex.cpp src/index_iter_regex.h
         src/index_mvcc_rd.cpp src/index_mvcc_rd.h
         src/iterator.h
-        src/levi_regex/r.cpp src/levi_regex/r.h
+        src/levi_regex/r.cpp src/levi_regex/r.h src/levi_regex/r_.cpp
         src/levi_regex/result.h
         src/levi_regex/state_machine.cpp src/levi_regex/state_machine.h
         src/log_reader.cpp src/log_reader.h

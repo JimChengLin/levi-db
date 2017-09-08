@@ -12,7 +12,6 @@
 #include "../iterator.h"
 #include "../usr.h"
 #include "result.h"
-#include "state_machine.h"
 
 namespace LeviDB {
     namespace Regex {
@@ -42,6 +41,10 @@ namespace LeviDB {
             std::unique_ptr<R> _other;
             Relation _relation = NONE;
             Mode _mode = GREEDY;
+
+            friend class stream4num_machine;
+
+            friend class stream4num_r;
 
         public:
             explicit R(std::unique_ptr<R> && r) noexcept : _r(std::move(r)) {}

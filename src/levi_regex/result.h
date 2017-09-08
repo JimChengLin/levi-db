@@ -54,20 +54,15 @@ namespace LeviDB {
 
             std::string toString() const noexcept {
                 std::string r;
-                if (isSuccess()) {
-                    r = "Success:";
-                } else if (isFail()) {
-                    r = "Fail:";
-                } else {
+                if (isContinue()) {
                     return "Continue";
+                } else if (isSuccess()) {
+                    r = "Success:";
+                } else {
+                    r = "Fail:";
                 }
                 return r + std::to_string(_op) + ',' + std::to_string(_ed);
             }
-
-        public:
-            static Result oneSuccess(int op, int ed) noexcept { return {op, ed, true}; }
-
-            static Result oneFail(int op, int ed) noexcept { return {op, ed, false}; }
         };
     }
 }

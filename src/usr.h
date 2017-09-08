@@ -36,6 +36,8 @@ namespace LeviDB {
     public:
         EXPOSE(_src);
 
+        EXPOSE(_extra);
+
         void reveal(size_t idx, char mask, bool bit) noexcept;
 
         void reveal(const Slice & slice) noexcept;
