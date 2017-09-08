@@ -95,6 +95,13 @@ namespace LeviDB {
             std::unique_ptr<SimpleIterator<Result>>
             imatch(const USR & input, Result prev_result) const noexcept;
         };
+
+        // functions below are just for test
+        std::unique_ptr<SimpleIterator<Result>>
+        make_stream4num_machine(const R * caller, const USR * src, const Result * prev_result) noexcept;
+
+        std::unique_ptr<SimpleIterator<Result>>
+        make_reversed(std::unique_ptr<SimpleIterator<Result>> && result_iter) noexcept;
     }
 }
 

@@ -1,6 +1,7 @@
 /*
- * 由于作者在 EasyRegex 项目中迭代器命名是小写+下划线
+ * 由于作者在 EasyRegex 项目中的迭代器命名是小写+下划线
  * 这里为了转译方便, 保持统一
+ * 这些迭代器 trivial 且不对外开放, 故不影响整体代码风格
  */
 
 #include <vector>
@@ -91,27 +92,51 @@ namespace LeviDB {
             }
         };
 
+        std::unique_ptr<SimpleIterator<Result>>
+        make_stream4num_machine(const R * caller, const USR * src, const Result * prev_result) noexcept {
+            return std::make_unique<stream4num_machine>(caller, src, prev_result);
+        };
+
         class reversed : public SimpleIterator<Result> {
         private:
             std::vector<Result> _results;
             std::vector<Result>::const_iterator _cursor;
 
         public:
-            reversed(std::unique_ptr<SimpleIterator<Result>> result_iter) noexcept {
-
+            explicit reversed(std::unique_ptr<SimpleIterator<Result>> && result_iter) noexcept {
+                while (result_iter->valid()) {
+                    _results.emplace_back(result_iter->item());
+                    result_iter->next();
+                }
+                _cursor = _results.empty() ? _results.cend() : --_results.cend();
             }
 
-            bool valid() const override {
+            DELETE_MOVE(reversed);
+            DELETE_COPY(reversed);
 
+        public:
+            ~reversed() noexcept override = default;
+
+            bool valid() const override {
+                return _cursor != _results.cend();
             }
 
             void next() override {
-
+                if (_cursor == _results.cbegin()) {
+                    _cursor = _results.cend();
+                } else {
+                    --_cursor;
+                }
             }
 
             Result item() const override {
-
+                return *_cursor;
             }
+        };
+
+        std::unique_ptr<SimpleIterator<Result>>
+        make_reversed(std::unique_ptr<SimpleIterator<Result>> && result_iter) noexcept {
+            return std::make_unique<reversed>(std::move(result_iter));
         };
 
         class chain_from_iterable : SimpleIterator<Result> {
