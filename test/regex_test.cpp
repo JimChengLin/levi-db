@@ -35,6 +35,7 @@ void regex_test() {
         assert(reversed->item().isContinue());
         reversed->next();
         assert(!reversed->valid());
+
     }
 
     std::cout << __FUNCTION__ << std::endl;
