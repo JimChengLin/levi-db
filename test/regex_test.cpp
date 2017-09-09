@@ -49,6 +49,59 @@ void regex_test() {
         stream4num_r->next();
         assert(!stream4num_r->valid());
     }
+    {
+        typedef LeviDB::Regex::R R;
+        LeviDB::Regex::Result result(0, 0, false);
+        LeviDB::USR usr("ABABABAB");
+
+        R r = R("AB") & R("AB");
+        LeviDB::Regex::Result output;
+        auto it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            it->next();
+        }
+        assert(output.isSuccess() && output._ed == 2);
+
+        r = R("AB") & R("AC");
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            it->next();
+        }
+        assert(output.isFail() && output._ed == 2);
+
+        r = R("AC") | R("AB");
+        int meet_success = 0;
+        int meet_fail = 0;
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            if (it->item().isContinue()) {
+            } else if (it->item().isSuccess()) {
+                ++meet_success;
+            } else {
+                ++meet_fail;
+            }
+            it->next();
+        }
+        assert(meet_success == 1 && meet_fail == 1);
+
+        r = ~R("B");
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            it->next();
+        }
+        assert(output.isSuccess() && output._ed == 1);
+
+        r = R("A") << "B";
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            it->next();
+        }
+        assert(output.isSuccess() && output._ed == 2);
+    }
 
     std::cout << __FUNCTION__ << std::endl;
 }

@@ -342,24 +342,25 @@ namespace LeviDB {
                 GEN_INIT();
                     while (_stream4num->valid()) {
                         echo = _stream4num->item();
-                        if (!echo.isSuccess()) {
+                        if (echo.isContinue() || echo.isFail()) {
                             _result = echo;
-                            YIELD();
                         } else {
                             echo.asFail();
                             other_stream = _caller->_other->imatch(*_src, Result(0, 0, false),
                                                                    _prev_result._ed, echo._ed);
                             while (other_stream->valid()) {
                                 and_echo = other_stream->item();
-                                if (and_echo.isSuccess() && and_echo._ed == echo._ed - _prev_result._ed) {
+                                if (!and_echo.isContinue()
+                                    && and_echo.isSuccess() && and_echo._ed == echo._ed - _prev_result._ed) {
                                     echo.asSuccess();
                                     break;
                                 }
                                 other_stream->next();
                             }
                             _result = echo;
-                            YIELD();
                         }
+                        YIELD();
+                        _stream4num->next();
                     }
                 GEN_STOP();
             }
@@ -406,7 +407,11 @@ namespace LeviDB {
                 GEN_INIT();
                     while (_stream4num->valid()) {
                         _result = _stream4num->item().invert();
+                        if (!_result.isContinue() && _result.isSuccess()) {
+                            ++_result._ed; // fail point invert 成 success, 应该补上
+                        }
                         YIELD();
+                        _stream4num->next();
                     }
                 GEN_STOP();
             }
@@ -515,6 +520,11 @@ namespace LeviDB {
                     }
                 GEN_STOP();
             }
+        };
+
+        std::unique_ptr<SimpleIterator<Result>>
+        make_imatch_iter(const R * caller, const USR * src, Result prev_result) noexcept {
+            return std::make_unique<imatch_iter>(caller, src, prev_result);
         };
 
         std::unique_ptr<SimpleIterator<Result>>

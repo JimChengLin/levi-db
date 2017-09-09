@@ -120,6 +120,9 @@ namespace LeviDB {
 
         std::unique_ptr<SimpleIterator<Result>>
         make_stream4num_r(const R * caller, const USR * src, Result prev_result) noexcept;
+
+        std::unique_ptr<SimpleIterator<Result>>
+        make_imatch_iter(const R * caller, const USR * src, Result prev_result) noexcept;
     }
 }
 
