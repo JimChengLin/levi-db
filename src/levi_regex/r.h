@@ -25,7 +25,7 @@ namespace LeviDB {
             enum Relation {
                 AND,
                 OR,
-                XOR, // repalce with [A ^ B = (A | B) & ~(A & B)]
+                XOR, // replace with A ^ B = (A | B) & ~(A & B)
                 INVERT,
                 NEXT,
                 NONE,
@@ -51,6 +51,8 @@ namespace LeviDB {
             friend class or_r_iter;
 
             friend class next_r_iter;
+
+            friend class imatch_iter;
 
         public:
             explicit R(std::unique_ptr<R> && r) noexcept : _r(std::move(r)) {}
@@ -90,6 +92,10 @@ namespace LeviDB {
 
             R operator<<(R another) && noexcept;
 
+            R operator<<(std::string another) const & noexcept;
+
+            R operator<<(std::string another) && noexcept;
+
         public:
             ~R() noexcept override = default;
 
@@ -107,10 +113,13 @@ namespace LeviDB {
 
         // functions below are just for test
         std::unique_ptr<SimpleIterator<Result>>
-        make_stream4num_machine(const R * caller, const USR * src, const Result * prev_result) noexcept;
+        make_stream4num_machine(const R * caller, const USR * src, Result prev_result) noexcept;
 
         std::unique_ptr<SimpleIterator<Result>>
         make_reversed(std::unique_ptr<SimpleIterator<Result>> && result_iter) noexcept;
+
+        std::unique_ptr<SimpleIterator<Result>>
+        make_stream4num_r(const R * caller, const USR * src, Result prev_result) noexcept;
     }
 }
 

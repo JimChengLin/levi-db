@@ -22,8 +22,8 @@ namespace LeviDB {
             Result _result{0, 0, false};
             Result _output;
             int _line = 0;
-            int i = {};
-            int j = {};
+            int i{};
+            int j{};
             Input _input{};
 
         public:
@@ -39,9 +39,11 @@ namespace LeviDB {
             ~StateMachine() noexcept = default;
 
         public:
-            bool valid() const noexcept { return _line != -1; };
+            bool valid() const noexcept { return _line != -1; }
 
             void setResult(Result result) noexcept { _result = result; }
+
+            void reset() noexcept;
 
             Result send(Input input) noexcept;
 

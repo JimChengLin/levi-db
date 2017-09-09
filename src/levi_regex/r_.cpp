@@ -16,13 +16,13 @@ namespace LeviDB {
         protected:
             const R * _caller;
             const USR * _src;
-            const Result * _prev_result;
+            const Result _prev_result;
 
             Result _result;
             int _line = 0;
 
         public:
-            iter_base(const R * caller, const USR * src, const Result * prev_result) noexcept
+            iter_base(const R * caller, const USR * src, Result prev_result) noexcept
                     : _caller(caller), _src(src), _prev_result(prev_result) {}
 
             bool valid() const override { return _line != -1; }
@@ -53,7 +53,7 @@ namespace LeviDB {
             void next() override {
                 GEN_INIT();
                     if (_caller->_num_from == 0) {
-                        _result = *_prev_result;
+                        _result = _prev_result;
                         YIELD();
                     }
                     if (_caller->_num_to == 0) {
@@ -62,14 +62,15 @@ namespace LeviDB {
 
                     counter = 0;
                     fa = std::make_unique<StateMachine>(_caller->_pattern);
-                    fa->setResult(*_prev_result);
-                    for (i = _prev_result->_ed; i < _src->immut_src()->size(); ++i) {
+                    fa->setResult(_prev_result);
+                    for (i = std::max(_prev_result._ed, _prev_result._select_from);
+                         i < std::min(_src->immut_src()->size(), static_cast<size_t>(_prev_result._select_to));
+                         ++i) {
                         for (j = 7; j >= 0; --j) {
                             if (((_src->immut_extra()[i] >> j) & 1) == 0) {
                                 _result = fa->send(UNKNOWN);
                             } else {
-                                _result = fa->send(
-                                        static_cast<Input>(((*_src->immut_src())[i] >> j) & 1));
+                                _result = fa->send(static_cast<Input>(((*_src->immut_src())[i] >> j) & 1));
                             }
 
                             if (_result.isContinue()) {
@@ -79,7 +80,7 @@ namespace LeviDB {
                                     YIELD();
                                 }
                                 if (counter < _caller->_num_to) {
-                                    fa = std::make_unique<StateMachine>(_caller->_pattern);
+                                    fa->reset();
                                     fa->setResult(_result);
                                 } else {
                                     RETURN();
@@ -95,7 +96,7 @@ namespace LeviDB {
         };
 
         std::unique_ptr<SimpleIterator<Result>>
-        make_stream4num_machine(const R * caller, const USR * src, const Result * prev_result) noexcept {
+        make_stream4num_machine(const R * caller, const USR * src, Result prev_result) noexcept {
             return std::make_unique<stream4num_machine>(caller, src, prev_result);
         };
 
@@ -137,6 +138,7 @@ namespace LeviDB {
             return std::make_unique<reversed>(std::move(result_iter));
         };
 
+        // 复刻 Python 的 list comprehension
         template<typename IN_ITER, typename OUT_ITEM>
         class list_comprehension : public SimpleIterator<OUT_ITEM> {
         private:
@@ -176,7 +178,6 @@ namespace LeviDB {
         };
 
         // 复刻 Python 的 chain.from_iterable
-        // 把多个 iterable 合并成一个
         class chain_from_iterable : public SimpleIterator<Result> {
         private:
             typedef std::unique_ptr<SimpleIterator<Result>> iterable_t;
@@ -189,7 +190,7 @@ namespace LeviDB {
             explicit chain_from_iterable(chain_t chain_it) noexcept
                     : _chain_it(std::move(chain_it)) {
                 if (_chain_it->valid()) {
-                    _cursor = chain_it->item();
+                    _cursor = _chain_it->item();
                 }
             }
 
@@ -205,9 +206,11 @@ namespace LeviDB {
 
             void next() override {
                 _cursor->next();
-                if (!_cursor->valid() && _chain_it->valid()) {
+                if (!_cursor->valid()) {
                     _chain_it->next();
-                    _cursor = _chain_it->item();
+                    if (_chain_it->valid()) {
+                        _cursor = _chain_it->item();
+                    }
                 }
             }
 
@@ -228,14 +231,14 @@ namespace LeviDB {
             ~stream4num_r() noexcept override = default;
 
             void next() override {
-                std::unique_ptr<SimpleIterator<Result>> curr_iter;
-                int nth{};
-
                 typedef std::unique_ptr<SimpleIterator<Result>> in_t;
                 typedef std::unique_ptr<SimpleIterator<Result>> out_t;
 
+                std::unique_ptr<SimpleIterator<Result>> curr_iter;
+                int nth{};
+
                 auto cond_func = [](const Result & result) -> bool {
-                    return result.isSuccess();
+                    return !result.isContinue() && result.isSuccess();
                 };
 
                 auto trans_func = [&](const Result & result) -> out_t {
@@ -244,17 +247,17 @@ namespace LeviDB {
 
                 GEN_INIT();
                     if (_caller->_num_to == 0) {
-                        _result = *_prev_result;
+                        _result = _prev_result;
                         YIELD();
                         RETURN();
                     }
                     if (_caller->_mode == LAZY && _caller->_num_from == 0) {
-                        _result = *_prev_result;
+                        _result = _prev_result;
                         YIELD()
                     }
 
                     counter = 1;
-                    curr_iter = _caller->_r->imatch(*_src, *_prev_result);
+                    curr_iter = _caller->_r->imatch(*_src, _prev_result);
                     while (counter < _caller->_num_from) {
                         ++counter;
                         // @formatter:off
@@ -267,14 +270,15 @@ namespace LeviDB {
                     q.emplace_back(std::move(curr_iter), counter, Result{});
                     while (!q.empty()) {
                         curr_iter = std::move(std::get<0>(q.back()));
-                        nth = std::get<1>(q.back());
 
-                        curr_iter->next();
-                        if (curr_iter->valid()) {
+                        if (curr_iter != nullptr && curr_iter->valid()) {
                             _result = curr_iter->item();
+                            curr_iter->next();
+                            std::get<0>(q.back()) = std::move(curr_iter); // we will use it later
 
                             if (_result.isContinue()) {
                             } else {
+                                nth = std::get<1>(q.back());
                                 if (_caller->_mode == LAZY) {
                                     if (_result.isSuccess() && nth < _caller->_num_to) {
                                         q.emplace_back(_caller->_r->imatch(*_src, _result), nth + 1, Result{});
@@ -288,8 +292,6 @@ namespace LeviDB {
                                     }
                                 }
                             }
-
-                            std::get<0>(q.back()) = std::move(curr_iter); // give back ownership
                         } else {
                             _result = std::get<2>(q.back());
                             if (!_result.isContinue()) {
@@ -300,11 +302,16 @@ namespace LeviDB {
                     }
 
                     if (_caller->_mode == GREEDY && _caller->_num_from == 0) {
-                        _result = *_prev_result;
+                        _result = _prev_result;
                         YIELD();
                     }
                 GEN_STOP();
             }
+        };
+
+        std::unique_ptr<SimpleIterator<Result>>
+        make_stream4num_r(const R * caller, const USR * src, Result prev_result) noexcept {
+            return std::make_unique<stream4num_r>(caller, src, prev_result);
         };
 
         class logic_iter : public iter_base {
@@ -312,7 +319,7 @@ namespace LeviDB {
             std::unique_ptr<SimpleIterator<Result>> _stream4num;
 
         public:
-            logic_iter(const R * caller, const USR * src, const Result * prev_result,
+            logic_iter(const R * caller, const USR * src, Result prev_result,
                        std::unique_ptr<SimpleIterator<Result>> && stream4num) noexcept
                     : iter_base(caller, src, prev_result), _stream4num(std::move(stream4num)) {}
         };
@@ -341,10 +348,10 @@ namespace LeviDB {
                         } else {
                             echo.asFail();
                             other_stream = _caller->_other->imatch(*_src, Result(0, 0, false),
-                                                                   _prev_result->_ed, echo._ed);
+                                                                   _prev_result._ed, echo._ed);
                             while (other_stream->valid()) {
                                 and_echo = other_stream->item();
-                                if (and_echo.isSuccess() && and_echo._ed == echo._ed - _prev_result->_ed) {
+                                if (and_echo.isSuccess() && and_echo._ed == echo._ed - _prev_result._ed) {
                                     echo.asSuccess();
                                     break;
                                 }
@@ -377,7 +384,7 @@ namespace LeviDB {
                         _stream4num->next();
                     }
 
-                    other_stream = _caller->_other->imatch(*_src, *_prev_result);
+                    other_stream = _caller->_other->imatch(*_src, _prev_result);
                     while (other_stream->valid()) {
                         _result = other_stream->item();
                         YIELD();
@@ -407,10 +414,12 @@ namespace LeviDB {
 
         class next_r_iter : public logic_iter {
         private:
-            std::unique_ptr<SimpleIterator<Result>> merge_iter;
+            std::unique_ptr<SimpleIterator<Result>> concat_iter;
 
         public:
             using logic_iter::logic_iter;
+            DELETE_MOVE(next_r_iter);
+            DELETE_COPY(next_r_iter);
 
             ~next_r_iter() noexcept override = default;
 
@@ -419,7 +428,7 @@ namespace LeviDB {
                 typedef std::unique_ptr<SimpleIterator<Result>> out_t;
 
                 auto cond_func = [](const Result & result) -> bool {
-                    return result.isSuccess();
+                    return !result.isContinue() && result.isSuccess();
                 };
 
                 auto trans_func = [&](const Result & result) -> out_t {
@@ -428,10 +437,76 @@ namespace LeviDB {
 
                 GEN_INIT();
                     // @formatter:off
-                    merge_iter = std::make_unique<chain_from_iterable>(
+                    concat_iter = std::make_unique<chain_from_iterable>(
                             std::make_unique<list_comprehension<in_t, out_t>>(std::move(_stream4num),
                                                                               cond_func, trans_func));
                     // @formatter:on
+
+                    while (concat_iter->valid()) {
+                        _result = concat_iter->item();
+                        YIELD();
+                        concat_iter->next();
+                    }
+                GEN_STOP();
+            }
+        };
+
+        class imatch_iter : public iter_base {
+        private:
+            std::unique_ptr<SimpleIterator<Result>> merge_iter;
+
+        public:
+            using iter_base::iter_base;
+            DELETE_MOVE(imatch_iter);
+            DELETE_COPY(imatch_iter);
+
+        public:
+            ~imatch_iter() noexcept override = default;
+
+#define BASE_ARGS _caller, _src, _prev_result
+
+            void next() override {
+                GEN_INIT();
+                    {
+                        std::unique_ptr<SimpleIterator<Result>> stream4num;
+                        if (!_caller->_pattern.empty()) {
+                            stream4num = std::make_unique<stream4num_machine>(BASE_ARGS);
+                            if (_caller->_mode == LAZY) {
+                                stream4num = std::make_unique<reversed>(std::move(stream4num));
+                            }
+                        } else {
+                            stream4num = std::make_unique<stream4num_r>(BASE_ARGS);
+                        }
+
+                        std::unique_ptr<SimpleIterator<Result>> stream4logic;
+                        switch (_caller->_relation) {
+                            case R::AND:
+                                stream4logic = std::make_unique<and_r_iter>(BASE_ARGS, std::move(stream4num));
+                                break;
+
+                            case R::OR:
+                                stream4logic = std::make_unique<or_r_iter>(BASE_ARGS, std::move(stream4num));
+                                break;
+
+                            case R::INVERT:
+                                stream4logic = std::make_unique<invert_r_iter>(BASE_ARGS, std::move(stream4num));
+                                break;
+
+                            case R::NEXT:
+                                stream4logic = std::make_unique<next_r_iter>(BASE_ARGS, std::move(stream4num));
+                                break;
+
+                            case R::NONE:
+                                stream4logic = std::move(stream4num);
+                                break;
+
+                            case R::XOR:
+                            default:
+                                assert(false);
+                        }
+
+                        merge_iter = std::move(stream4logic);
+                    }
 
                     while (merge_iter->valid()) {
                         _result = merge_iter->item();
@@ -442,21 +517,16 @@ namespace LeviDB {
             }
         };
 
-        class imatch_iter : public iter_base {
-        public:
-            using iter_base::iter_base;
-            DEFAULT_MOVE(imatch_iter);
-            DEFAULT_COPY(imatch_iter);
-
-        public:
-            ~imatch_iter() noexcept override = default;
-
-            void next() override {}
-        };
-
         std::unique_ptr<SimpleIterator<Result>>
         R::imatch(const USR & input, Result prev_result) const noexcept {
-            return std::make_unique<imatch_iter>(this, &input, &prev_result);
+            return std::make_unique<imatch_iter>(this, &input, prev_result);
+        }
+
+        std::unique_ptr<SimpleIterator<Result>>
+        R::imatch(const USR & input, Result prev_result, int from, int to) const noexcept {
+            prev_result._select_from = from;
+            prev_result._select_to = to;
+            return std::make_unique<imatch_iter>(this, &input, prev_result);
         }
     }
 }

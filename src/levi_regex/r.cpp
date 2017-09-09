@@ -57,13 +57,15 @@ namespace LeviDB {
         R R::operator^(R another) const & noexcept {
             assert(_relation == NONE);
             auto self = *this;
-            return (self | another) & (~(self | another));
+            auto part = (self | another);
+            return std::move(part) & (~(std::move(self) & std::move(another)));
         };
 
         R R::operator^(R another) && noexcept {
             assert(_relation == NONE);
             auto self = std::move(*this);
-            return (self | another) & (~(self | another));
+            auto part = (self | another);
+            return std::move(part) & (~(std::move(self) & std::move(another)));
         };
 
         R R::operator~() const & noexcept {
@@ -94,6 +96,16 @@ namespace LeviDB {
             self->_relation = NEXT;
             self->_other = std::make_unique<R>(std::move(another));
             return R(std::move(self));
+        };
+
+        R R::operator<<(std::string another) const & noexcept {
+            assert(_relation == NONE);
+            return (*this) << R(std::move(another));
+        };
+
+        R R::operator<<(std::string another) && noexcept {
+            assert(_relation == NONE);
+            return std::move(*this) << R(std::move(another));
         };
 
         bool R::possible(const USR & input) const {

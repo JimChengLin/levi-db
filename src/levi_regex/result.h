@@ -7,6 +7,7 @@
  */
 
 #include <cassert>
+#include <climits>
 #include <string>
 
 namespace LeviDB {
@@ -15,6 +16,8 @@ namespace LeviDB {
         public:
             int _op = 1;
             int _ed = 0;
+            int _select_from = INT_MIN;
+            int _select_to = INT_MAX;
             bool _success{};
 
         public:
@@ -36,7 +39,7 @@ namespace LeviDB {
             }
 
             Result & invert() noexcept {
-                // don't care if it is Continue here
+                // don't care if it is Continue
                 _success = !_success;
                 return *this;
             }

@@ -2,6 +2,16 @@
 
 namespace LeviDB {
     namespace Regex {
+        void StateMachine::reset() noexcept {
+            _result = {};
+            _output = {};
+            _line = 0;
+            i = {};
+            j = {};
+            _input = {};
+            next();
+        }
+
         Result StateMachine::send(Input input) noexcept {
             _input = input;
             next();
