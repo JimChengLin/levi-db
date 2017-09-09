@@ -56,18 +56,14 @@ namespace LeviDB {
 
         R R::operator^(R another) const & noexcept {
             assert(_relation == NONE);
-            auto self = std::make_unique<R>(*this);
-            self->_relation = XOR;
-            self->_other = std::make_unique<R>(std::move(another));
-            return R(std::move(self));
+            auto self = *this;
+            return (self | another) & (~(self | another));
         };
 
         R R::operator^(R another) && noexcept {
             assert(_relation == NONE);
-            auto self = std::make_unique<R>(std::move(*this));
-            self->_relation = XOR;
-            self->_other = std::make_unique<R>(std::move(another));
-            return R(std::move(self));
+            auto self = std::move(*this);
+            return (self | another) & (~(self | another));
         };
 
         R R::operator~() const & noexcept {

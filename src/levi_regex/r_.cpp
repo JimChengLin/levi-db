@@ -157,6 +157,7 @@ namespace LeviDB {
                     list_comprehension::next();
                 }
             }
+
             DELETE_MOVE(list_comprehension);
             DELETE_COPY(list_comprehension);
 
@@ -191,6 +192,7 @@ namespace LeviDB {
                     _cursor = chain_it->item();
                 }
             }
+
             DELETE_MOVE(chain_from_iterable);
             DELETE_COPY(chain_from_iterable);
 
@@ -229,8 +231,8 @@ namespace LeviDB {
                 std::unique_ptr<SimpleIterator<Result>> curr_iter;
                 int nth{};
 
-                typedef decltype(curr_iter) in_t;
-                typedef decltype(curr_iter) out_t;
+                typedef std::unique_ptr<SimpleIterator<Result>> in_t;
+                typedef std::unique_ptr<SimpleIterator<Result>> out_t;
 
                 auto cond_func = [](const Result & result) -> bool {
                     return result.isSuccess();
@@ -300,6 +302,141 @@ namespace LeviDB {
                     if (_caller->_mode == GREEDY && _caller->_num_from == 0) {
                         _result = *_prev_result;
                         YIELD();
+                    }
+                GEN_STOP();
+            }
+        };
+
+        class logic_iter : public iter_base {
+        protected:
+            std::unique_ptr<SimpleIterator<Result>> _stream4num;
+
+        public:
+            logic_iter(const R * caller, const USR * src, const Result * prev_result,
+                       std::unique_ptr<SimpleIterator<Result>> && stream4num) noexcept
+                    : iter_base(caller, src, prev_result), _stream4num(std::move(stream4num)) {}
+        };
+
+        class and_r_iter : public logic_iter {
+        private:
+            std::unique_ptr<SimpleIterator<Result>> other_stream;
+
+        public:
+            using logic_iter::logic_iter;
+            DELETE_MOVE(and_r_iter);
+            DELETE_COPY(and_r_iter);
+
+            ~and_r_iter() noexcept override = default;
+
+            void next() override {
+                Result echo;
+                Result and_echo;
+
+                GEN_INIT();
+                    while (_stream4num->valid()) {
+                        echo = _stream4num->item();
+                        if (!echo.isSuccess()) {
+                            _result = echo;
+                            YIELD();
+                        } else {
+                            echo.asFail();
+                            other_stream = _caller->_other->imatch(*_src, Result(0, 0, false),
+                                                                   _prev_result->_ed, echo._ed);
+                            while (other_stream->valid()) {
+                                and_echo = other_stream->item();
+                                if (and_echo.isSuccess() && and_echo._ed == echo._ed - _prev_result->_ed) {
+                                    echo.asSuccess();
+                                    break;
+                                }
+                                other_stream->next();
+                            }
+                            _result = echo;
+                            YIELD();
+                        }
+                    }
+                GEN_STOP();
+            }
+        };
+
+        class or_r_iter : public logic_iter {
+        private:
+            std::unique_ptr<SimpleIterator<Result>> other_stream;
+
+        public:
+            using logic_iter::logic_iter;
+            DELETE_MOVE(or_r_iter);
+            DELETE_COPY(or_r_iter);
+
+            ~or_r_iter() noexcept override = default;
+
+            void next() override {
+                GEN_INIT();
+                    while (_stream4num->valid()) {
+                        _result = _stream4num->item();
+                        YIELD();
+                        _stream4num->next();
+                    }
+
+                    other_stream = _caller->_other->imatch(*_src, *_prev_result);
+                    while (other_stream->valid()) {
+                        _result = other_stream->item();
+                        YIELD();
+                        other_stream->next();
+                    }
+                GEN_STOP();
+            }
+        };
+
+        class invert_r_iter : public logic_iter {
+        public:
+            using logic_iter::logic_iter;
+            DELETE_MOVE(invert_r_iter);
+            DELETE_COPY(invert_r_iter);
+
+            ~invert_r_iter() noexcept override = default;
+
+            void next() override {
+                GEN_INIT();
+                    while (_stream4num->valid()) {
+                        _result = _stream4num->item().invert();
+                        YIELD();
+                    }
+                GEN_STOP();
+            }
+        };
+
+        class next_r_iter : public logic_iter {
+        private:
+            std::unique_ptr<SimpleIterator<Result>> merge_iter;
+
+        public:
+            using logic_iter::logic_iter;
+
+            ~next_r_iter() noexcept override = default;
+
+            void next() override {
+                typedef std::unique_ptr<SimpleIterator<Result>> in_t;
+                typedef std::unique_ptr<SimpleIterator<Result>> out_t;
+
+                auto cond_func = [](const Result & result) -> bool {
+                    return result.isSuccess();
+                };
+
+                auto trans_func = [&](const Result & result) -> out_t {
+                    return _caller->_other->imatch(*_src, result);
+                };
+
+                GEN_INIT();
+                    // @formatter:off
+                    merge_iter = std::make_unique<chain_from_iterable>(
+                            std::make_unique<list_comprehension<in_t, out_t>>(std::move(_stream4num),
+                                                                              cond_func, trans_func));
+                    // @formatter:on
+
+                    while (merge_iter->valid()) {
+                        _result = merge_iter->item();
+                        YIELD();
+                        merge_iter->next();
                     }
                 GEN_STOP();
             }

@@ -35,9 +35,10 @@ namespace LeviDB {
                 return *this;
             }
 
-            void invert() noexcept {
-                assert(!isContinue());
+            Result & invert() noexcept {
+                // don't care if it is Continue here
                 _success = !_success;
+                return *this;
             }
 
             bool isSuccess() const noexcept {

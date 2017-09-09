@@ -25,7 +25,7 @@ namespace LeviDB {
             enum Relation {
                 AND,
                 OR,
-                XOR,
+                XOR, // repalce with [A ^ B = (A | B) & ~(A & B)]
                 INVERT,
                 NEXT,
                 NONE,
@@ -45,6 +45,12 @@ namespace LeviDB {
             friend class stream4num_machine;
 
             friend class stream4num_r;
+
+            friend class and_r_iter;
+
+            friend class or_r_iter;
+
+            friend class next_r_iter;
 
         public:
             explicit R(std::unique_ptr<R> && r) noexcept : _r(std::move(r)) {}
@@ -94,6 +100,9 @@ namespace LeviDB {
         private:
             std::unique_ptr<SimpleIterator<Result>>
             imatch(const USR & input, Result prev_result) const noexcept;
+
+            std::unique_ptr<SimpleIterator<Result>>
+            imatch(const USR & input, Result prev_result, int from, int to) const noexcept;
         };
 
         // functions below are just for test
