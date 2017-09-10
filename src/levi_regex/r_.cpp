@@ -13,11 +13,11 @@
 
 namespace LeviDB {
     namespace Regex {
-        typedef std::tuple<uintptr_t, Result> cache_key;
-        typedef std::pair<std::unique_ptr<std::vector<Result>>, std::unique_ptr<SimpleIterator<Result>>> cache_value;
+        typedef std::tuple<const uintptr_t, const Result> cache_key_t;
+        typedef std::pair<std::unique_ptr<std::vector<Result>>, std::unique_ptr<SimpleIterator<Result>>> cache_value_t;
 
         struct CacheHasher {
-            size_t operator()(const cache_key & key) {
+            size_t operator()(const cache_key_t & key) const noexcept {
                 Result result = std::get<1>(key);
                 return std::hash<size_t>{}(std::get<0>(key)
                                            ^ result._op
@@ -28,7 +28,7 @@ namespace LeviDB {
             }
         };
 
-        thread_local std::unordered_map<cache_key, cache_value, CacheHasher> cache;
+        thread_local std::unordered_map<cache_key_t, cache_value_t, CacheHasher> _cache;
 
         class iter_base : public SimpleIterator<Result> {
         protected:
@@ -539,6 +539,47 @@ namespace LeviDB {
             }
         };
 
+        class imatch_iter_wrapper : public SimpleIterator<Result> {
+        private:
+            std::vector<Result> * _product;
+            SimpleIterator<Result> * _producer;
+            int i = -1;
+
+        public:
+            imatch_iter_wrapper(const R * caller, const USR * src, Result prev_result) noexcept {
+                auto & pair = _cache[{reinterpret_cast<uintptr_t>(caller), prev_result}];
+                if (pair.first == nullptr) {
+                    assert(pair.second == nullptr);
+                    pair.first = std::make_unique<std::vector<Result>>();
+                    pair.second = std::make_unique<imatch_iter>(caller, src, prev_result);
+                }
+                _product = pair.first.get();
+                _producer = pair.second.get();
+                next();
+            }
+
+            DELETE_MOVE(imatch_iter_wrapper);
+            DELETE_COPY(imatch_iter_wrapper);
+
+        public:
+            ~imatch_iter_wrapper() noexcept = default;
+
+            bool valid() const override {
+                return i < _product->size();
+            }
+
+            void next() noexcept override {
+                if (++i >= _product->size() && _producer->valid()) {
+                    _product->emplace_back(_producer->item());
+                    _producer->next();
+                }
+            }
+
+            Result item() const override {
+                return (*_product)[i];
+            }
+        };
+
         std::unique_ptr<SimpleIterator<Result>>
         make_imatch_iter(const R * caller, const USR * src, Result prev_result) noexcept {
             return std::make_unique<imatch_iter>(caller, src, prev_result);
@@ -546,14 +587,18 @@ namespace LeviDB {
 
         std::unique_ptr<SimpleIterator<Result>>
         R::imatch(const USR & input, Result prev_result) const noexcept {
-            return std::make_unique<imatch_iter>(this, &input, prev_result);
+            return std::make_unique<imatch_iter_wrapper>(this, &input, prev_result);
         }
 
         std::unique_ptr<SimpleIterator<Result>>
         R::imatch(const USR & input, Result prev_result, int from, int to) const noexcept {
             prev_result._select_from = from;
             prev_result._select_to = to;
-            return std::make_unique<imatch_iter>(this, &input, prev_result);
+            return std::make_unique<imatch_iter_wrapper>(this, &input, prev_result);
+        }
+
+        void cacheClear() noexcept {
+            _cache.clear();
         }
     }
 }
