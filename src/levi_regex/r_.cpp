@@ -5,6 +5,7 @@
  */
 
 #include <functional>
+#include <unordered_map>
 #include <vector>
 
 #include "r.h"
@@ -12,6 +13,23 @@
 
 namespace LeviDB {
     namespace Regex {
+        typedef std::tuple<uintptr_t, Result> cache_key;
+        typedef std::pair<std::unique_ptr<std::vector<Result>>, std::unique_ptr<SimpleIterator<Result>>> cache_value;
+
+        struct CacheHasher {
+            size_t operator()(const cache_key & key) {
+                Result result = std::get<1>(key);
+                return std::hash<size_t>{}(std::get<0>(key)
+                                           ^ result._op
+                                           ^ result._ed
+                                           ^ result._select_from
+                                           ^ result._select_to
+                                           ^ result._success);
+            }
+        };
+
+        thread_local std::unordered_map<cache_key, cache_value, CacheHasher> cache;
+
         class iter_base : public SimpleIterator<Result> {
         protected:
             const R * _caller;
