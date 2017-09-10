@@ -63,6 +63,12 @@ namespace LeviDB {
                 std::string r = isSuccess() ? "Success:" : "Fail:";
                 return r + std::to_string(_op) + ',' + std::to_string(_ed);
             }
+
+            bool operator==(const Result & another) const noexcept {
+                return _op == another._op && _ed == another._ed &&
+                       _select_from == another._select_from && _select_to == another._select_to &&
+                       _success == another._success;
+            }
         };
     }
 }
