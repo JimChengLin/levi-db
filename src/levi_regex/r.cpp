@@ -116,6 +116,7 @@ namespace LeviDB {
                     return true;
                 }
             }
+            cacheClear();
             return false;
         }
 
@@ -126,6 +127,7 @@ namespace LeviDB {
                     return true;
                 }
             }
+            cacheClear();
             return false;
         }
     }

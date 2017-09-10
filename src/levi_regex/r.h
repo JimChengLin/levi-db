@@ -119,6 +119,8 @@ namespace LeviDB {
             imatch(const USR & input, Result prev_result, int from, int to) const noexcept;
         };
 
+        void cacheClear() noexcept;
+
         // functions below are just for test
         std::unique_ptr<SimpleIterator<Result>>
         make_stream4num_machine(const R * caller, const USR * src, Result prev_result) noexcept;
