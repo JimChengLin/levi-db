@@ -46,7 +46,8 @@ set(SOURCE_FILES main.cpp
         test/index_regex_test.cpp
         test/index_test.cpp
         test/log_test.cpp
-        test/regex_test.cpp)
+        test/regex_test.cpp
+        src/options.h)
 
 add_executable(LeviDB ${SOURCE_FILES})
 

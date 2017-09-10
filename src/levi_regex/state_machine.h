@@ -48,7 +48,7 @@ namespace LeviDB {
             virtual void reset() noexcept;
 
         protected:
-            StateMachine() noexcept = default;
+            StateMachine() = default;
 
             virtual void next() noexcept;
         };
