@@ -41,7 +41,7 @@ namespace LeviDB {
 
         ~IndexMVCC() noexcept = default;
 
-        DEFAULT_MOVE(IndexMVCC);
+        DELETE_MOVE(IndexMVCC);
         DELETE_COPY(IndexMVCC);
 
     public:
@@ -76,7 +76,7 @@ namespace LeviDB {
 
         ~IndexRead() noexcept = default;
 
-        DEFAULT_MOVE(IndexRead);
+        DELETE_MOVE(IndexRead);
         DELETE_COPY(IndexRead);
 
         std::pair<std::string/* res */, bool/* success */>

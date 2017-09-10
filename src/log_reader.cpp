@@ -665,7 +665,7 @@ namespace LeviDB {
                 }
             }
 
-            DEFAULT_MOVE(TableRecoveryIterator);
+            DELETE_MOVE(TableRecoveryIterator);
             DELETE_COPY(TableRecoveryIterator);
 
             ~TableRecoveryIterator() noexcept override = default;

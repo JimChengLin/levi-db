@@ -428,6 +428,7 @@ namespace LeviDB {
 
     std::unique_ptr<Iterator<Slice, std::string>>
     IndexIter::makeIterator(std::unique_ptr<Snapshot> && snapshot) const noexcept {
+        assert(snapshot != nullptr);
         return std::make_unique<TreeIteratorFiltered>(
                 std::make_unique<BitDegradeTreeIterator>(this),
                 std::make_unique<OffsetToStringIterator>(pendingPart(snapshot->immut_seq_num()), _data_file),
@@ -438,5 +439,167 @@ namespace LeviDB {
         if (operating_iters == 0) {
             IndexRead::tryApplyPending();
         }
+    }
+
+    class IndexRegex::RegexIterator : public SimpleIterator<std::pair<Slice, std::string>> {
+    private:
+        const IndexIter * _index;
+        std::shared_ptr<Regex::R> _regex;
+        std::unique_ptr<Snapshot> _snapshot;
+        std::string _key;
+        std::string _value;
+        IndexIter::ForwardNodeIter _gen;
+        OffsetToStringIterator _pending_iter;
+        USR _info;
+        bool _valid = false;
+
+    public:
+        explicit RegexIterator(const IndexIter * index, std::shared_ptr<Regex::R> regex,
+                               std::unique_ptr<Snapshot> && snapshot) noexcept
+                : _index(index),
+                  _regex(std::move(regex)),
+                  _snapshot(std::move(snapshot)),
+                  _gen(_index->offToMemNode(_index->_root), _index, _regex.get(), &_info),
+                  _pending_iter(_index->pendingPart(_snapshot->immut_seq_num()), _index->_data_file) {
+            ++_index->operating_iters;
+            _pending_iter.seekToFirst();
+            next();
+        }
+
+        DEFAULT_MOVE(RegexIterator);
+        DELETE_COPY(RegexIterator);
+
+    public:
+        ~RegexIterator() noexcept override { --_index->operating_iters; }
+
+        bool valid() const override {
+            return _valid;
+        }
+
+        std::pair<Slice, std::string> item() const override {
+            return {_key, _value};
+        }
+
+        void next() override {
+            bool should_break = false;
+            while (!should_break) {
+                Slice key_of_gen;
+                if (_gen.valid()) {
+                    key_of_gen = _gen.item().first;
+                }
+                Slice key_of_pending;
+                if (_pending_iter.valid()) {
+                    key_of_pending = _pending_iter.key();
+                }
+                if (key_of_gen.size() == 0 && key_of_pending.size() == 0) {
+                    _valid = false;
+                    return;
+                }
+
+                std::string key;
+                std::string value;
+                bool regex_check{};
+                if ((regex_check = (key_of_gen.size() == 0 || !SliceComparator{}(key_of_gen, key_of_pending)))) {
+                    key = key_of_pending.toString();
+                    value = _pending_iter.value();
+                    _pending_iter.next();
+                } else {
+                    key = key_of_gen.toString();
+                    value = _gen.item().second.toString();
+                    _gen.next();
+                }
+
+                should_break = not(_key == key || value.back() == 1 || (regex_check && !_regex->match(&key)));
+                _key = std::move(key);
+                _value = std::move(value);
+            }
+        }
+    };
+
+    std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
+    IndexRegex::makeRegexIterator(std::shared_ptr<Regex::R> regex,
+                                  std::unique_ptr<Snapshot> && snapshot) const noexcept {
+        return std::make_unique<RegexIterator>(this, std::move(regex), std::move(snapshot));
+    }
+
+    class IndexRegex::ReversedRegexIterator : public SimpleIterator<std::pair<Slice, std::string>> {
+    private:
+        const IndexIter * _index;
+        std::shared_ptr<Regex::R> _regex;
+        std::unique_ptr<Snapshot> _snapshot;
+        std::string _key;
+        std::string _value;
+        IndexIter::BackwardNodeIter _gen;
+        OffsetToStringIterator _pending_iter;
+        USR _info;
+        bool _valid = false;
+
+    public:
+        explicit ReversedRegexIterator(const IndexIter * index, std::shared_ptr<Regex::R> regex,
+                                       std::unique_ptr<Snapshot> && snapshot) noexcept
+                : _index(index),
+                  _regex(std::move(regex)),
+                  _snapshot(std::move(snapshot)),
+                  _gen(_index->offToMemNode(_index->_root), _index, _regex.get(), &_info),
+                  _pending_iter(_index->pendingPart(_snapshot->immut_seq_num()), _index->_data_file) {
+            ++_index->operating_iters;
+            _pending_iter.seekToLast();
+            next();
+        }
+
+        DEFAULT_MOVE(ReversedRegexIterator);
+        DELETE_COPY(ReversedRegexIterator);
+
+    public:
+        ~ReversedRegexIterator() noexcept override { --_index->operating_iters; }
+
+        bool valid() const override {
+            return _valid;
+        }
+
+        std::pair<Slice, std::string> item() const override {
+            return {_key, _value};
+        }
+
+        void next() override {
+            bool should_break = false;
+            while (!should_break) {
+                Slice key_of_gen;
+                if (_gen.valid()) {
+                    key_of_gen = _gen.item().first;
+                }
+                Slice key_of_pending;
+                if (_pending_iter.valid()) {
+                    key_of_pending = _pending_iter.key();
+                }
+                if (key_of_gen.size() == 0 && key_of_pending.size() == 0) {
+                    _valid = false;
+                    return;
+                }
+
+                std::string key;
+                std::string value;
+                bool regex_check{};
+                if ((regex_check = (key_of_gen.size() == 0 || !SliceComparator{}(key_of_pending, key_of_gen)))) {
+                    key = key_of_pending.toString();
+                    value = _pending_iter.value();
+                    _pending_iter.prev();
+                } else {
+                    key = key_of_gen.toString();
+                    value = _gen.item().second.toString();
+                    _gen.next();
+                }
+
+                should_break = not(_key == key || value.back() == 1 || (regex_check && !_regex->match(&key)));
+                _key = std::move(key);
+                _value = std::move(value);
+            }
+        }
+    };
+
+    std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
+    IndexRegex::makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
+                                          std::unique_ptr<Snapshot> && snapshot) const noexcept {
+
     }
 }

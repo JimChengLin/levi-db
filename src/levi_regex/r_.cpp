@@ -28,7 +28,7 @@ namespace LeviDB {
             }
         };
 
-        thread_local std::unordered_map<cache_key_t, cache_value_t, CacheHasher> _cache;
+        thread_local static std::unordered_map<cache_key_t, cache_value_t, CacheHasher> _cache;
 
         class iter_base : public SimpleIterator<Result> {
         protected:
@@ -562,16 +562,21 @@ namespace LeviDB {
             DELETE_COPY(imatch_iter_wrapper);
 
         public:
-            ~imatch_iter_wrapper() noexcept = default;
+            ~imatch_iter_wrapper() noexcept override = default;
 
             bool valid() const override {
-                return i < _product->size();
+                return i != -1 && i < _product->size();
             }
 
             void next() noexcept override {
-                if (++i >= _product->size() && _producer->valid()) {
+                if (i + 1 < _product->size()) {
+                    ++i;
+                } else if (_producer->valid()) {
                     _product->emplace_back(_producer->item());
                     _producer->next();
+                    ++i;
+                } else if (i < _product->size()) { // valid => invalid
+                    ++i;
                 }
             }
 
@@ -582,6 +587,7 @@ namespace LeviDB {
 
         std::unique_ptr<SimpleIterator<Result>>
         make_imatch_iter(const R * caller, const USR * src, Result prev_result) noexcept {
+            assert(_cache.empty()); // clean test
             return std::make_unique<imatch_iter>(caller, src, prev_result);
         };
 

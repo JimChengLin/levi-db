@@ -23,6 +23,7 @@
  */
 
 #include "index_mvcc_rd.h"
+#include "levi_regex/r.h"
 
 namespace LeviDB {
     class IndexIter : public IndexRead {
@@ -41,6 +42,8 @@ namespace LeviDB {
 
         mutable std::atomic<int> operating_iters{0};
 
+        friend class IndexRegex;
+
     public:
         using IndexRead::IndexRead;
 
@@ -50,7 +53,6 @@ namespace LeviDB {
         DELETE_COPY(IndexIter);
 
     public:
-        // 注意: const 方法不线程安全(lazy eval)
         std::unique_ptr<Iterator<Slice, std::string>>
         makeIterator(std::unique_ptr<Snapshot> && snapshot) const noexcept;
 
@@ -58,6 +60,39 @@ namespace LeviDB {
         makeIterator() const noexcept { return makeIterator(_seq_gen->makeSnapshot()); };
 
         void tryApplyPending();
+    };
+
+    class IndexRegex : public IndexIter {
+    private:
+        class RegexIterator;
+
+        class ReversedRegexIterator;
+
+    public:
+        using IndexIter::IndexIter;
+
+        ~IndexRegex() noexcept = default;
+
+        DELETE_MOVE(IndexRegex);
+        DELETE_COPY(IndexRegex);
+
+    public:
+        std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
+        makeRegexIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const noexcept;
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
+        makeRegexIterator(std::shared_ptr<Regex::R> regex) const noexcept {
+            return makeRegexIterator(std::move(regex), _seq_gen->makeSnapshot());
+        };
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
+        makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
+                                  std::unique_ptr<Snapshot> && snapshot) const noexcept;
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
+        makeRegexReversedIterator(std::shared_ptr<Regex::R> regex) const noexcept {
+            return makeRegexReversedIterator(std::move(regex), _seq_gen->makeSnapshot());
+        };
     };
 }
 
