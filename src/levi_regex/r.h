@@ -34,9 +34,10 @@ namespace LeviDB {
             // _r 和 _pattern 二者不可能同时有效
             std::unique_ptr<R> _r;
             std::string _pattern;
+            std::string _pattern_to;
 
-            size_t _num_from = 1;
-            size_t _num_to = 1;
+            int _num_from = 1;
+            int _num_to = 1;
 
             std::unique_ptr<R> _other;
             Relation _relation = NONE;
@@ -59,11 +60,18 @@ namespace LeviDB {
 
             explicit R(std::string pattern) noexcept : _pattern(std::move(pattern)) {}
 
-            R(std::unique_ptr<R> && r, size_t num_from, size_t num_to, Mode mode) noexcept
+            R(std::string pattern, std::string pattern_to) noexcept
+                    : _pattern(std::move(pattern)), _pattern_to(std::move(pattern_to)) {}
+
+            R(std::unique_ptr<R> && r, int num_from, int num_to, Mode mode) noexcept
                     : _r(std::move(r)), _num_from(num_from), _num_to(num_to), _mode(mode) {}
 
-            R(std::string pattern, size_t num_from, size_t num_to, Mode mode) noexcept
+            R(std::string pattern, int num_from, int num_to, Mode mode) noexcept
                     : _pattern(std::move(pattern)), _num_from(num_from), _num_to(num_to), _mode(mode) {}
+
+            R(std::string pattern, std::string pattern_to, int num_from, int num_to, Mode mode) noexcept
+                    : _pattern(std::move(pattern)), _pattern_to(std::move(pattern_to)),
+                      _num_from(num_from), _num_to(num_to), _mode(mode) {}
 
             DEFAULT_MOVE(R);
 

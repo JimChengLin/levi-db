@@ -9,6 +9,7 @@ namespace LeviDB {
             } else {
                 assert(!another._pattern.empty());
                 _pattern = another._pattern;
+                _pattern_to = another._pattern_to;
             }
 
             _num_from = another._num_from;

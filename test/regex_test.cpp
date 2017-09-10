@@ -101,6 +101,15 @@ void regex_test() {
             it->next();
         }
         assert(output.isSuccess() && output._ed == 2);
+
+        usr = LeviDB::USR("FGH");
+        r = R("A", "Z");
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            it->next();
+        }
+        assert(output.isSuccess() && output._ed == 1);
     }
 
     std::cout << __FUNCTION__ << std::endl;

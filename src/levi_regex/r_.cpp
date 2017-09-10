@@ -61,7 +61,9 @@ namespace LeviDB {
                     }
 
                     counter = 0;
-                    fa = std::make_unique<StateMachine>(_caller->_pattern);
+                    fa = _caller->_pattern_to.empty() ? std::make_unique<StateMachine>(_caller->_pattern)
+                                                      : std::make_unique<RangeStateMachine>(_caller->_pattern,
+                                                                                            _caller->_pattern_to);
                     fa->setResult(_prev_result);
                     for (i = std::max(_prev_result._ed, _prev_result._select_from);
                          i < std::min(_src->immut_src()->size(), static_cast<size_t>(_prev_result._select_to));
@@ -407,9 +409,6 @@ namespace LeviDB {
                 GEN_INIT();
                     while (_stream4num->valid()) {
                         _result = _stream4num->item().invert();
-                        if (!_result.isContinue() && _result.isSuccess()) {
-                            ++_result._ed; // fail point invert 成 success, 应该补上
-                        }
                         YIELD();
                         _stream4num->next();
                     }

@@ -7,7 +7,7 @@ add_compile_options(-msse4.2)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
-    add_compile_options(-DLEVI_BENCH) # profile flag
+    #    add_compile_options(-DLEVI_BENCH) # profile
 endif ()
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")

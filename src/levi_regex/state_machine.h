@@ -17,7 +17,7 @@ namespace LeviDB {
         };
 
         class StateMachine {
-        private:
+        protected:
             std::string _pattern;
             Result _result{0, 0, false};
             Result _output;
@@ -36,19 +36,51 @@ namespace LeviDB {
 
             StateMachine & operator=(const StateMachine &) = default;
 
-            ~StateMachine() noexcept = default;
+            virtual ~StateMachine() noexcept = default;
 
         public:
             bool valid() const noexcept { return _line != -1; }
 
             void setResult(Result result) noexcept { _result = result; }
 
-            void reset() noexcept;
-
             Result send(Input input) noexcept;
 
+            virtual void reset() noexcept;
+
+        protected:
+            StateMachine() noexcept = default;
+
+            virtual void next() noexcept;
+        };
+
+        class RangeStateMachine : public StateMachine {
         private:
-            void next() noexcept;
+            std::string _pattern_to;
+
+            std::string _lower_bound;
+            std::string _upper_bound;
+
+        public:
+            RangeStateMachine(std::string pattern, std::string pattern_to) noexcept
+                    : _pattern_to(std::move(pattern_to)),
+                      _lower_bound(pattern.size(), 0), _upper_bound(pattern.size(), uint8ToChar(UINT8_MAX)) {
+                _pattern = std::move(pattern);
+                assert(_pattern.size() == _pattern_to.size() && _pattern <= _pattern_to);
+                next();
+            }
+
+            DEFAULT_MOVE(RangeStateMachine);
+
+            RangeStateMachine(const RangeStateMachine &) = default;
+
+            RangeStateMachine & operator=(const RangeStateMachine &) = default;
+
+            ~RangeStateMachine() noexcept override = default;
+
+            void reset() noexcept override;
+
+        private:
+            void next() noexcept override;
         };
     }
 }
