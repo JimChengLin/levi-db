@@ -111,23 +111,18 @@ namespace LeviDB {
 
         bool R::possible(const USR & input) const {
             enablePossibleMode();
-            auto it = imatch(input, {0, 0, false});
-            while (it->valid()) {
-                if (it->item().isSuccess()) {
-                    return true;
-                }
-            }
-            cacheClear();
+            bool res = match(input);
             disablePossibleMode();
-            return false;
+            return res;
         }
 
         bool R::match(const USR & input) const {
             auto it = imatch(input, {0, 0, false});
             while (it->valid()) {
-                if (it->item().isSuccess()) {
+                if (!it->item().isContinue() && it->item().isSuccess()) {
                     return true;
                 }
+                it->next();
             }
             cacheClear();
             return false;

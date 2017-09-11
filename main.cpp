@@ -26,6 +26,8 @@ void index_iter_test();
 
 void regex_test();
 
+void index_regex_test();
+
 int main() {
     try {
         index_test();
@@ -35,6 +37,7 @@ int main() {
         index_rd_test();
         index_iter_test();
         regex_test();
+        index_regex_test();
 #ifdef LEVI_BENCH
         kv_write_bench();
         kv_read_bench();

@@ -72,8 +72,15 @@ namespace LeviDB {
 
                     do {
                         nth = _cbegin - _node->immut_diffs().cbegin();
-                        mask = uint8ToChar(_node->immut_masks()[nth]);
-                        _reveal_info->reveal(*_cbegin, mask, go_right);
+                        if (nth != 0) {
+                            mask = uint8ToChar(_node->immut_masks()[nth]);
+                            _reveal_info->reveal(*_cbegin, mask, go_right);
+                        } else {
+                            _reveal_info->mut_src()->resize(1);
+                            _reveal_info->mut_src()->front() = 0;
+                            _reveal_info->mut_extra().resize(1);
+                            _reveal_info->mut_extra().front() = 0;
+                        }
 
                         if (_judge == nullptr || _judge->possible(*_reveal_info)) {
                             ptr = *(&_node->immut_ptrs()[nth + static_cast<size_t>(go_right)]);
@@ -448,9 +455,9 @@ namespace LeviDB {
         std::unique_ptr<Snapshot> _snapshot;
         std::string _key;
         std::string _value;
+        USR _info;
         IndexIter::ForwardNodeIter _gen;
         OffsetToStringIterator _pending_iter;
-        USR _info;
         bool _valid = false;
 
     public:
@@ -499,7 +506,8 @@ namespace LeviDB {
                 std::string key;
                 std::string value;
                 bool regex_check{};
-                if ((regex_check = (key_of_gen.size() == 0 || !SliceComparator{}(key_of_gen, key_of_pending)))) {
+                if ((regex_check = (key_of_gen.size() == 0 ||
+                                    (key_of_pending.size() != 0 && !SliceComparator{}(key_of_gen, key_of_pending))))) {
                     key = key_of_pending.toString();
                     value = _pending_iter.value();
                     _pending_iter.next();
@@ -513,6 +521,7 @@ namespace LeviDB {
                 _key = std::move(key);
                 _value = std::move(value);
             }
+            _valid = true;
         }
     };
 
