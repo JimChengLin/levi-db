@@ -107,8 +107,8 @@ void log_test() {
     mirror.flush();
 
     LeviDB::RandomAccessFile r_mirror(mirror_fname);
-    auto table_recovery_iter = LeviDB::LogReader::makeTableRecoveryIterator(&r_mirror, [](const LeviDB::Exception & e) {
-    });
+    auto table_recovery_iter =
+            LeviDB::LogReader::makeTableRecoveryIterator(&r_mirror, [](const LeviDB::Exception & e) noexcept {});
     for (int i = 0; i < 4; ++i) {
         table_recovery_iter->next();
     }

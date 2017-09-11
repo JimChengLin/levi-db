@@ -119,6 +119,12 @@ namespace LeviDB {
             imatch(const USR & input, Result prev_result, int from, int to) const noexcept;
         };
 
+        void enablePossibleMode() noexcept;
+
+        void disablePossibleMode() noexcept;
+
+        bool isPossibleMode() noexcept;
+
         void cacheClear() noexcept;
 
         // functions below are just for test

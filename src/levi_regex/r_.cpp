@@ -29,6 +29,7 @@ namespace LeviDB {
         };
 
         thread_local static std::unordered_map<cache_key_t, cache_value_t, CacheHasher> _cache;
+        thread_local static bool _possible_mode = false;
 
         class iter_base : public SimpleIterator<Result> {
         protected:
@@ -94,6 +95,10 @@ namespace LeviDB {
                             }
 
                             if (_result.isContinue()) {
+                                if (isPossibleMode() && i == _src->immut_src()->size() - 1 && j == 0) {
+                                    _result = {_prev_result._op, static_cast<int>(_src->immut_src()->size()), true};
+                                    YIELD();
+                                }
                             } else if (_result.isSuccess()) {
                                 ++counter;
                                 if (_caller->_num_from <= counter && counter <= _caller->_num_to) {
@@ -257,11 +262,11 @@ namespace LeviDB {
                 std::unique_ptr<SimpleIterator<Result>> curr_iter;
                 int nth{};
 
-                auto cond_func = [](const Result & result) -> bool {
+                auto cond_func = [](const Result & result) noexcept -> bool {
                     return !result.isContinue() && result.isSuccess();
                 };
 
-                auto trans_func = [&](const Result & result) -> out_t {
+                auto trans_func = [&](const Result & result) noexcept -> out_t {
                     return _caller->_r->imatch(*_src, result);
                 };
 
@@ -449,11 +454,11 @@ namespace LeviDB {
                 typedef std::unique_ptr<SimpleIterator<Result>> in_t;
                 typedef std::unique_ptr<SimpleIterator<Result>> out_t;
 
-                auto cond_func = [](const Result & result) -> bool {
+                auto cond_func = [](const Result & result) noexcept -> bool {
                     return !result.isContinue() && result.isSuccess();
                 };
 
-                auto trans_func = [&](const Result & result) -> out_t {
+                auto trans_func = [&](const Result & result) noexcept -> out_t {
                     return _caller->_other->imatch(*_src, result);
                 };
 
@@ -601,6 +606,18 @@ namespace LeviDB {
             prev_result._select_from = from;
             prev_result._select_to = to;
             return std::make_unique<imatch_iter_wrapper>(this, &input, prev_result);
+        }
+
+        void enablePossibleMode() noexcept {
+            _possible_mode = true;
+        }
+
+        void disablePossibleMode() noexcept {
+            _possible_mode = false;
+        }
+
+        bool isPossibleMode() noexcept {
+            return _possible_mode;
         }
 
         void cacheClear() noexcept {

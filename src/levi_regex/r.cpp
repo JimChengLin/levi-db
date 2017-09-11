@@ -110,13 +110,15 @@ namespace LeviDB {
         };
 
         bool R::possible(const USR & input) const {
+            enablePossibleMode();
             auto it = imatch(input, {0, 0, false});
             while (it->valid()) {
-                if (it->item().isContinue() || it->item().isSuccess()) {
+                if (it->item().isSuccess()) {
                     return true;
                 }
             }
             cacheClear();
+            disablePossibleMode();
             return false;
         }
 

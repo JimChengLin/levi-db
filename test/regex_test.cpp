@@ -118,6 +118,18 @@ void regex_test() {
         assert(output.isSuccess() && output._ed == 1);
         LeviDB::Regex::cacheClear();
     }
+    {
+        LeviDB::Regex::enablePossibleMode();
+        LeviDB::Regex::R r("B");
+        LeviDB::Regex::Result result(0, 0, false);
+        LeviDB::USR usr;
+        usr.mut_src()->resize(1);
+        usr.mut_extra().resize(1);
+        auto stream4num_machine = LeviDB::Regex::make_stream4num_machine(&r, &usr, result);
+        stream4num_machine->next();
+        assert(stream4num_machine->item().isSuccess());
+        LeviDB::Regex::disablePossibleMode();
+    }
 
     std::cout << __FUNCTION__ << std::endl;
 }
