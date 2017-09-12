@@ -63,13 +63,13 @@ namespace LeviDB {
             R(std::string pattern, std::string pattern_to) noexcept
                     : _pattern(std::move(pattern)), _pattern_to(std::move(pattern_to)) {}
 
-            R(std::unique_ptr<R> && r, int num_from, int num_to, Mode mode) noexcept
+            R(std::unique_ptr<R> && r, int num_from, int num_to, Mode mode = GREEDY) noexcept
                     : _r(std::move(r)), _num_from(num_from), _num_to(num_to), _mode(mode) {}
 
-            R(std::string pattern, int num_from, int num_to, Mode mode) noexcept
+            R(std::string pattern, int num_from, int num_to, Mode mode = GREEDY) noexcept
                     : _pattern(std::move(pattern)), _num_from(num_from), _num_to(num_to), _mode(mode) {}
 
-            R(std::string pattern, std::string pattern_to, int num_from, int num_to, Mode mode) noexcept
+            R(std::string pattern, std::string pattern_to, int num_from, int num_to, Mode mode = GREEDY) noexcept
                     : _pattern(std::move(pattern)), _pattern_to(std::move(pattern_to)),
                       _num_from(num_from), _num_to(num_to), _mode(mode) {}
 

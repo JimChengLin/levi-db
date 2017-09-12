@@ -580,6 +580,12 @@ namespace LeviDB {
                     _product->emplace_back(_producer->item());
                     _producer->next();
                     ++i;
+
+                    if (_product->back().isContinue()) {
+                        _product->pop_back();
+                        --i;
+                        return next();
+                    }
                 } else if (i < _product->size()) { // valid => invalid
                     ++i;
                 }
