@@ -78,19 +78,19 @@ namespace LeviDB {
 
     public:
         std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
-        makeRegexIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const noexcept;
+        makeRegexIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const;
 
         std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
-        makeRegexIterator(std::shared_ptr<Regex::R> regex) const noexcept {
+        makeRegexIterator(std::shared_ptr<Regex::R> regex) const {
             return makeRegexIterator(std::move(regex), _seq_gen->makeSnapshot());
         };
 
         std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
         makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
-                                  std::unique_ptr<Snapshot> && snapshot) const noexcept;
+                                  std::unique_ptr<Snapshot> && snapshot) const;
 
         std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
-        makeRegexReversedIterator(std::shared_ptr<Regex::R> regex) const noexcept {
+        makeRegexReversedIterator(std::shared_ptr<Regex::R> regex) const {
             return makeRegexReversedIterator(std::move(regex), _seq_gen->makeSnapshot());
         };
     };
