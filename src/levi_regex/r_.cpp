@@ -45,12 +45,6 @@ namespace LeviDB {
             iter_base(const R * caller, const USR * src, Result prev_result) noexcept
                     : _caller(caller), _src(src), _prev_result(prev_result) {}
 
-            DELETE_MOVE(iter_base);
-            DELETE_COPY(iter_base);
-
-            ~iter_base() noexcept override = default;
-
-        public:
             bool valid() const override { return _line != -1; }
 
             Result item() const override { return _result; }
@@ -358,11 +352,6 @@ namespace LeviDB {
             logic_iter(const R * caller, const USR * src, Result prev_result,
                        std::unique_ptr<SimpleIterator<Result>> && stream4num) noexcept
                     : iter_base(caller, src, prev_result), _stream4num(std::move(stream4num)) {}
-
-            DELETE_MOVE(logic_iter);
-            DELETE_COPY(logic_iter);
-
-            ~logic_iter() noexcept override = default;
         };
 
         class and_r_iter : public logic_iter {

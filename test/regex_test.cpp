@@ -127,7 +127,8 @@ void regex_test() {
         usr.mut_extra().resize(1);
         auto stream4num_machine = LeviDB::Regex::make_stream4num_machine(&r, &usr, result);
         stream4num_machine->next();
-        assert(stream4num_machine->item().isSuccess());
+        assert(LeviDB::Regex::getPossibleResultRef().isSuccess());
+        LeviDB::Regex::getPossibleResultRef() = {};
         LeviDB::Regex::disablePossibleMode();
     }
 
