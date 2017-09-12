@@ -110,6 +110,7 @@ namespace LeviDB {
         };
 
         bool R::possible(const USR & input) const {
+            assert(getPossibleResultRef().isContinue());
             enablePossibleMode();
             bool res = false;
             auto it = imatch(input, {0, 0, false});
@@ -119,8 +120,15 @@ namespace LeviDB {
                     break;
                 }
                 it->next();
+                if (!getPossibleResultRef().isContinue()) {
+                    assert(getPossibleResultRef().isSuccess());
+                    res = true;
+                    break;
+                }
             }
+            res = res || !getPossibleResultRef().isContinue();
             cacheClear();
+            getPossibleResultRef() = {};
             disablePossibleMode();
             return res;
         }

@@ -30,6 +30,7 @@ namespace LeviDB {
 
         thread_local static std::unordered_map<cache_key_t, cache_value_t, CacheHasher> _cache;
         thread_local static bool _possible_mode = false;
+        thread_local static Result _possible_result;
 
         class iter_base : public SimpleIterator<Result> {
         protected:
@@ -44,6 +45,12 @@ namespace LeviDB {
             iter_base(const R * caller, const USR * src, Result prev_result) noexcept
                     : _caller(caller), _src(src), _prev_result(prev_result) {}
 
+            DELETE_MOVE(iter_base);
+            DELETE_COPY(iter_base);
+
+            ~iter_base() noexcept override = default;
+
+        public:
             bool valid() const override { return _line != -1; }
 
             Result item() const override { return _result; }
@@ -94,11 +101,15 @@ namespace LeviDB {
                                 _result = fa->send(static_cast<Input>(((*_src->immut_src())[i] >> j) & 1));
                             }
 
+                            if ((isPossibleMode() && i == _src->immut_src()->size() - 1 && j == 0)
+                                && (_result.isContinue() || _result.isSuccess())) {
+                                _possible_result = {_prev_result._op,
+                                                    static_cast<int>(_src->immut_src()->size()),
+                                                    true};
+                                _result = {};
+                            }
+
                             if (_result.isContinue()) {
-                                if (isPossibleMode() && i == _src->immut_src()->size() - 1 && j == 0) {
-                                    _result = {_prev_result._op, static_cast<int>(_src->immut_src()->size()), true};
-                                    YIELD();
-                                }
                             } else if (_result.isSuccess()) {
                                 ++counter;
                                 if (_caller->_num_from <= counter && counter <= _caller->_num_to) {
@@ -347,6 +358,11 @@ namespace LeviDB {
             logic_iter(const R * caller, const USR * src, Result prev_result,
                        std::unique_ptr<SimpleIterator<Result>> && stream4num) noexcept
                     : iter_base(caller, src, prev_result), _stream4num(std::move(stream4num)) {}
+
+            DELETE_MOVE(logic_iter);
+            DELETE_COPY(logic_iter);
+
+            ~logic_iter() noexcept override = default;
         };
 
         class and_r_iter : public logic_iter {
@@ -433,6 +449,15 @@ namespace LeviDB {
                     while (_stream4num->valid()) {
                         _result = _stream4num->item().invert();
                         YIELD();
+                        /*
+                         * 预期: fail 的 match, invert 后成为 success
+                         * 但由于 possible mode, 原本 fail 的 match 直接就是 success, 再 invert 就变成 fail, 不符合预期
+                         * 解决方案: 两种结果都 yield
+                         */
+                        if (isPossibleMode()) {
+                            _result.invert();
+                            YIELD();
+                        }
                         _stream4num->next();
                     }
                 GEN_STOP();
@@ -628,6 +653,10 @@ namespace LeviDB {
 
         void cacheClear() noexcept {
             _cache.clear();
+        }
+
+        Result & getPossibleResultRef() noexcept {
+            return _possible_result;
         }
     }
 }

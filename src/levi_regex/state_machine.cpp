@@ -14,8 +14,8 @@ namespace LeviDB {
 
         void RangeStateMachine::reset() noexcept {
             StateMachine::reset();
-            _lower_bound.clear();
-            _upper_bound.clear();
+            std::fill(_lower_bound.begin(), _lower_bound.end(), 0);
+            std::fill(_upper_bound.begin(), _upper_bound.end(), uint8ToChar(UINT8_MAX));
         }
 
         Result StateMachine::send(Input input) noexcept {

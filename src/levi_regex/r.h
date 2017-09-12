@@ -127,6 +127,8 @@ namespace LeviDB {
 
         void cacheClear() noexcept;
 
+        Result & getPossibleResultRef() noexcept;
+
         // functions below are just for test
         std::unique_ptr<SimpleIterator<Result>>
         make_stream4num_machine(const R * caller, const USR * src, Result prev_result) noexcept;
