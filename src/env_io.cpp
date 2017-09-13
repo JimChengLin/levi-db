@@ -8,16 +8,13 @@
 #include "env_thread.h"
 #include "exception.h"
 
-#if defined(OS_MACOSX) || defined(OS_SOLARIS) || defined(OS_FREEBSD) || \
-    defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_DRAGONFLYBSD) || \
-    defined(OS_ANDROID) || defined(OS_HPUX) || defined(CYGWIN)
+#if defined(OS_MACOSX)
 #define fread_unlocked fread
 #define fwrite_unlocked fwrite
 #define fflush_unlocked fflush
 #endif
 
-#if defined(OS_MACOSX) || defined(OS_FREEBSD) || \
-    defined(OS_OPENBSD) || defined(OS_DRAGONFLYBSD)
+#if defined(OS_MACOSX)
 #define fdatasync fsync
 #endif
 
@@ -45,6 +42,12 @@ namespace LeviDB {
 
         void renameFile(const std::string & fname, const std::string & target) {
             if (rename(fname.c_str(), target.c_str()) != 0) {
+                throw Exception::IOErrorException(fname, error_info);
+            }
+        }
+
+        void truncateFile(const std::string & fname, uint64_t length) {
+            if (truncate(fname.c_str(), static_cast<off_t>(length)) != 0) {
                 throw Exception::IOErrorException(fname, error_info);
             }
         }
@@ -221,6 +224,22 @@ namespace LeviDB {
             throw Exception::IOErrorException(_filename, error_info);
         }
         return {scratch, static_cast<size_t>(r)};
+    }
+
+    RandomWriteFile::RandomWriteFile(std::string fname)
+            : _filename(std::move(fname)), _file(_filename, IOEnv::fileExists(_filename) ? IOEnv::RP_M : IOEnv::WP_M) {}
+
+    void RandomWriteFile::write(uint64_t offset, const Slice & data) {
+        ssize_t r = pwrite(_file._fd, data.data(), data.size(), static_cast<off_t>(offset));
+        if (r < 0) {
+            throw Exception::IOErrorException(_filename, error_info);
+        }
+    }
+
+    void RandomWriteFile::sync() {
+        if (fdatasync(_file._fd) != 0) {
+            throw Exception::IOErrorException(_filename, error_info);
+        }
     }
 
     SequentialFile::SequentialFile(std::string fname)

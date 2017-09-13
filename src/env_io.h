@@ -35,6 +35,8 @@ namespace LeviDB {
 
         void renameFile(const std::string & fname, const std::string & target);
 
+        void truncateFile(const std::string & fname, uint64_t length);
+
         std::vector<std::string>
         getChildren(const std::string & dirname);
 
@@ -130,6 +132,24 @@ namespace LeviDB {
         DELETE_COPY(RandomAccessFile);
     };
 
+    class RandomWriteFile {
+    private:
+        std::string _filename;
+        FileOpen _file;
+
+    public:
+        explicit RandomWriteFile(std::string fname);
+
+        ~RandomWriteFile() noexcept = default;
+
+        void write(uint64_t offset, const Slice & data);
+
+        void sync();
+
+        DEFAULT_MOVE(RandomWriteFile);
+        DELETE_COPY(RandomWriteFile);
+    };
+
     class SequentialFile {
     private:
         std::string _filename;
@@ -150,7 +170,7 @@ namespace LeviDB {
         DELETE_COPY(SequentialFile);
     };
 
-    // 用于记录人类可读的日志
+    // 记录人类可读的日志
     class Logger {
     private:
         FileFopen _ffile;
@@ -178,6 +198,9 @@ namespace LeviDB {
         explicit FileLock(const std::string & fname);
 
         ~FileLock() noexcept;
+
+        DEFAULT_MOVE(FileLock);
+        DELETE_COPY(FileLock);
     };
 }
 
