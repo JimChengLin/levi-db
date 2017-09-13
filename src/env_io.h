@@ -149,6 +149,37 @@ namespace LeviDB {
         DEFAULT_MOVE(SequentialFile);
         DELETE_COPY(SequentialFile);
     };
+
+    // 用于记录人类可读的日志
+    class Logger {
+    private:
+        FileFopen _ffile;
+
+    public:
+        explicit Logger(const std::string & fname);
+
+        ~Logger() noexcept = default;
+
+        void logv(const char * format, va_list ap) noexcept;
+
+        DEFAULT_MOVE(Logger);
+        DELETE_COPY(Logger);
+
+    public:
+        static void logForMan(Logger * info_log, const char * format, ...) noexcept
+        __attribute__((__format__ (__printf__, 2, 3)));
+    };
+
+    class FileLock {
+    private:
+        std::string _filename;
+        int _fd;
+
+    public:
+        FileLock(const std::string & fname);
+
+        ~FileLock() noexcept;
+    };
 }
 
 #endif //LEVIDB_ENV_IO_H

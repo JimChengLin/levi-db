@@ -2,8 +2,10 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include "env_io.h"
+#include "env_thread.h"
 #include "exception.h"
 
 #if defined(OS_MACOSX) || defined(OS_SOLARIS) || defined(OS_FREEBSD) || \
@@ -252,5 +254,76 @@ namespace LeviDB {
         }
         free(line);
         return res;
+    }
+
+    Logger::Logger(const std::string & fname) : _ffile(fname, IOEnv::W_M) {}
+
+    void Logger::logv(const char * format, va_list ap) noexcept {
+        uint64_t thread_id = ThreadEnv::gettid();
+
+        char buffer[500];
+        std::unique_ptr<char[]> tmp;
+        for (const int iter :{0, 1}) {
+            char * base;
+            int buff_size;
+            if (iter == 0) {
+                buff_size = sizeof(buffer);
+                base = buffer;
+            } else {
+                assert(iter == 1);
+                buff_size = 30000;
+                tmp = std::unique_ptr<char[]>(new char[buff_size]);
+                base = tmp.get();
+            }
+            char * p = base;
+            char * limit = base + buff_size;
+
+            struct timeval now_tv{};
+            gettimeofday(&now_tv, nullptr);
+            const time_t seconds = now_tv.tv_sec;
+            struct tm t{};
+            localtime_r(&seconds, &t);
+            p += snprintf(p, limit - p,
+                          "%04d/%02d/%02d-%02d:%02d:%02d.%06d %llx ",
+                          t.tm_year + 1900,
+                          t.tm_mon + 1,
+                          t.tm_mday,
+                          t.tm_hour,
+                          t.tm_min,
+                          t.tm_sec,
+                          static_cast<int>(now_tv.tv_usec),
+                          static_cast<long long unsigned int>(thread_id));
+
+            // 写入
+            if (p < limit) {
+                va_list backup_ap;
+                va_copy(backup_ap, ap);
+                p += vsnprintf(p, limit - p, format, backup_ap);
+                va_end(backup_ap);
+            }
+
+            if (p >= limit) {
+                if (iter == 0) {
+                    continue;
+                }
+                p = limit - 1;
+            }
+            if (p == base || p[-1] != '\n') {
+                *p++ = '\n';
+            }
+
+            assert(p <= limit);
+            fwrite(base, 1, p - base, _ffile._f);
+            fflush(_ffile._f);
+            break;
+        }
+    }
+
+    void Logger::logForMan(Logger * info_log, const char * format, ...) noexcept {
+        assert(info_log != nullptr);
+        va_list ap;
+        va_start(ap, format);
+        info_log->logv(format, ap);
+        va_end(ap);
     }
 }
