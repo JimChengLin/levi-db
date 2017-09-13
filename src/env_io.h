@@ -10,6 +10,7 @@
 
 #include <sys/mman.h>
 #include <unistd.h>
+#include <vector>
 
 #include "slice.h"
 #include "util.h"
@@ -31,6 +32,15 @@ namespace LeviDB {
         bool fileExists(const std::string & fname) noexcept;
 
         void deleteFile(const std::string & fname);
+
+        void renameFile(const std::string & fname, const std::string & target);
+
+        std::vector<std::string>
+        getChildren(const std::string & dirname);
+
+        void createDir(const std::string & dirname);
+
+        void deleteDir(const std::string & dirname);
     }
 
     class FileOpen {

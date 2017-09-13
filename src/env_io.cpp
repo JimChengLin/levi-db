@@ -1,4 +1,5 @@
 #include <cerrno>
+#include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 
@@ -37,6 +38,39 @@ namespace LeviDB {
         void deleteFile(const std::string & fname) {
             if (unlink(fname.c_str()) != 0) {
                 throw Exception::IOErrorException(fname, error_info);
+            }
+        }
+
+        void renameFile(const std::string & fname, const std::string & target) {
+            if (rename(fname.c_str(), target.c_str()) != 0) {
+                throw Exception::IOErrorException(fname, error_info);
+            }
+        }
+
+        std::vector<std::string>
+        getChildren(const std::string & dirname) {
+            std::vector<std::string> res;
+            DIR * d = opendir(dirname.c_str());
+            if (d == nullptr) {
+                throw Exception::IOErrorException(dirname, error_info);
+            }
+            struct dirent * entry{};
+            while ((entry = readdir(d)) != nullptr) {
+                res.emplace_back(entry->d_name);
+            }
+            closedir(d);
+            return res;
+        };
+
+        void createDir(const std::string & dirname) {
+            if (mkdir(dirname.c_str(), 0755/* 权限 */) != 0) {
+                throw Exception::IOErrorException(dirname, error_info);
+            }
+        }
+
+        void deleteDir(const std::string & dirname) {
+            if (rmdir(dirname.c_str()) != 0) {
+                throw Exception::IOErrorException(dirname, error_info);
             }
         }
     }
