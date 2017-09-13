@@ -24,6 +24,7 @@ namespace LeviDB {
 
     struct WriteOptions {
         bool sync = false;
+        bool compress = false;
     };
 }
 
