@@ -326,4 +326,24 @@ namespace LeviDB {
         info_log->logv(format, ap);
         va_end(ap);
     }
+
+    template<bool LOCK>
+    static int lockOrUnlock(int fd) noexcept {
+        struct flock f{};
+        f.l_type = static_cast<short>(LOCK ? F_WRLCK : F_UNLCK);
+        f.l_whence = SEEK_SET;
+        f.l_start = 0;
+        f.l_len = 0;
+        return fcntl(fd, F_SETLK, &f);
+    }
+
+    FileLock::FileLock(const std::string & fname) : _file(fname, IOEnv::WP_M) {
+        if (lockOrUnlock<true>(_file._fd) == -1) {
+            throw Exception::IOErrorException("lock " + fname, error_info);
+        }
+    }
+
+    FileLock::~FileLock() noexcept {
+        lockOrUnlock<false>(_file._fd);
+    }
 }

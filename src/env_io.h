@@ -172,11 +172,10 @@ namespace LeviDB {
 
     class FileLock {
     private:
-        std::string _filename;
-        int _fd;
+        FileOpen _file;
 
     public:
-        FileLock(const std::string & fname);
+        explicit FileLock(const std::string & fname);
 
         ~FileLock() noexcept;
     };
