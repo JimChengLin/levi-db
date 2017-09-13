@@ -34,7 +34,7 @@ set(SOURCE_FILES main.cpp
         src/log_reader.cpp src/log_reader.h
         src/log_writer.cpp src/log_writer.h
         src/merger.h
-        src/meta_keeper.cpp src/meta_keeper.h
+        src/meta_keeper.h
         src/options.h
         src/seq_gen.cpp src/seq_gen.h
         src/slice.h

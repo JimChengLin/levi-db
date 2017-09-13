@@ -6,6 +6,7 @@
 #endif
 
 #include "env_thread.h"
+#include "exception.h"
 
 namespace LeviDB {
     namespace ThreadEnv {
@@ -15,5 +16,25 @@ namespace LeviDB {
             memcpy(&thread_id, &tid, std::min(sizeof(thread_id), sizeof(tid)));
             return thread_id;
         };
+    }
+
+    RWLockReadGuard::RWLockReadGuard(pthread_rwlock_t * lock) : _lock(lock) {
+        if (pthread_rwlock_rdlock(_lock) != 0) {
+            throw Exception::corruptionException("rdlock fail");
+        }
+    }
+
+    RWLockReadGuard::~RWLockReadGuard() noexcept {
+        if (_lock != nullptr) pthread_rwlock_unlock(_lock);
+    }
+
+    RWLockWriteGuard::RWLockWriteGuard(pthread_rwlock_t * lock) : _lock(lock) {
+        if (pthread_rwlock_wrlock(_lock) != 0) {
+            throw Exception::corruptionException("wrlock fail");
+        }
+    }
+
+    RWLockWriteGuard::~RWLockWriteGuard() noexcept {
+        if (_lock != nullptr) pthread_rwlock_unlock(_lock);
     }
 }

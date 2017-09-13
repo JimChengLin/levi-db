@@ -43,4 +43,8 @@ namespace LeviDB {
                                         std::unique_ptr<Snapshot> && snapshot) const {
 
     };
+
+    bool repairSingleDB(const std::string & db_single_name) noexcept {
+
+    };
 }
