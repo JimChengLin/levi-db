@@ -52,16 +52,14 @@ namespace LeviDB {
                 memcpy(&checksum, _trailing.data() + _trailing.size() - sizeof(checksum), sizeof(checksum));
                 _trailing.resize(_trailing.size() - sizeof(checksum));
 
-                uint32_t exist_checksum = CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value));
-                if (!_trailing.empty()) {
-                    exist_checksum = CRC32C::extend(exist_checksum, _trailing.data(), _trailing.size());
-                }
-                if (exist_checksum != checksum) {
+                uint32_t calc_checksum = CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value));
+                calc_checksum = CRC32C::extend(calc_checksum, _trailing.data(), _trailing.size());
+                if (calc_checksum != checksum) {
                     continue;
                 }
                 return;
             }
-            throw Exception::notFoundException("no legal meta file", _backing_filename);
+            throw Exception::notFoundException("no legal meta file found", _backing_filename);
         }
 
         StrongKeeper(std::string fname, T value, std::string trailing)
@@ -69,6 +67,10 @@ namespace LeviDB {
             uint32_t checksum = CRC32C::extend(CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value)),
                                                _trailing.data(), _trailing.size());
             for (const std::string & plan:{_backing_filename + "_a.keeper", _backing_filename + "_b.keeper"}) {
+                if (IOEnv::fileExists(plan)) {
+                    IOEnv::deleteFile(plan);
+                }
+
                 AppendableFile file(plan);
                 file.append({reinterpret_cast<const char *>(&_value), sizeof(_value)});
                 file.append(_trailing);
@@ -76,6 +78,11 @@ namespace LeviDB {
                 file.sync();
             }
         }
+
+        DEFAULT_MOVE(StrongKeeper);
+        DELETE_COPY(StrongKeeper);
+
+        ~StrongKeeper() noexcept = default;
 
         template<typename FIELD>
         void update(size_t field_offset, FIELD field) {
@@ -121,7 +128,64 @@ namespace LeviDB {
 
     template<typename T>
     class WeakKeeper {
-        T _value;
+    private:
+        std::string _backing_filename;
+        std::string _trailing;
+        T _value{};
+        static_assert(std::is_standard_layout<T>::value, "layout could change");
+
+    public:
+        typedef T value_type;
+
+        explicit WeakKeeper(std::string fname) : _backing_filename(std::move(fname)) {
+            SequentialFile file(_backing_filename + ".keeper");
+            file.read(sizeof(_value), reinterpret_cast<char *>(&_value));
+
+            Slice output;
+            char buf[IOEnv::page_size_];
+            do {
+                output = file.read(IOEnv::page_size_, buf);
+                _trailing.insert(_trailing.end(), output.data(), output.data() + output.size());
+            } while (output.size() == IOEnv::page_size_);
+
+            uint32_t checksum;
+            if (_trailing.size() < sizeof(checksum)) {
+                throw Exception::corruptionException("checksum lost", _backing_filename);
+            }
+            memcpy(&checksum, _trailing.data() + _trailing.size() - sizeof(checksum), sizeof(checksum));
+            _trailing.resize(_trailing.size() - sizeof(checksum));
+
+            uint32_t calc_checksum = CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value));
+            calc_checksum = CRC32C::extend(calc_checksum, _trailing.data(), _trailing.size());
+            if (calc_checksum != checksum) {
+                throw Exception::corruptionException("checksum mismatch", _backing_filename);
+            }
+        }
+
+        WeakKeeper(std::string fname, T value, std::string trailing) noexcept
+                : _backing_filename(std::move(fname)), _trailing(std::move(trailing)), _value(value) {}
+
+        DEFAULT_MOVE(WeakKeeper);
+        DELETE_COPY(WeakKeeper);
+
+        ~WeakKeeper() noexcept {
+            uint32_t checksum = CRC32C::extend(CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value)),
+                                               _trailing.data(), _trailing.size());
+            std::string name = _backing_filename + ".keeper";
+            if (IOEnv::fileExists(name)) {
+                IOEnv::deleteFile(name);
+            }
+
+            AppendableFile file(name);
+            file.append({reinterpret_cast<const char *>(&_value), sizeof(_value)});
+            file.append(_trailing);
+            file.append({reinterpret_cast<const char *>(&checksum), sizeof(checksum)});
+            file.sync();
+        }
+
+        EXPOSE(_trailing);
+
+        EXPOSE(_value);
     };
 }
 
