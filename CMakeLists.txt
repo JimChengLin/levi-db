@@ -22,6 +22,7 @@ set(SOURCE_FILES main.cpp
         src/db.cpp src/db.h
         src/db_single.cpp src/db_single.h
         src/env_io.cpp src/env_io.h
+        src/env_thread.cpp src/env_thread.h
         src/exception.cpp src/exception.h
         src/index.cpp src/index.h src/index_.cpp
         src/index_iter_regex.cpp src/index_iter_regex.h
@@ -34,22 +35,22 @@ set(SOURCE_FILES main.cpp
         src/log_writer.cpp src/log_writer.h
         src/merger.h
         src/meta_keeper.cpp src/meta_keeper.h
+        src/options.h
         src/seq_gen.cpp src/seq_gen.h
         src/slice.h
         src/usr.cpp src/usr.h
         src/util.h
         src/varint.cpp src/varint.h
         test/compress_test.cpp
+        test/db_single_test.cpp
         test/index_iter_test.cpp
         test/index_mvcc_test.cpp
         test/index_rd_test.cpp
         test/index_regex_test.cpp
         test/index_test.cpp
         test/log_test.cpp
-        test/regex_test.cpp
-        src/options.h
-        test/db_single_test.cpp
-        src/env_thread.cpp src/env_thread.h)
+        test/misc_test.cpp
+        test/regex_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
 
