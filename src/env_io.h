@@ -65,7 +65,7 @@ namespace LeviDB {
         uint64_t _length;
 
     public:
-        explicit MmapFile(const std::string & fname);
+        explicit MmapFile(std::string fname);
 
         ~MmapFile() noexcept { munmap(_mmaped_region, _length); }
 
@@ -88,7 +88,7 @@ namespace LeviDB {
         uint64_t _length;
 
     public:
-        explicit AppendableFile(const std::string & fname);
+        explicit AppendableFile(std::string fname);
 
         ~AppendableFile() noexcept = default;
 
@@ -110,7 +110,7 @@ namespace LeviDB {
         FileOpen _file;
 
     public:
-        explicit RandomAccessFile(const std::string & fname);
+        explicit RandomAccessFile(std::string fname);
 
         ~RandomAccessFile() noexcept = default;
 
@@ -126,7 +126,7 @@ namespace LeviDB {
         FileFopen _ffile;
 
     public:
-        explicit SequentialFile(const std::string & fname);
+        explicit SequentialFile(std::string fname);
 
         ~SequentialFile() noexcept = default;
 

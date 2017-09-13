@@ -111,10 +111,10 @@ namespace LeviDB {
         _f = f;
     }
 
-    MmapFile::MmapFile(const std::string & fname)
-            : _filename(fname),
-              _file(fname, IOEnv::fileExists(fname) ? IOEnv::RP_M : IOEnv::WP_M),
-              _length(IOEnv::getFileSize(fname)) {
+    MmapFile::MmapFile(std::string fname)
+            : _filename(std::move(fname)),
+              _file(_filename, IOEnv::fileExists(_filename) ? IOEnv::RP_M : IOEnv::WP_M),
+              _length(IOEnv::getFileSize(_filename)) {
         if (_length == 0) { // 0 长度文件 mmap 会报错
             _length = IOEnv::page_size_;
             if (ftruncate(_file._fd, static_cast<off_t>(_length)) != 0) {
@@ -123,7 +123,7 @@ namespace LeviDB {
         }
         _mmaped_region = mmap(nullptr, _length, PROT_READ | PROT_WRITE, MAP_SHARED, _file._fd, 0);
         if (_mmaped_region == MAP_FAILED) {
-            throw Exception::IOErrorException(fname, error_info);
+            throw Exception::IOErrorException(_filename, error_info);
         }
     }
 
@@ -152,8 +152,8 @@ namespace LeviDB {
         };
     }
 
-    AppendableFile::AppendableFile(const std::string & fname)
-            : _filename(fname), _ffile(fname, IOEnv::A_M), _length(IOEnv::getFileSize(fname)) {}
+    AppendableFile::AppendableFile(std::string fname)
+            : _filename(std::move(fname)), _ffile(_filename, IOEnv::A_M), _length(IOEnv::getFileSize(_filename)) {}
 
     void AppendableFile::append(const Slice & data) {
         size_t r = fwrite_unlocked(data.data(), 1, data.size(), _ffile._f);
@@ -176,8 +176,8 @@ namespace LeviDB {
         }
     }
 
-    RandomAccessFile::RandomAccessFile(const std::string & fname)
-            : _filename(fname), _file(fname, IOEnv::R_M) {}
+    RandomAccessFile::RandomAccessFile(std::string fname)
+            : _filename(std::move(fname)), _file(_filename, IOEnv::R_M) {}
 
     Slice RandomAccessFile::read(uint64_t offset, size_t n, char * scratch) const {
         ssize_t r = pread(_file._fd, scratch, n, static_cast<off_t>(offset));
@@ -187,8 +187,8 @@ namespace LeviDB {
         return {scratch, static_cast<size_t>(r)};
     }
 
-    SequentialFile::SequentialFile(const std::string & fname)
-            : _filename(fname), _ffile(fname, IOEnv::R_M) {}
+    SequentialFile::SequentialFile(std::string fname)
+            : _filename(std::move(fname)), _ffile(_filename, IOEnv::R_M) {}
 
     Slice SequentialFile::read(size_t n, char * scratch) {
         size_t r = fread_unlocked(scratch, 1, n, _ffile._f);
