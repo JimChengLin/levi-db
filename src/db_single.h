@@ -19,7 +19,7 @@ namespace LeviDB {
         DELETE_COPY(DBSingle);
 
     public:
-        ~DB() noexcept override = default;
+        ~DBSingle() noexcept override = default;
 
         void put(const WriteOptions & options,
                  const Slice & key,

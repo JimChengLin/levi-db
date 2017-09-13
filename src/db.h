@@ -25,8 +25,8 @@ namespace LeviDB {
 
     public:
         DB(std::string name, Options options) noexcept : _name(std::move(name)), _options(options) {};
-        DEFAULT_MOVE(DB);
-        DEFAULT_COPY(DB);
+        DELETE_MOVE(DB);
+        DELETE_COPY(DB);
 
     public:
         virtual ~DB() noexcept = default;
@@ -55,6 +55,10 @@ namespace LeviDB {
         virtual std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
         makeRegexReversedIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const = 0;
     };
+
+    bool repairSingleDB(const std::string & db_single_name) noexcept;
+
+    bool repairDB(const std::string & db_name) noexcept;
 }
 
 #endif //LEVIDB_DB_H
