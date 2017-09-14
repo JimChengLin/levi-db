@@ -41,8 +41,8 @@ namespace LeviDB {
         virtual void write(const WriteOptions & options,
                            const std::vector<std::pair<Slice, Slice>> & kvs) = 0;
 
-        virtual std::string get(const ReadOptions & options,
-                                const Slice & key) const = 0;
+        virtual std::pair<std::string, bool>
+        get(const ReadOptions & options, const Slice & key) const = 0;
 
         virtual std::unique_ptr<Snapshot> makeSnapshot() = 0;
 
@@ -56,7 +56,7 @@ namespace LeviDB {
         makeRegexReversedIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const = 0;
     };
 
-    bool repairSingleDB(const std::string & db_single_name) noexcept;
+    bool repairDBSingle(const std::string & db_single_name) noexcept;
 
     bool repairDB(const std::string & db_name) noexcept;
 }

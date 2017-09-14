@@ -61,6 +61,8 @@ namespace LeviDB {
         pendingPart(uint64_t seq_num) const noexcept;
 
         void tryApplyPending();
+
+        EXPOSE(_dst);
     };
 
     class IndexRead : public IndexMVCC {

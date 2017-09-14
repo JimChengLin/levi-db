@@ -94,6 +94,8 @@ namespace LeviDB {
                 {
                     RandomWriteFile file("temp.keeper");
                     file.write(field_offset, {reinterpret_cast<const char *>(&field), sizeof(field)});
+                    file.write(sizeof(_value) + _trailing.size(),
+                               {reinterpret_cast<const char *>(&checksum), sizeof(checksum)});
                     file.sync();
                 }
                 IOEnv::renameFile("temp.keeper", plan);
@@ -160,6 +162,7 @@ namespace LeviDB {
             if (calc_checksum != checksum) {
                 throw Exception::corruptionException("checksum mismatch", _backing_filename);
             }
+            IOEnv::deleteFile(file.immut_filename());
         }
 
         WeakKeeper(std::string fname, T value, std::string trailing) noexcept
@@ -172,11 +175,8 @@ namespace LeviDB {
             uint32_t checksum = CRC32C::extend(CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value)),
                                                _trailing.data(), _trailing.size());
             std::string name = _backing_filename + ".keeper";
-            if (IOEnv::fileExists(name)) {
-                IOEnv::deleteFile(name);
-            }
-
-            AppendableFile file(name);
+            assert(!IOEnv::fileExists(name));
+            AppendableFile file(std::move(name));
             file.append({reinterpret_cast<const char *>(&_value), sizeof(_value)});
             file.append(_trailing);
             file.append({reinterpret_cast<const char *>(&checksum), sizeof(checksum)});

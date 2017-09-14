@@ -166,6 +166,8 @@ namespace LeviDB {
 
         std::string readLine();
 
+        EXPOSE(_filename);
+
         DEFAULT_MOVE(SequentialFile);
         DELETE_COPY(SequentialFile);
     };

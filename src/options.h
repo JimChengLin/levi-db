@@ -23,6 +23,7 @@ namespace LeviDB {
     };
 
     struct WriteOptions {
+        uint32_t uncompress_size = 0;
         bool sync = false;
         bool compress = false;
     };

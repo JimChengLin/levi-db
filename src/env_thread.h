@@ -41,8 +41,8 @@ namespace LeviDB {
 
         RWLockReadGuard(pthread_rwlock_t * lock);
 
-        RWLockReadGuard(ReadWriteLock & lock)
-                : RWLockReadGuard(lock._rwlock) {};
+        RWLockReadGuard(const ReadWriteLock & lock)
+                : RWLockReadGuard(&const_cast<ReadWriteLock &>(lock)._rwlock) {};
 
         DEFAULT_MOVE(RWLockReadGuard);
         DELETE_COPY(RWLockReadGuard);
@@ -60,7 +60,7 @@ namespace LeviDB {
         RWLockWriteGuard(pthread_rwlock_t * lock);
 
         RWLockWriteGuard(ReadWriteLock & lock)
-                : RWLockWriteGuard(lock._rwlock) {};
+                : RWLockWriteGuard(&lock._rwlock) {};
 
         DEFAULT_MOVE(RWLockWriteGuard);
         DELETE_COPY(RWLockWriteGuard);

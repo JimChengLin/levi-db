@@ -24,7 +24,7 @@ namespace LeviDB {
         DELETE_COPY(Optional);
 
         ~Optional() noexcept {
-            if (_valid) value().~T();
+            if (_valid) (*get()).T::~T();
         }
 
     public:
@@ -37,10 +37,23 @@ namespace LeviDB {
             return reinterpret_cast<T *>(_obj);
         }
 
+        const T * operator->() const noexcept {
+            assert(valid());
+            return reinterpret_cast<const T *>(_obj);
+        }
+
+        T * get() noexcept {
+            return operator->();
+        }
+
+        const T * get() const noexcept {
+            return operator->();
+        }
+
         void reset() noexcept {
             assert(valid());
             _valid = false;
-            value().~T();
+            (*get()).~T();
         }
 
         template<typename ...PARAMS>
