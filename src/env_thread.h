@@ -19,6 +19,10 @@ namespace LeviDB {
     private:
         pthread_rwlock_t _rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
+        friend class RWLockReadGuard;
+
+        friend class RWLockWriteGuard;
+
     public:
         ReadWriteLock() noexcept = default;
 
@@ -37,6 +41,9 @@ namespace LeviDB {
 
         RWLockReadGuard(pthread_rwlock_t * lock);
 
+        RWLockReadGuard(ReadWriteLock & lock)
+                : RWLockReadGuard(lock._rwlock) {};
+
         DEFAULT_MOVE(RWLockReadGuard);
         DELETE_COPY(RWLockReadGuard);
 
@@ -51,6 +58,9 @@ namespace LeviDB {
         RWLockWriteGuard() noexcept = default;
 
         RWLockWriteGuard(pthread_rwlock_t * lock);
+
+        RWLockWriteGuard(ReadWriteLock & lock)
+                : RWLockWriteGuard(lock._rwlock) {};
 
         DEFAULT_MOVE(RWLockWriteGuard);
         DELETE_COPY(RWLockWriteGuard);
