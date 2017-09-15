@@ -50,6 +50,7 @@ namespace LeviDB {
         _writer->addRecord({bin.data(), bin.size()});
         _index->insert(key, OffsetToData{pos});
 
+        _index->tryApplyPending();
         if (options.sync) _af->sync();
     };
 
@@ -61,6 +62,7 @@ namespace LeviDB {
         _writer->addDelRecord({bin.data(), bin.size()});
         _index->remove(key);
 
+        _index->tryApplyPending();
         if (options.sync) _af->sync();
     };
 
@@ -78,6 +80,7 @@ namespace LeviDB {
                     _index->insert(kv.first, OffsetToData{pos});
                 }
 
+                _index->tryApplyPending();
                 if (options.sync) _af->sync();
                 return;
             }
@@ -102,6 +105,7 @@ namespace LeviDB {
             _index->insert(kvs[i].first, OffsetToData{addrs[i]});
         }
 
+        _index->tryApplyPending();
         if (options.sync) _af->sync();
     };
 
@@ -115,7 +119,7 @@ namespace LeviDB {
     std::unique_ptr<Snapshot>
     DBSingle::makeSnapshot() {
         RWLockWriteGuard write_guard(_rwlock);
-
+        _index->tryApplyPending();
         return _seq_gen->makeSnapshot();
     };
 
@@ -142,6 +146,11 @@ namespace LeviDB {
         return _index->makeRegexReversedIterator(std::move(regex), std::move(snapshot));
     };
 
+    void DBSingle::tryApplyPending() {
+        RWLockWriteGuard write_guard(_rwlock);
+        _index->tryApplyPending();
+    }
+
     uint64_t DBSingle::indexFileSize() const noexcept {
         return _index->immut_dst().immut_length();
     };
@@ -158,6 +167,7 @@ namespace LeviDB {
         _writer->addDelRecord({bin.data(), bin.size()});
         _index->insert(key, OffsetToData{pos});
 
+        _index->tryApplyPending();
         if (options.sync) _af->sync();
     }
 

@@ -83,11 +83,13 @@ namespace LeviDB {
         makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
                                   std::unique_ptr<Snapshot> && snapshot) const override;
 
+        void tryApplyPending() override;
+
+    private:
         uint64_t indexFileSize() const noexcept;
 
         uint64_t dataFileSize() const noexcept;
 
-    private:
         void explicitRemove(const WriteOptions & options, const Slice & key);
 
         void simpleRepair() noexcept;

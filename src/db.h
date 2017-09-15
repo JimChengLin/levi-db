@@ -54,6 +54,8 @@ namespace LeviDB {
 
         virtual std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
         makeRegexReversedIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const = 0;
+
+        virtual void tryApplyPending() = 0;
     };
 
     bool repairDBSingle(const std::string & db_single_name) noexcept;
