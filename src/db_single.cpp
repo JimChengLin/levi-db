@@ -1,4 +1,5 @@
 #include "db_single.h"
+#include "log_reader.h"
 
 namespace LeviDB {
     DBSingle::DBSingle(std::string name, Options options, SeqGenerator * seq_gen)
@@ -17,8 +18,25 @@ namespace LeviDB {
             }
             std::string index_fname = prefix + ".index";
             std::string keeper_fname = prefix + ".keeper";
-            if (!IOEnv::fileExists(index_fname) || !IOEnv::fileExists(keeper_fname)) {
-                simpleRepair();
+            if (!IOEnv::fileExists(index_fname) || !IOEnv::fileExists(keeper_fname)) { // repair
+                if (IOEnv::fileExists(index_fname)) {
+                    IOEnv::deleteFile(index_fname);
+                } else {
+                    IOEnv::deleteFile(keeper_fname);
+                }
+
+                _meta.build(std::move(prefix), DBSingleWeakMeta{}, "");
+                _af.build(data_fname);
+                _rf.build(std::move(data_fname));
+                _index.build(std::move(index_fname), _seq_gen, _rf.get());
+                auto it = LogReader::makeTableIteratorOffset(_rf.get());
+                while (it->valid()) {
+                    auto item = it->item();
+                    updateKeyRange(item.first);
+                    _index->insert(item.first, OffsetToData{item.second});
+                    it->next();
+                }
+                _writer.build(_af.get());
                 return;
             }
             _meta.build(std::move(prefix));
@@ -168,10 +186,6 @@ namespace LeviDB {
 
         _index->tryApplyPending();
         if (options.sync) _af->sync();
-    }
-
-    void DBSingle::simpleRepair() noexcept {
-
     }
 
     Slice DBSingle::largestKey() const noexcept {

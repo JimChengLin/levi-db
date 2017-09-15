@@ -92,8 +92,6 @@ namespace LeviDB {
 
         void explicitRemove(const WriteOptions & options, const Slice & key);
 
-        void simpleRepair() noexcept;
-
         Slice largestKey() const noexcept;
 
         Slice smallestKey() const noexcept;
