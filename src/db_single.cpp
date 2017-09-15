@@ -85,15 +85,16 @@ namespace LeviDB {
 
         std::vector<std::vector<uint8_t>> group;
         group.reserve(kvs.size());
-        std::transform(kvs.cbegin(), kvs.cend(), group.begin(), [](const std::pair<Slice, Slice> & kv) {
+        std::transform(kvs.cbegin(), kvs.cend(), group.begin(), [](const std::pair<Slice, Slice> & kv) noexcept {
             return LogWriter::makeRecord(kv.first, kv.second);
         });
 
         std::vector<Slice> bkvs;
         bkvs.reserve(group.size());
-        std::transform(group.cbegin(), group.cend(), bkvs.begin(), [](const std::vector<uint8_t> & bkv) -> Slice {
-            return {bkv.data(), bkv.size()};
-        });
+        std::transform(group.cbegin(), group.cend(), bkvs.begin(),
+                       [](const std::vector<uint8_t> & bkv) noexcept -> Slice {
+                           return {bkv.data(), bkv.size()};
+                       });
 
         std::vector<uint32_t> addrs = _writer->addRecords(bkvs);
         assert(kvs.size() == addrs.size());
