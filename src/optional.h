@@ -52,8 +52,8 @@ namespace LeviDB {
 
         void reset() noexcept {
             assert(valid());
-            _valid = false;
             (*get()).~T();
+            _valid = false;
         }
 
         template<typename ...PARAMS>

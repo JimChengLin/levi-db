@@ -2,6 +2,7 @@
 #include "crc32c.h"
 #include "log_reader.h"
 #include "log_writer.h"
+#include "optional.h"
 #include "varint.h"
 
 namespace LeviDB {
@@ -650,16 +651,14 @@ namespace LeviDB {
         class TableRecoveryIterator : public SimpleIterator<std::pair<Slice, uint32_t>> {
         private:
             RandomAccessFile * _data_file;
-            mutable std::unique_ptr<TableIteratorOffset> _t;
             reporter_t _reporter;
+            mutable Optional<TableIteratorOffset> _t;
 
         public:
             explicit TableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept
                     : _data_file(data_file), _reporter(std::move(reporter)) {
                 try {
-                    _t = std::make_unique<TableIteratorOffset>(
-                            std::make_unique<RawIteratorBatchChecked>(
-                                    std::make_unique<RawIterator>(data_file, 0)));
+                    _t.build(std::make_unique<RawIteratorBatchChecked>(std::make_unique<RawIterator>(data_file, 0)));
                 } catch (const Exception & e) {
                     _reporter(e);
                 }
@@ -671,7 +670,7 @@ namespace LeviDB {
             ~TableRecoveryIterator() noexcept override = default;
 
             bool valid() const override {
-                return _t != nullptr && _t->valid();
+                return _t.valid() && _t->valid();
             };
 
             std::pair<Slice, uint32_t> item() const override {
@@ -705,8 +704,8 @@ namespace LeviDB {
                         auto raw_it = std::make_unique<RawIterator>(_data_file, curr_disk_offset);
                         while (raw_it->valid()) {
                             if (isBatchFull(raw_it->item().back()) || isBatchFirst(raw_it->item().back())) {
-                                _t = std::make_unique<TableIteratorOffset>(
-                                        std::make_unique<RawIteratorBatchChecked>(std::move(raw_it)));
+                                _t.reset();
+                                _t.build(std::make_unique<RawIteratorBatchChecked>(std::move(raw_it)));
                                 return;
                             }
                             raw_it->next();
@@ -719,7 +718,7 @@ namespace LeviDB {
                         }
                     }
                 }
-                _t = nullptr;
+                _t.reset();
             }
         };
 
