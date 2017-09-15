@@ -10,8 +10,10 @@
  * 4. 文件级自省, 提供数据库路径即可打开
  */
 
+#include <functional>
 #include <string>
 
+#include "exception.h"
 #include "iterator.h"
 #include "levi_regex/r.h"
 #include "options.h"
@@ -58,9 +60,11 @@ namespace LeviDB {
         virtual void tryApplyPending() = 0;
     };
 
-    bool repairDBSingle(const std::string & db_single_name) noexcept;
+    typedef std::function<void(const Exception &)> reporter_t;
 
-    bool repairDB(const std::string & db_name) noexcept;
+    bool repairDBSingle(const std::string & db_single_name, reporter_t reporter) noexcept;
+
+    bool repairDB(const std::string & db_name, reporter_t reporter) noexcept;
 }
 
 #endif //LEVIDB_DB_H

@@ -217,7 +217,29 @@ namespace LeviDB {
         }
     };
 
-    bool repairDBSingle(const std::string & db_single_name) noexcept {
+    bool repairDBSingle(const std::string & db_single_name, reporter_t reporter) noexcept {
+        try {
+            {
+                RandomAccessFile rf(db_single_name + '/' + db_single_name + ".data");
+                auto it = LogReader::makeTableRecoveryIteratorKV(&rf, reporter);
 
+                SeqGenerator seq_gen;
+                Options options{};
+                options.create_if_missing = true;
+                options.error_if_exists = true;
+                DBSingle db(db_single_name + "_temp", options, &seq_gen);
+
+                while (it->valid()) {
+                    auto item = it->item();
+                    db.put(WriteOptions{}, item.first, item.second);
+                }
+            }
+            IOEnv::renameFile(db_single_name + "_temp", db_single_name);
+
+        } catch (const Exception & e) {
+            reporter(e);
+            return false;
+        }
+        return true;
     };
 }
