@@ -555,6 +555,8 @@ namespace LeviDB {
 
             friend class TableRecoveryIterator;
 
+            friend class TableRecoveryIteratorKV;
+
         public:
             explicit TableIterator(std::unique_ptr<RawIteratorBatchChecked> && raw_iter_batch)
                     : _raw_iter_batch_ob(raw_iter_batch.get()),
@@ -619,6 +621,8 @@ namespace LeviDB {
 
             friend class TableRecoveryIterator;
 
+            friend class TableRecoveryIteratorKV;
+
         public:
             explicit TableIteratorOffset(std::unique_ptr<RawIteratorBatchChecked> && raw_iter_batch)
                     : _table(std::move(raw_iter_batch)) {}
@@ -654,8 +658,10 @@ namespace LeviDB {
             reporter_t _reporter;
             mutable Optional<TableIteratorOffset> _t;
 
+            friend class TableRecoveryIteratorKV;
+
         public:
-            explicit TableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept
+            TableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept
                     : _data_file(data_file), _reporter(std::move(reporter)) {
                 try {
                     _t.build(std::make_unique<RawIteratorBatchChecked>(std::make_unique<RawIterator>(data_file, 0)));
@@ -726,5 +732,36 @@ namespace LeviDB {
         makeTableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept {
             return std::make_unique<TableRecoveryIterator>(data_file, std::move(reporter));
         };
+
+        class TableRecoveryIteratorKV : public SimpleIterator<std::pair<Slice, std::string>> {
+        private:
+            TableRecoveryIterator _tb;
+
+        public:
+            TableRecoveryIteratorKV(RandomAccessFile * data_file, reporter_t reporter) noexcept
+                    : _tb(data_file, std::move(reporter)) {}
+
+            DELETE_MOVE(TableRecoveryIteratorKV);
+            DELETE_COPY(TableRecoveryIteratorKV);
+
+            ~TableRecoveryIteratorKV() noexcept override = default;
+
+            bool valid() const override {
+                return _tb.valid();
+            };
+
+            std::pair<Slice, std::string> item() const override {
+                return {_tb._t->_table._kv_iter->key(), _tb._t->_table._kv_iter->value()};
+            };
+
+            void next() override {
+                _tb.next();
+            }
+        };
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
+        makeTableRecoveryIteratorKV(RandomAccessFile * data_file, reporter_t reporter) noexcept {
+            return std::make_unique<TableRecoveryIteratorKV>(data_file, std::move(reporter));
+        }
     }
 }

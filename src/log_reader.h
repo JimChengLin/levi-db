@@ -23,17 +23,17 @@ namespace LeviDB {
         [[noreturn]] void defaultReporter(const Exception & e);
 
         // 注意: const 方法不线程安全(buffer is mutable)
-        // 结尾 == del
+        // 结尾 = del
         std::unique_ptr<kv_iter_t>
         makeIterator(RandomAccessFile * data_file, uint32_t offset);
 
         bool isRecordIteratorCompress(kv_iter_t * it) noexcept;
 
-        // 结尾 == type(std::bitset<8>)
+        // 结尾 = type(std::bitset<8>)
         std::unique_ptr<SimpleIterator<Slice>>
         makeRawIterator(RandomAccessFile * data_file, uint32_t offset);
 
-        // 结尾 == del
+        // 结尾 = del
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
         makeTableIterator(RandomAccessFile * data_file);
 
@@ -43,6 +43,10 @@ namespace LeviDB {
         // 传入的 reporter 不应该继续抛出异常, 而是写日志
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
         makeTableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter = defaultReporter) noexcept;
+
+        // 结尾 = del
+        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
+        makeTableRecoveryIteratorKV(RandomAccessFile * data_file, reporter_t reporter = defaultReporter) noexcept;
     };
 }
 

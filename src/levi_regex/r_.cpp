@@ -183,7 +183,7 @@ namespace LeviDB {
             trans_t _trans;
 
         public:
-            explicit list_comprehension(IN_ITER && in, cond_t cond, trans_t trans) noexcept
+            list_comprehension(IN_ITER && in, cond_t cond, trans_t trans) noexcept
                     : _in(std::forward<IN_ITER>(in)), _cond(std::move(cond)), _trans(std::move(trans)) {
                 if (list_comprehension::valid() && !_cond(_in->item())) {
                     list_comprehension::next();

@@ -461,8 +461,8 @@ namespace LeviDB {
         bool _valid = false;
 
     public:
-        explicit RegexIterator(const IndexIter * index, std::shared_ptr<Regex::R> regex,
-                               std::unique_ptr<Snapshot> && snapshot)
+        RegexIterator(const IndexIter * index, std::shared_ptr<Regex::R> regex,
+                      std::unique_ptr<Snapshot> && snapshot)
                 : _index(index),
                   _regex(std::move(regex)),
                   _snapshot(std::move(snapshot)),
@@ -544,8 +544,8 @@ namespace LeviDB {
         bool _valid = false;
 
     public:
-        explicit ReversedRegexIterator(const IndexIter * index, std::shared_ptr<Regex::R> regex,
-                                       std::unique_ptr<Snapshot> && snapshot)
+        ReversedRegexIterator(const IndexIter * index, std::shared_ptr<Regex::R> regex,
+                              std::unique_ptr<Snapshot> && snapshot)
                 : _index(index),
                   _regex(std::move(regex)),
                   _snapshot(std::move(snapshot)),
