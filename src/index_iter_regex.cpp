@@ -435,10 +435,10 @@ namespace LeviDB {
 
     std::unique_ptr<Iterator<Slice, std::string>>
     IndexIter::makeIterator(std::unique_ptr<Snapshot> && snapshot) const noexcept {
+        assert(snapshot != nullptr);
         return std::make_unique<TreeIteratorFiltered>(
                 std::make_unique<BitDegradeTreeIterator>(this),
-                std::make_unique<OffsetToStringIterator>
-                        (pendingPart(snapshot == nullptr ? _seq_gen->newest() : snapshot->immut_seq_num()), _data_file),
+                std::make_unique<OffsetToStringIterator>(pendingPart(snapshot->immut_seq_num()), _data_file),
                 std::move(snapshot));
     }
 

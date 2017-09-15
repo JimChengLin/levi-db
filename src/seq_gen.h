@@ -30,6 +30,9 @@ namespace LeviDB {
     public:
         Snapshot() noexcept : _prev(this), _next(this) {}
 
+        // dummy copy, lifetime is not bound by SeqGenerator
+        explicit Snapshot(uint64_t seq_num) noexcept : _prev(this), _next(this), _seq_num(seq_num) {}
+
         Snapshot(uint64_t seq_num, Snapshot * dummy_head) noexcept;
 
         ~Snapshot() noexcept;

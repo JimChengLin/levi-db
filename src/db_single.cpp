@@ -112,7 +112,6 @@ namespace LeviDB {
     std::pair<std::string, bool>
     DBSingle::get(const ReadOptions & options, const Slice & key) const {
         RWLockReadGuard read_guard(_rwlock);
-
         return _index->find(key, options.sequence_number);
     };
 
@@ -126,7 +125,6 @@ namespace LeviDB {
     std::unique_ptr<Iterator<Slice, std::string>>
     DBSingle::makeIterator(std::unique_ptr<Snapshot> && snapshot) const {
         RWLockReadGuard read_guard(_rwlock);
-
         return _index->makeIterator(std::move(snapshot));
     };
 
@@ -134,7 +132,6 @@ namespace LeviDB {
     DBSingle::makeRegexIterator(std::shared_ptr<Regex::R> regex,
                                 std::unique_ptr<Snapshot> && snapshot) const {
         RWLockReadGuard read_guard(_rwlock);
-
         return _index->makeRegexIterator(std::move(regex), std::move(snapshot));
     };
 
@@ -142,7 +139,6 @@ namespace LeviDB {
     DBSingle::makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
                                         std::unique_ptr<Snapshot> && snapshot) const {
         RWLockReadGuard read_guard(_rwlock);
-
         return _index->makeRegexReversedIterator(std::move(regex), std::move(snapshot));
     };
 
