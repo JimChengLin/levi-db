@@ -48,6 +48,7 @@ namespace LeviDB {
         uint32_t pos = _writer->calcWritePos();
         std::vector<uint8_t> bin = LogWriter::makeRecord(key, value);
         _writer->addRecord({bin.data(), bin.size()});
+        updateKeyRange(key);
         _index->insert(key, OffsetToData{pos});
 
         _index->tryApplyPending();
@@ -77,6 +78,7 @@ namespace LeviDB {
             if (bin.size() <= options.uncompress_size / 8 * 7) { // worth
                 _writer->addCompressRecord({bin.data(), bin.size()});
                 for (const auto & kv:kvs) {
+                    updateKeyRange(kv.first);
                     _index->insert(kv.first, OffsetToData{pos});
                 }
 
@@ -102,6 +104,7 @@ namespace LeviDB {
         std::vector<uint32_t> addrs = _writer->addRecords(bkvs);
         assert(kvs.size() == addrs.size());
         for (int i = 0; i < kvs.size(); ++i) {
+            updateKeyRange(kvs[i].first);
             _index->insert(kvs[i].first, OffsetToData{addrs[i]});
         }
 
@@ -172,15 +175,32 @@ namespace LeviDB {
     }
 
     Slice DBSingle::largestKey() const noexcept {
-
+        const std::string & trailing = _meta->immut_trailing();
+        uint32_t from_k_len = _meta->immut_value().from_k_len;
+        uint32_t to_k_len = _meta->immut_value().to_k_len;
+        return {trailing.data() + from_k_len, to_k_len};
     };
 
     Slice DBSingle::smallestKey() const noexcept {
-
+        const std::string & trailing = _meta->immut_trailing();
+        uint32_t from_k_len = _meta->immut_value().from_k_len;
+        return {trailing.data(), from_k_len};
     };
 
     void DBSingle::updateKeyRange(const Slice & key) noexcept {
-
+        if (SliceComparator{}(key, smallestKey())) { // find smaller
+            std::string & trailing = _meta->mut_trailing();
+            uint32_t from_k_len = _meta->immut_value().from_k_len;
+            trailing.replace(trailing.begin(), trailing.begin() + from_k_len, key.data(), key.data() + key.size());
+            _meta->mut_value().from_k_len = static_cast<uint32_t>(key.size());
+        } else if (SliceComparator{}(largestKey(), key)) { // find larger
+            std::string & trailing = _meta->mut_trailing();
+            uint32_t from_k_len = _meta->immut_value().from_k_len;
+            uint32_t to_k_len = _meta->immut_value().to_k_len;
+            trailing.replace(trailing.begin() + from_k_len, trailing.begin() + from_k_len + to_k_len,
+                             key.data(), key.data() + key.size());
+            _meta->mut_value().to_k_len = static_cast<uint32_t>(key.size());
+        }
     };
 
     bool repairDBSingle(const std::string & db_single_name) noexcept {
