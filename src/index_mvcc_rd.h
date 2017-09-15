@@ -39,7 +39,7 @@ namespace LeviDB {
         IndexMVCC(const std::string & fname, OffsetToEmpty empty, SeqGenerator * seq_gen)
                 : BitDegradeTree(fname, empty), _seq_gen(seq_gen) {};
 
-        ~IndexMVCC() noexcept = default;
+        ~IndexMVCC() noexcept { assert(_pending.empty()); };
 
         DELETE_MOVE(IndexMVCC);
         DELETE_COPY(IndexMVCC);
