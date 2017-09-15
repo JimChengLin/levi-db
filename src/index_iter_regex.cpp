@@ -203,13 +203,13 @@ namespace LeviDB {
 
     public:
         explicit BitDegradeTreeIterator(const IndexIter * index) noexcept
-                : _index(index) { ++_index->operating_iters; }
+                : _index(index) { ++_index->_operating_iters; }
 
         DEFAULT_MOVE(BitDegradeTreeIterator);
         DELETE_COPY(BitDegradeTreeIterator);
 
     public:
-        ~BitDegradeTreeIterator() noexcept override { --_index->operating_iters; };
+        ~BitDegradeTreeIterator() noexcept override { --_index->_operating_iters; };
 
         bool valid() const override {
             return _gen != nullptr && _gen->valid();
@@ -443,7 +443,7 @@ namespace LeviDB {
     }
 
     void IndexIter::tryApplyPending() {
-        if (operating_iters == 0) {
+        if (_operating_iters == 0) {
             IndexRead::tryApplyPending();
         }
     }
@@ -468,7 +468,7 @@ namespace LeviDB {
                   _snapshot(std::move(snapshot)),
                   _gen(_index->offToMemNode(_index->_root), _index, _regex.get(), &_info),
                   _pending_iter(_index->pendingPart(_snapshot->immut_seq_num()), _index->_data_file) {
-            ++_index->operating_iters;
+            ++_index->_operating_iters;
             _pending_iter.seekToFirst();
             next();
         }
@@ -477,7 +477,7 @@ namespace LeviDB {
         DELETE_COPY(RegexIterator);
 
     public:
-        ~RegexIterator() noexcept override { --_index->operating_iters; }
+        ~RegexIterator() noexcept override { --_index->_operating_iters; }
 
         bool valid() const override {
             return _valid;
@@ -551,7 +551,7 @@ namespace LeviDB {
                   _snapshot(std::move(snapshot)),
                   _gen(_index->offToMemNode(_index->_root), _index, _regex.get(), &_info),
                   _pending_iter(_index->pendingPart(_snapshot->immut_seq_num()), _index->_data_file) {
-            ++_index->operating_iters;
+            ++_index->_operating_iters;
             _pending_iter.seekToLast();
             next();
         }
@@ -560,7 +560,7 @@ namespace LeviDB {
         DELETE_COPY(ReversedRegexIterator);
 
     public:
-        ~ReversedRegexIterator() noexcept override { --_index->operating_iters; }
+        ~ReversedRegexIterator() noexcept override { --_index->_operating_iters; }
 
         bool valid() const override {
             return _valid;

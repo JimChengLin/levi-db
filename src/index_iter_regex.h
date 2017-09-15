@@ -40,14 +40,14 @@ namespace LeviDB {
 
         class TreeIteratorFiltered;
 
-        mutable std::atomic<int> operating_iters{0};
+        mutable std::atomic<int> _operating_iters{0};
 
         friend class IndexRegex;
 
     public:
         using IndexRead::IndexRead;
 
-        ~IndexIter() noexcept = default;
+        ~IndexIter() noexcept { assert(_operating_iters == 0); };
 
         DELETE_MOVE(IndexIter);
         DELETE_COPY(IndexIter);
