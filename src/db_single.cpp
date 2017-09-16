@@ -171,12 +171,13 @@ namespace LeviDB {
         _index->tryApplyPending();
     }
 
-// methods below don't need lock
     uint64_t DBSingle::indexFileSize() const noexcept {
+        RWLockReadGuard read_guard(_rwlock);
         return _index->immut_dst().immut_length();
     };
 
     uint64_t DBSingle::dataFileSize() const noexcept {
+        RWLockReadGuard read_guard(_rwlock);
         return _af->immut_length();
     };
 
@@ -192,6 +193,7 @@ namespace LeviDB {
         if (options.sync) _af->sync();
     }
 
+// methods below don't need lock
     Slice DBSingle::largestKey() const noexcept {
         const std::string & trailing = _meta->immut_trailing();
         uint32_t from_k_len = _meta->immut_value().from_k_len;
