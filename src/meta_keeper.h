@@ -176,11 +176,14 @@ namespace LeviDB {
                                                _trailing.data(), _trailing.size());
             std::string name = _backing_filename;
             assert(!IOEnv::fileExists(name));
-            AppendableFile file(std::move(name));
-            file.append({reinterpret_cast<const char *>(&_value), sizeof(_value)});
-            file.append(_trailing);
-            file.append({reinterpret_cast<const char *>(&checksum), sizeof(checksum)});
-            file.sync();
+            try {
+                AppendableFile file(std::move(name));
+                file.append({reinterpret_cast<const char *>(&_value), sizeof(_value)});
+                file.append(_trailing);
+                file.append({reinterpret_cast<const char *>(&checksum), sizeof(checksum)});
+                file.sync();
+            } catch (const Exception & e) {
+            }
         }
 
         EXPOSE(_trailing);
