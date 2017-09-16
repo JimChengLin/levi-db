@@ -455,6 +455,8 @@ namespace LeviDB {
             std::vector<std::vector<uint8_t>>::const_iterator _cache_cursor;
             char _prev_type = 0; // dummy FULL
 
+            friend class TableIterator;
+
         public:
             explicit RawIteratorBatchChecked(std::unique_ptr<RawIterator> && raw_iter)
                     : _raw_iter(std::move(raw_iter)), _cache_cursor(_cache.cend()) {
@@ -585,20 +587,26 @@ namespace LeviDB {
                 if (!_kv_iter->valid() && _raw_iter_batch_ob->valid()) { // 切换到下个 kv_iter
                     auto it = std::make_unique<RawIteratorBatchChecked>(nullptr);
                     std::swap(*it, *_raw_iter_batch_ob);
-                    do { // 再次 next 以保持 invariant, 因为 record iterator 在 meet all 之后不会有副作用
-                        it->next();
-                        if (it->valid()) { // 确保 seek 到 next record
-                            if (isRecordFull(it->item().back()) || isRecordFirst(it->item().back())) {
-                                _raw_iter_batch_ob = it.get();
-                                _kv_iter = makeKVIter(std::move(it));
-                                _kv_iter->seekToFirst();
-                                return;
+                    uint32_t backup_offset = it->diskOffset();
+                    try {
+                        do { // 再次 next 以保持 invariant, 因为 record iterator 在 meet all 之后不会有副作用
+                            it->next();
+                            if (it->valid()) { // 确保 seek 到 next record
+                                if (isRecordFull(it->item().back()) || isRecordFirst(it->item().back())) {
+                                    _raw_iter_batch_ob = it.get();
+                                    _kv_iter = makeKVIter(std::move(it));
+                                    _kv_iter->seekToFirst();
+                                    return;
+                                }
+                            } else {
+                                break;
                             }
-                        } else {
-                            break;
-                        }
-                    } while (true);
-                    // exit as EOF(not valid)
+                        } while (true);
+                        // exit as EOF(not valid)
+                    } catch (const Exception & e) { // make it exception free
+                        _raw_iter_batch_ob->_disk_offsets.emplace_back(backup_offset);
+                        throw e;
+                    }
                 }
             }
 
@@ -701,7 +709,6 @@ namespace LeviDB {
 
         private:
             void handle(const Exception & e) const noexcept {
-                // must success, otherwise we are done in the constructor
                 uint32_t curr_disk_offset = _t->_table._raw_iter_batch_ob->diskOffset();
                 _reporter(Exception::invalidArgumentException(e.toString(), std::to_string(curr_disk_offset)));
 
