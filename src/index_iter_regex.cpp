@@ -520,6 +520,7 @@ namespace LeviDB {
                 should_break = not(_key == key || value.back() == 1 || (regex_check && !_regex->match(&key)));
                 _key = std::move(key);
                 _value = std::move(value);
+                _value.pop_back();
             }
             _valid = true;
         }
@@ -602,6 +603,7 @@ namespace LeviDB {
                 should_break = not(_key == key || value.back() == 1 || (regex_check && !_regex->match(&key)));
                 _key = std::move(key);
                 _value = std::move(value);
+                _value.pop_back();
             }
         }
     };
