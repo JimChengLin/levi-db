@@ -30,7 +30,7 @@ namespace LeviDB {
         typedef T value_type;
 
         explicit StrongKeeper(std::string fname) : _backing_filename(std::move(fname)) {
-            for (const std::string & plan:{_backing_filename + "_a.keeper", _backing_filename + "_b.keeper"}) {
+            for (const std::string & plan:{_backing_filename + "_a", _backing_filename + "_b"}) {
                 if (!IOEnv::fileExists(plan)) {
                     continue;
                 }
@@ -66,7 +66,7 @@ namespace LeviDB {
                 : _backing_filename(std::move(fname)), _trailing(std::move(trailing)), _value(value) {
             uint32_t checksum = CRC32C::extend(CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value)),
                                                _trailing.data(), _trailing.size());
-            for (const std::string & plan:{_backing_filename + "_a.keeper", _backing_filename + "_b.keeper"}) {
+            for (const std::string & plan:{_backing_filename + "_a", _backing_filename + "_b"}) {
                 if (IOEnv::fileExists(plan)) {
                     IOEnv::deleteFile(plan);
                 }
@@ -89,33 +89,33 @@ namespace LeviDB {
             memcpy(reinterpret_cast<char *>(&_value) + field_offset, &field, sizeof(field));
             uint32_t checksum = CRC32C::extend(CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value)),
                                                _trailing.data(), _trailing.size());
-            for (const std::string & plan:{_backing_filename + "_a.keeper", _backing_filename + "_b.keeper"}) {
-                IOEnv::renameFile(plan, "temp.keeper");
+            for (const std::string & plan:{_backing_filename + "_a", _backing_filename + "_b"}) {
+                IOEnv::renameFile(plan, "temp");
                 {
-                    RandomWriteFile file("temp.keeper");
+                    RandomWriteFile file("temp");
                     file.write(field_offset, {reinterpret_cast<const char *>(&field), sizeof(field)});
                     file.write(sizeof(_value) + _trailing.size(),
                                {reinterpret_cast<const char *>(&checksum), sizeof(checksum)});
                     file.sync();
                 }
-                IOEnv::renameFile("temp.keeper", plan);
+                IOEnv::renameFile("temp", plan);
             }
         }
 
         void setTrailing(const Slice & data) {
             uint32_t checksum = CRC32C::extend(CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value)),
                                                data.data(), data.size());
-            for (const std::string & plan:{_backing_filename + "_a.keeper", _backing_filename + "_b.keeper"}) {
+            for (const std::string & plan:{_backing_filename + "_a", _backing_filename + "_b"}) {
                 IOEnv::truncateFile(plan, sizeof(_value) + data.size() + sizeof(checksum));
-                IOEnv::renameFile(plan, "temp.keeper");
+                IOEnv::renameFile(plan, "temp");
                 {
-                    RandomWriteFile file("temp.keeper");
+                    RandomWriteFile file("temp");
                     file.write(sizeof(_value), data);
                     file.write(sizeof(_value) + data.size(),
                                {reinterpret_cast<const char *>(&checksum), sizeof(checksum)});
                     file.sync();
                 }
-                IOEnv::renameFile("temp.keeper", plan);
+                IOEnv::renameFile("temp", plan);
             }
         }
 
@@ -140,7 +140,7 @@ namespace LeviDB {
         typedef T value_type;
 
         explicit WeakKeeper(std::string fname) : _backing_filename(std::move(fname)) {
-            SequentialFile file(_backing_filename + ".keeper");
+            SequentialFile file(_backing_filename);
             file.read(sizeof(_value), reinterpret_cast<char *>(&_value));
 
             Slice output;
@@ -174,7 +174,7 @@ namespace LeviDB {
         ~WeakKeeper() noexcept {
             uint32_t checksum = CRC32C::extend(CRC32C::value(reinterpret_cast<const char *>(&_value), sizeof(_value)),
                                                _trailing.data(), _trailing.size());
-            std::string name = _backing_filename + ".keeper";
+            std::string name = _backing_filename;
             assert(!IOEnv::fileExists(name));
             AppendableFile file(std::move(name));
             file.append({reinterpret_cast<const char *>(&_value), sizeof(_value)});

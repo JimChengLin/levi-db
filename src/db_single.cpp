@@ -4,20 +4,20 @@
 namespace LeviDB {
     DBSingle::DBSingle(std::string name, Options options, SeqGenerator * seq_gen)
             : DB(std::move(name), options), _seq_gen(seq_gen) {
-        std::string prefix = _name + '/' + _name;
-        _file_lock.build(prefix + ".lock");
+        std::string prefix = _name + '/';
+        _file_lock.build(prefix + "lock");
 
         if (IOEnv::fileExists(_name)) {
             if (_options.error_if_exists) {
                 throw Exception::invalidArgumentException("DB already exists");
             }
             // 打开现有数据库
-            std::string data_fname = prefix + ".data";
+            std::string data_fname = prefix + "data";
             if (!IOEnv::fileExists(data_fname)) {
                 throw Exception::notFoundException("data file missing", data_fname);
             }
-            std::string index_fname = prefix + ".index";
-            std::string keeper_fname = prefix + ".keeper";
+            std::string index_fname = prefix + "index";
+            std::string keeper_fname = std::move(prefix) + "keeper";
             if (!IOEnv::fileExists(index_fname) || !IOEnv::fileExists(keeper_fname)) { // repair
                 if (IOEnv::fileExists(index_fname)) {
                     IOEnv::deleteFile(index_fname);
@@ -25,7 +25,7 @@ namespace LeviDB {
                     IOEnv::deleteFile(keeper_fname);
                 }
 
-                _meta.build(std::move(prefix), DBSingleWeakMeta{}, "");
+                _meta.build(std::move(keeper_fname), DBSingleWeakMeta{}, "");
                 _af.build(data_fname);
                 _rf.build(std::move(data_fname));
                 _index.build(std::move(index_fname), _seq_gen, _rf.get());
@@ -39,7 +39,7 @@ namespace LeviDB {
                 _writer.build(_af.get());
                 return;
             }
-            _meta.build(std::move(prefix));
+            _meta.build(std::move(keeper_fname));
             _af.build(data_fname);
             _rf.build(std::move(data_fname));
             _index.build(std::move(index_fname), _meta->immut_value()._offset, _seq_gen, _rf.get());
@@ -50,11 +50,11 @@ namespace LeviDB {
             }
             // 新建数据库
             IOEnv::createDir(_name);
-            _af.build(prefix + ".data");
-            _rf.build(prefix + ".data");
-            _index.build(prefix + ".index", _seq_gen, _rf.get());
+            _af.build(prefix + "data");
+            _rf.build(prefix + "data");
+            _index.build(prefix + "index", _seq_gen, _rf.get());
             _writer.build(_af.get());
-            _meta.build(std::move(prefix), DBSingleWeakMeta{}, ""); // WeakKeeper will add ".keeper" automatically
+            _meta.build(std::move(prefix) + "keeper", DBSingleWeakMeta{}, "");
         }
     }
 
@@ -168,6 +168,7 @@ namespace LeviDB {
         _index->tryApplyPending();
     }
 
+// methods below don't need lock
     uint64_t DBSingle::indexFileSize() const noexcept {
         return _index->immut_dst().immut_length();
     };
@@ -220,7 +221,7 @@ namespace LeviDB {
     bool repairDBSingle(const std::string & db_single_name, reporter_t reporter) noexcept {
         try {
             {
-                RandomAccessFile rf(db_single_name + '/' + db_single_name + ".data");
+                RandomAccessFile rf(db_single_name + '/data');
                 auto it = LogReader::makeTableRecoveryIteratorKV(&rf, reporter);
 
                 SeqGenerator seq_gen;

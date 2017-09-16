@@ -12,10 +12,10 @@
  *
  * 分片存储于"{name}"文件夹
  * 其中包含以下文件:
- * 1. {name}.data
- * 2. {name}.index
- * 3. {name}.keeper
- * 4. {name}.lock
+ * 1. data
+ * 2. index
+ * 3. keeper
+ * 4. lock
  */
 
 #include "db.h"
