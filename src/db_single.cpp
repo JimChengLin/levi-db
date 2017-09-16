@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "db_single.h"
 #include "log_reader.h"
 

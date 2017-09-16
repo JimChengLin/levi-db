@@ -18,6 +18,8 @@
  * 4. lock
  */
 
+#include <vector>
+
 #include "db.h"
 #include "env_thread.h"
 #include "index_iter_regex.h"

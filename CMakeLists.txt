@@ -3,7 +3,7 @@ project(LeviDB)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_compile_options(-msse4.2)
+add_compile_options(-msse4.2 -pthread)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
@@ -60,3 +60,7 @@ if (ZLIB_FOUND)
     include_directories(${ZLIB_INCLUDE_DIRS})
     target_link_libraries(LeviDB ${ZLIB_LIBRARIES})
 endif ()
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(LeviDB Threads::Threads)
