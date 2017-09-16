@@ -539,9 +539,9 @@ namespace LeviDB {
         std::unique_ptr<Snapshot> _snapshot;
         std::string _key;
         std::string _value;
+        USR _info;
         IndexIter::BackwardNodeIter _gen;
         OffsetToStringIterator _pending_iter;
-        USR _info;
         bool _valid = false;
 
     public:
@@ -605,6 +605,7 @@ namespace LeviDB {
                 _value = std::move(value);
                 _value.pop_back();
             }
+            _valid = true;
         }
     };
 

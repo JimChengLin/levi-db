@@ -470,6 +470,7 @@ namespace LeviDB {
             RawIteratorBatchChecked & operator=(RawIteratorBatchChecked && rhs) noexcept {
                 auto nth = rhs._cache_cursor == rhs._cache.cend() ? -1 : rhs._cache_cursor - rhs._cache.cbegin();
                 std::swap(_raw_iter, rhs._raw_iter);
+                std::swap(_disk_offsets, rhs._disk_offsets);
                 std::swap(_cache, rhs._cache);
                 std::swap(_cache_cursor, rhs._cache_cursor);
                 std::swap(_prev_type, rhs._prev_type);
@@ -490,7 +491,9 @@ namespace LeviDB {
             };
 
             void next() override {
+                assert(_disk_offsets.size() == _cache.size());
                 if (_cache_cursor == _cache.cend() || ++_cache_cursor == _cache.cend()) {
+                    _disk_offsets.clear();
                     _cache.clear();
                     _cache_cursor = _cache.cend();
                     if (!_raw_iter->valid()) {

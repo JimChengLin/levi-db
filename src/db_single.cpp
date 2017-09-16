@@ -205,7 +205,7 @@ namespace LeviDB {
     };
 
     void DBSingle::updateKeyRange(const Slice & key) noexcept {
-        if (SliceComparator{}(key, smallestKey())) { // find smaller
+        if (SliceComparator{}(key, smallestKey()) || smallestKey().size() == 0) { // find smaller
             std::string & trailing = _meta->mut_trailing();
             uint32_t from_k_len = _meta->immut_value().from_k_len;
             trailing.replace(trailing.begin(), trailing.begin() + from_k_len, key.data(), key.data() + key.size());
