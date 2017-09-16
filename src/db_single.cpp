@@ -241,7 +241,12 @@ namespace LeviDB {
                     }
                 }
             }
-            IOEnv::deleteFile(db_single_name);
+            if (IOEnv::fileExists(db_single_name)) {
+                for (const std::string & child:IOEnv::getChildren(db_single_name)) {
+                    IOEnv::deleteFile((db_single_name + '/') += child);
+                }
+                IOEnv::deleteDir(db_single_name);
+            }
             IOEnv::renameFile(db_single_name + "_temp", db_single_name);
 
         } catch (const Exception & e) {

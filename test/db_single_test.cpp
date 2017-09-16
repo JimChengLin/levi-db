@@ -7,6 +7,9 @@ void db_single_test() {
     static constexpr int test_times_ = 100;
 
     if (LeviDB::IOEnv::fileExists(db_name)) {
+        for (const std::string & child:LeviDB::IOEnv::getChildren(db_name)) {
+            LeviDB::IOEnv::deleteFile((db_name + '/') += child);
+        }
         LeviDB::IOEnv::deleteDir(db_name);
     }
 

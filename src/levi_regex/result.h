@@ -61,7 +61,7 @@ namespace LeviDB {
                     return "Continue";
                 }
                 std::string r = isSuccess() ? "Success:" : "Fail:";
-                return r + std::to_string(_op) + ',' + std::to_string(_ed);
+                return std::move(r) + std::to_string(_op) + ',' + std::to_string(_ed);
             }
 
             bool operator==(const Result & another) const noexcept {
