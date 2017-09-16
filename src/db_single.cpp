@@ -5,13 +5,13 @@ namespace LeviDB {
     DBSingle::DBSingle(std::string name, Options options, SeqGenerator * seq_gen)
             : DB(std::move(name), options), _seq_gen(seq_gen) {
         std::string prefix = _name + '/';
-        _file_lock.build(prefix + "lock");
 
         if (IOEnv::fileExists(_name)) {
             if (_options.error_if_exists) {
                 throw Exception::invalidArgumentException("DB already exists");
             }
             // 打开现有数据库
+            _file_lock.build(prefix + "lock");
             std::string data_fname = prefix + "data";
             if (!IOEnv::fileExists(data_fname)) {
                 throw Exception::notFoundException("data file missing", data_fname);
@@ -50,6 +50,7 @@ namespace LeviDB {
             }
             // 新建数据库
             IOEnv::createDir(_name);
+            _file_lock.build(prefix + "lock");
             _af.build(prefix + "data");
             _rf.build(prefix + "data");
             _index.build(prefix + "index", _seq_gen, _rf.get());
@@ -221,7 +222,7 @@ namespace LeviDB {
     bool repairDBSingle(const std::string & db_single_name, reporter_t reporter) noexcept {
         try {
             {
-                RandomAccessFile rf(db_single_name + '/data');
+                RandomAccessFile rf(db_single_name + "/data");
                 auto it = LogReader::makeTableRecoveryIteratorKV(&rf, reporter);
 
                 SeqGenerator seq_gen;
