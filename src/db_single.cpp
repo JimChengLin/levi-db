@@ -232,9 +232,15 @@ namespace LeviDB {
 
                 while (it->valid()) {
                     auto item = it->item();
-                    db.put(WriteOptions{}, item.first, item.second);
+                    if (item.second.back() == 1) { // del
+                        db.explicitRemove(WriteOptions{}, item.first);
+                    } else {
+                        item.second.pop_back();
+                        db.put(WriteOptions{}, item.first, item.second);
+                    }
                 }
             }
+            IOEnv::deleteFile(db_single_name);
             IOEnv::renameFile(db_single_name + "_temp", db_single_name);
 
         } catch (const Exception & e) {

@@ -85,7 +85,7 @@ namespace LeviDB {
 
         void tryApplyPending() override;
 
-    private:
+    public:
         uint64_t indexFileSize() const noexcept;
 
         uint64_t dataFileSize() const noexcept;
@@ -96,6 +96,7 @@ namespace LeviDB {
 
         Slice smallestKey() const noexcept;
 
+    private:
         void updateKeyRange(const Slice & key) noexcept;
     };
 }
