@@ -30,6 +30,8 @@ void index_regex_test();
 
 void db_single_test();
 
+void misc_test();
+
 int main() {
     try {
         index_test();
@@ -41,6 +43,7 @@ int main() {
         regex_test();
         index_regex_test();
         db_single_test();
+        misc_test();
 #ifdef LEVI_BENCH
         kv_write_bench();
         kv_read_bench();

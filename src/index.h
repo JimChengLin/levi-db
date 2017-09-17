@@ -190,7 +190,8 @@ namespace LeviDB {
         std::default_random_engine _gen{std::random_device{}()};
 
     public:
-        explicit BitDegradeTree(const std::string & fname) : _dst(fname) { new(offToMemNodeUnchecked(_root)) BDNode; };
+        explicit BitDegradeTree(const std::string & fname)
+                : _dst(fname) { (new(offToMemNodeUnchecked(_root)) BDNode)->updateChecksum(); };
 
         BitDegradeTree(const std::string & fname, OffsetToEmpty empty) : _dst(fname), _empty(empty) {};
 

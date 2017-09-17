@@ -41,7 +41,7 @@ namespace LeviDB {
         auto * mem_node = reinterpret_cast<BDNode *>(reinterpret_cast<uintptr_t>(_dst.immut_mmaped_region())
                                                      + node.val);
         if (!mem_node->verify()) {
-            Exception::corruptionException("i-node checksum mismatch");
+            throw Exception::corruptionException("i-node checksum mismatch");
         };
         return mem_node;
     }
@@ -54,7 +54,7 @@ namespace LeviDB {
         auto * mem_empty = reinterpret_cast<BDEmpty *>(reinterpret_cast<uintptr_t>(_dst.immut_mmaped_region())
                                                        + empty.val);
         if (!mem_empty->verify()) {
-            Exception::corruptionException("e-node checksum mismatch");
+            throw Exception::corruptionException("e-node checksum mismatch");
         };
         return mem_empty;
     }
