@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "../src/exception.h"
 #include "../src/index_mvcc_rd.h"
 #include "../src/log_writer.h"
 
@@ -68,6 +69,14 @@ void index_rd_test() {
     assert(b.first == "A_");
     auto c = bdt_rd.find("C");
     assert(c.first == "C_");
+
+    LeviDB::RandomWriteFile rwf(data_fname);
+    rwf.write(0, "6");
+    try {
+        bdt_rd.find("0");
+        assert(false);
+    } catch (const LeviDB::Exception & e) {
+    }
 
     std::cout << __FUNCTION__ << std::endl;
 }
