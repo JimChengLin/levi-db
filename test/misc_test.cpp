@@ -34,6 +34,12 @@ void misc_test() {
         } catch (const LeviDB::Exception & e) {
         }
     }
+    { // ob mode usr
+        std::string model = "ABC";
+        LeviDB::USR u(&model);
+        LeviDB::USR u2(model);
+        assert(u.toSlice() == u2.toSlice());
+    }
 
     std::cout << __FUNCTION__ << std::endl;
 }
