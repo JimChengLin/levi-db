@@ -2,6 +2,7 @@
 #include <random>
 
 #include "../src/compress.h"
+#include "../src/exception.h"
 
 class CompressDataIter : public LeviDB::SimpleIterator<LeviDB::Slice> {
 private:
@@ -42,18 +43,40 @@ void compress_test() {
         src.emplace_back(std::uniform_int_distribution<uint8_t>(0, UINT8_MAX)(gen));
     }
 
-    std::vector<uint8_t> compress_data = LeviDB::Compressor::encode(LeviDB::Slice(src.data(), src.size()));
-    auto uncompress_iter = LeviDB::Compressor::makeDecodeIterator(std::make_unique<CompressDataIter>(compress_data));
+    {
+        std::vector<uint8_t> compress_data = LeviDB::Compressor::encode(LeviDB::Slice(src.data(), src.size()));
+        auto uncompress_iter = LeviDB::Compressor::makeDecodeIterator(
+                std::make_unique<CompressDataIter>(compress_data));
 
-    std::vector<uint8_t> uncompress_data;
-    while (uncompress_iter->valid()) {
-        uncompress_data.insert(uncompress_data.end(),
-                               reinterpret_cast<const uint8_t *>(uncompress_iter->item().data()),
-                               reinterpret_cast<const uint8_t *>(
-                                       uncompress_iter->item().data() + uncompress_iter->item().size()));
-        uncompress_iter->next();
+        std::vector<uint8_t> uncompress_data;
+        while (uncompress_iter->valid()) {
+            uncompress_data.insert(uncompress_data.end(),
+                                   reinterpret_cast<const uint8_t *>(uncompress_iter->item().data()),
+                                   reinterpret_cast<const uint8_t *>(
+                                           uncompress_iter->item().data() + uncompress_iter->item().size()));
+            uncompress_iter->next();
+        }
+        assert(src == uncompress_data);
     }
-    assert(src == uncompress_data);
+    {
+        std::vector<uint8_t> compress_data = LeviDB::Compressor::encode(LeviDB::Slice(src.data(), src.size()));
+        compress_data.pop_back();
+        try {
+            auto uncompress_iter = LeviDB::Compressor::makeDecodeIterator(
+                    std::make_unique<CompressDataIter>(compress_data));
+
+            std::vector<uint8_t> uncompress_data;
+            while (uncompress_iter->valid()) {
+                uncompress_data.insert(uncompress_data.end(),
+                                       reinterpret_cast<const uint8_t *>(uncompress_iter->item().data()),
+                                       reinterpret_cast<const uint8_t *>(
+                                               uncompress_iter->item().data() + uncompress_iter->item().size()));
+                uncompress_iter->next();
+            }
+            assert(false);
+        } catch (const LeviDB::Exception & e) {
+        }
+    }
 
     std::cout << __FUNCTION__ << std::endl;
 };
