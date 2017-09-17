@@ -151,18 +151,48 @@ void db_single_test() {
         LeviDB::SeqGenerator seq_gen;
         LeviDB::DBSingle db(db_name, LeviDB::Options{}, &seq_gen);
 
+        {
+            // 确认数据
+            auto it = db.makeIterator(db.makeSnapshot());
+            it->seekToFirst();
+            for (int i = 100; i < 102; ++i) {
+                assert(it->key() == std::to_string(i));
+                it->next();
+            }
+            for (int i = 60; i < 100; ++i) {
+                assert(it->key() == std::to_string(i));
+                it->next();
+            }
+            assert(!it->valid());
+        }
+
+        // compress write
+        std::string k = "1000" + std::string(UINT8_MAX, 'A');
+        std::string k2 = "1011" + std::string(UINT8_MAX, 'B');
+        LeviDB::WriteOptions options;
+        options.compress = true;
+        options.uncompress_size = static_cast<uint32_t>(k.size() * 2 + k2.size() * 2);
+        db.write(options, {{k,  k},
+                           {k2, k2}});
+        assert(db.get(LeviDB::ReadOptions{}, k).second);
+        assert(db.get(LeviDB::ReadOptions{}, k2).second);
+    }
+    // repair single db
+    {
+        LeviDB::repairDBSingle(db_name, [](const LeviDB::Exception & e) noexcept {
+            std::cout << e.toString() << std::endl;
+        });
+
+        LeviDB::SeqGenerator seq_gen;
+        LeviDB::DBSingle db(db_name, LeviDB::Options{}, &seq_gen);
+
         // 确认数据
         auto it = db.makeIterator(db.makeSnapshot());
-        it->seekToFirst();
-        for (int i = 100; i < 102; ++i) {
-            assert(it->key() == std::to_string(i));
-            it->next();
-        }
+        it->seek("60");
         for (int i = 60; i < 100; ++i) {
-            assert(it->key() == std::to_string(i));
+            assert(it->key().toString() == std::to_string(i));
             it->next();
         }
-        assert(!it->valid());
     }
 
     std::cout << __FUNCTION__ << std::endl;

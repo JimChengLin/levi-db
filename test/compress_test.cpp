@@ -43,8 +43,8 @@ void compress_test() {
         src.emplace_back(std::uniform_int_distribution<uint8_t>(0, UINT8_MAX)(gen));
     }
 
+    std::vector<uint8_t> compress_data = LeviDB::Compressor::encode(LeviDB::Slice(src.data(), src.size()));
     {
-        std::vector<uint8_t> compress_data = LeviDB::Compressor::encode(LeviDB::Slice(src.data(), src.size()));
         auto uncompress_iter = LeviDB::Compressor::makeDecodeIterator(
                 std::make_unique<CompressDataIter>(compress_data));
 
@@ -59,7 +59,6 @@ void compress_test() {
         assert(src == uncompress_data);
     }
     {
-        std::vector<uint8_t> compress_data = LeviDB::Compressor::encode(LeviDB::Slice(src.data(), src.size()));
         compress_data.pop_back();
         try {
             auto uncompress_iter = LeviDB::Compressor::makeDecodeIterator(

@@ -62,6 +62,7 @@ namespace LeviDB {
     void DBSingle::put(const WriteOptions & options,
                        const Slice & key,
                        const Slice & value) {
+        assert(!options.compress);
         RWLockWriteGuard write_guard(_rwlock);
 
         uint32_t pos = _writer->calcWritePos();
@@ -240,6 +241,7 @@ namespace LeviDB {
                         item.second.pop_back();
                         db.put(WriteOptions{}, item.first, item.second);
                     }
+                    it->next();
                 }
             }
             if (IOEnv::fileExists(db_single_name)) {
