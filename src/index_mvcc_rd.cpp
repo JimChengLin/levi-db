@@ -140,7 +140,11 @@ namespace LeviDB {
                     if (&iter != _cursor) {
                         iter.second = iter.first->lower_bound(key());
                         if (iter.second != iter.first->cend()) {
-                            --iter.second;
+                            if (iter.second != iter.first->cbegin()) {
+                                --iter.second;
+                            } else {
+                                iter.second = iter.first->cend();
+                            }
                         } else {
                             iter.second = --iter.first->cend();
                         }
