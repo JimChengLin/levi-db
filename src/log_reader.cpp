@@ -363,12 +363,12 @@ namespace LeviDB {
                         if (p == nullptr) {
                             throw Exception::corruptionException("meta area of CompressRecord broken");
                         }
-                        ranges.emplace_back(from_to(offset, offset + val));
+                        ranges.emplace_back(offset, offset + val);
                         offset += val;
                     }
                     size_t half = ranges.size() / 2;
                     for (int i = 0; i < half; ++i) {
-                        _rep.emplace_back(kv_pair(ranges[i], ranges[i + half]));
+                        _rep.emplace_back(ranges[i], ranges[i + half]);
                     }
                 }
 
@@ -514,10 +514,10 @@ namespace LeviDB {
                             _disk_offsets.emplace_back(_disk_offsets.back());
                         }
 
-                        _cache.emplace_back(std::vector<uint8_t>(
+                        _cache.emplace_back(
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data() + _raw_iter->item().size())
-                        ));
+                        );
                         _raw_iter->next(); // 多读一页
 
                         if (isBatchFull(_prev_type) || isBatchLast(_prev_type)) {
