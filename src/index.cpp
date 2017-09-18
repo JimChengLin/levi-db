@@ -450,7 +450,7 @@ namespace LeviDB {
         }
     }
 
-    USR BitDegradeTree::mostSimilarUsr(const Slice & k) const noexcept {
+    USR BitDegradeTree::mostSimilarUsr(const Slice & k) const {
         USR res;
         const BDNode * cursor = offToMemNode(_root);
 

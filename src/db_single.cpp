@@ -169,12 +169,12 @@ namespace LeviDB {
         _index->tryApplyPending();
     }
 
-    uint64_t DBSingle::indexFileSize() const noexcept {
+    uint64_t DBSingle::indexFileSize() const {
         RWLockReadGuard read_guard(_rwlock);
         return _index->immut_dst().immut_length();
     };
 
-    uint64_t DBSingle::dataFileSize() const noexcept {
+    uint64_t DBSingle::dataFileSize() const {
         RWLockReadGuard read_guard(_rwlock);
         return _af->immut_length();
     };

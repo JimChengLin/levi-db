@@ -366,6 +366,6 @@ namespace LeviDB {
     }
 
     FileLock::~FileLock() noexcept {
-        lockOrUnlock<false>(_file._fd);
+        (void) lockOrUnlock<false>(_file._fd);
     }
 }

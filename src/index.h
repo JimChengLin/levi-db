@@ -237,7 +237,7 @@ namespace LeviDB {
                       size_t idx, bool direct, size_t parent_size,
                       size_t child_size) noexcept;
 
-        USR mostSimilarUsr(const Slice & k) const noexcept;
+        USR mostSimilarUsr(const Slice & k) const;
 
     protected:
         BDNode * offToMemNode(OffsetToNode node) const;

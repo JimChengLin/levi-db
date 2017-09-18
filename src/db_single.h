@@ -88,9 +88,9 @@ namespace LeviDB {
         void tryApplyPending() override;
 
     public:
-        uint64_t indexFileSize() const noexcept;
+        uint64_t indexFileSize() const;
 
-        uint64_t dataFileSize() const noexcept;
+        uint64_t dataFileSize() const;
 
         void explicitRemove(const WriteOptions & options, const Slice & key);
 

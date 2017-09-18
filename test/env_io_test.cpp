@@ -35,6 +35,12 @@ void env_io_test() {
     assert(!LeviDB::IOEnv::getChildren("/tmp").empty());
 
     try {
+        LeviDB::IOEnv::truncateFile(not_exist, 6);
+        assert(false);
+    } catch (const LeviDB::Exception & e) {
+    }
+
+    try {
         LeviDB::IOEnv::deleteDir(not_exist);
         assert(false);
     } catch (const LeviDB::Exception & e) {
@@ -58,6 +64,8 @@ void env_io_test() {
     (void) LeviDB::FileFopen(not_exist, LeviDB::IOEnv::W_M);
     (void) LeviDB::FileFopen(not_exist, LeviDB::IOEnv::A_M);
     (void) LeviDB::FileFopen(not_exist, LeviDB::IOEnv::AP_M);
+    (void) LeviDB::FileFopen(not_exist, LeviDB::IOEnv::RP_M);
+    (void) LeviDB::FileFopen(not_exist, LeviDB::IOEnv::WP_M);
     LeviDB::IOEnv::deleteFile(not_exist);
 
     std::cout << __FUNCTION__ << std::endl;
