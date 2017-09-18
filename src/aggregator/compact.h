@@ -1,0 +1,4 @@
+#ifndef LEVIDB_COMPACT_H
+#define LEVIDB_COMPACT_H
+
+#endif //LEVIDB_COMPACT_H

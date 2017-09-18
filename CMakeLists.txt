@@ -15,8 +15,14 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
 endif ()
 
 set(SOURCE_FILES main.cpp
+        bench/db_read_bench.cpp
+        bench/db_write_bench.cpp
         bench/kv_read_bench.cpp
         bench/kv_write_bench.cpp
+        src/aggregator/compact.cpp src/aggregator/compact.h
+        src/aggregator/compact_1_1.cpp src/aggregator/compact_1_1.h
+        src/aggregator/compact_1_2.cpp src/aggregator/compact_1_2.h
+        src/aggregator/compact_2_1.cpp src/aggregator/compact_2_1.h
         src/compress.h src/compress.cpp
         src/crc32c.cpp src/crc32c.h
         src/db.cpp src/db.h
@@ -35,6 +41,7 @@ set(SOURCE_FILES main.cpp
         src/log_writer.cpp src/log_writer.h
         src/merger.h
         src/meta_keeper.h
+        src/optional.h
         src/options.h
         src/seq_gen.cpp src/seq_gen.h
         src/slice.h
@@ -43,6 +50,7 @@ set(SOURCE_FILES main.cpp
         src/varint.cpp src/varint.h
         test/compress_test.cpp
         test/db_single_test.cpp
+        test/env_io_test.cpp
         test/index_iter_test.cpp
         test/index_mvcc_test.cpp
         test/index_rd_test.cpp
@@ -50,9 +58,7 @@ set(SOURCE_FILES main.cpp
         test/index_test.cpp
         test/log_test.cpp
         test/misc_test.cpp
-        test/regex_test.cpp
-        src/optional.h
-        test/env_io_test.cpp)
+        test/regex_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
 
