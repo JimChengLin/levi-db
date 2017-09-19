@@ -19,7 +19,7 @@ set(SOURCE_FILES main.cpp
         bench/db_write_bench.cpp
         bench/kv_read_bench.cpp
         bench/kv_write_bench.cpp
-        src/aggregator/compact.cpp src/aggregator/compact.h
+        src/aggregator/compact.h
         src/aggregator/compact_1_1.cpp src/aggregator/compact_1_1.h
         src/aggregator/compact_1_2.cpp src/aggregator/compact_1_2.h
         src/aggregator/compact_2_1.cpp src/aggregator/compact_2_1.h
