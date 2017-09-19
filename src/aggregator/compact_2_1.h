@@ -1,4 +1,8 @@
 #ifndef LEVIDB_TWO_TO_ONE_COMPACT_H
 #define LEVIDB_TWO_TO_ONE_COMPACT_H
 
+/*
+ *
+ */
+
 #endif //LEVIDB_TWO_TO_ONE_COMPACT_H

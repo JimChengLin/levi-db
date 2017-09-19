@@ -72,7 +72,10 @@ namespace LeviDB {
         _index->insert(key, OffsetToData{pos});
 
         _index->tryApplyPending();
-        if (options.sync) _af->sync();
+        if (options.sync) {
+            _af->sync();
+            _index->sync();
+        };
     };
 
     void DBSingle::remove(const WriteOptions & options,
@@ -84,7 +87,10 @@ namespace LeviDB {
         _index->remove(key);
 
         _index->tryApplyPending();
-        if (options.sync) _af->sync();
+        if (options.sync) {
+            _af->sync();
+            _index->sync();
+        };
     };
 
     void DBSingle::write(const WriteOptions & options,
@@ -103,7 +109,10 @@ namespace LeviDB {
                 }
 
                 _index->tryApplyPending();
-                if (options.sync) _af->sync();
+                if (options.sync) {
+                    _af->sync();
+                    _index->sync();
+                };
                 return;
             }
         }
@@ -128,7 +137,10 @@ namespace LeviDB {
         }
 
         _index->tryApplyPending();
-        if (options.sync) _af->sync();
+        if (options.sync) {
+            _af->sync();
+            _index->sync();
+        };
     };
 
     std::pair<std::string, bool>
@@ -188,7 +200,10 @@ namespace LeviDB {
         _index->insert(key, OffsetToData{pos});
 
         _index->tryApplyPending();
-        if (options.sync) _af->sync();
+        if (options.sync) {
+            _af->sync();
+            _index->sync();
+        };
     }
 
 // methods below don't need lock
