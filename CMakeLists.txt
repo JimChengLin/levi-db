@@ -58,7 +58,8 @@ set(SOURCE_FILES main.cpp
         test/index_test.cpp
         test/log_test.cpp
         test/misc_test.cpp
-        test/regex_test.cpp)
+        test/regex_test.cpp
+        src/aggregator/db_merger.cpp src/aggregator/db_merger.h)
 
 add_executable(LeviDB ${SOURCE_FILES})
 
