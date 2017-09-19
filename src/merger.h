@@ -158,7 +158,7 @@ namespace LeviDB {
     };
 
     template<typename T, bool SMALL_FIRST = true, typename CMP = std::less<T>>
-    class MergingSimpleIterator final : public SimpleIterator<T> {
+    class MergingSimpleIterator : public SimpleIterator<T> {
     private:
         using inner_iter_t = SimpleIterator<T>;
 

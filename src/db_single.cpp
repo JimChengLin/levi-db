@@ -65,6 +65,12 @@ namespace LeviDB {
         assert(!options.compress);
         RWLockWriteGuard write_guard(_rwlock);
 
+        if (key.size() == 0) {
+            _af->sync();
+            _index->sync();
+            return;
+        }
+
         uint32_t pos = _writer->calcWritePos();
         std::vector<uint8_t> bin = LogWriter::makeRecord(key, value);
         _writer->addRecord({bin.data(), bin.size()});
@@ -101,7 +107,7 @@ namespace LeviDB {
             assert(options.uncompress_size != 0);
             uint32_t pos = _writer->calcWritePos();
             std::vector<uint8_t> bin = LogWriter::makeCompressRecord(kvs);
-            if (bin.size() <= options.uncompress_size / 8 * 7) { // worth
+            if (bin.size() <= options.uncompress_size - options.uncompress_size / 8) { // worth
                 _writer->addCompressRecord({bin.data(), bin.size()});
                 for (const auto & kv:kvs) {
                     updateKeyRange(kv.first);

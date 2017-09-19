@@ -30,9 +30,14 @@ namespace LeviDB {
         DELETE_MOVE(DB);
         DELETE_COPY(DB);
 
+        EXPOSE(_name);
+
+        EXPOSE(_options);
+
     public:
         virtual ~DB() noexcept = default;
 
+        // key.empty() == sync
         virtual void put(const WriteOptions & options,
                          const Slice & key,
                          const Slice & value) = 0;

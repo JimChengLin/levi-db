@@ -17,12 +17,7 @@ namespace LeviDB {
         std::atomic<bool> _compacting{false};
 
     public:
-        using DB::DB;
-
-        DELETE_MOVE(CompactingDB);
-        DELETE_COPY(CompactingDB);
-
-        ~CompactingDB() noexcept override { assert(!_compacting); }
+        CompactingDB() noexcept : DB("CompactingDB", {}) {};
     };
 }
 
