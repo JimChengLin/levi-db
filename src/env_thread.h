@@ -7,10 +7,15 @@
 
 #include <cstdint>
 #include <pthread.h>
+#include <thread>
+#include <type_traits>
 
 #include "util.h"
 
 namespace LeviDB {
+    static_assert(std::is_same<std::thread::native_handle_type, pthread_t>::value,
+                  "cannot mix std::thread with pthread");
+
     namespace ThreadEnv {
         uint64_t gettid() noexcept;
     }
