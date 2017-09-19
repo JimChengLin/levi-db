@@ -58,6 +58,8 @@ namespace LeviDB {
         makeRegexReversedIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const = 0;
 
         virtual void tryApplyPending() = 0;
+
+        virtual bool canRelease() const = 0;
     };
 
     typedef std::function<void(const Exception &)> reporter_t;

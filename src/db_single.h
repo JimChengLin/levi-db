@@ -87,6 +87,8 @@ namespace LeviDB {
 
         void tryApplyPending() override;
 
+        bool canRelease() const override;
+
     public:
         uint64_t indexFileSize() const;
 

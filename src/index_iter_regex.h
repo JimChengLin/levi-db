@@ -76,6 +76,8 @@ namespace LeviDB {
         DELETE_MOVE(IndexRegex);
         DELETE_COPY(IndexRegex);
 
+        EXPOSE(_operating_iters);
+
     public:
         std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
         makeRegexIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const;

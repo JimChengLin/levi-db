@@ -63,6 +63,8 @@ namespace LeviDB {
         void tryApplyPending();
 
         EXPOSE(_dst);
+
+        EXPOSE(_pending);
     };
 
     class IndexRead : public IndexMVCC {

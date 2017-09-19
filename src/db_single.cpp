@@ -207,6 +207,10 @@ namespace LeviDB {
     }
 
 // methods below don't need lock
+    bool DBSingle::canRelease() const {
+        return _index->immut_operating_iters() == 0 && _index->immut_pending().empty();
+    }
+
     Slice DBSingle::largestKey() const noexcept {
         const std::string & trailing = _meta->immut_trailing();
         uint32_t from_k_len = _meta->immut_value().from_k_len;
