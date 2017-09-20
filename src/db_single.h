@@ -97,6 +97,10 @@ namespace LeviDB {
         void explicitRemove(const WriteOptions & options, const Slice & key);
 
     private:
+        Slice largestKeyUnlocked() const noexcept;
+
+        Slice smallestKeyUnlocked() const noexcept;
+
         void updateKeyRange(const Slice & key) noexcept;
     };
 }

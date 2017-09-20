@@ -16,8 +16,8 @@ namespace LeviDB {
     class Compacting1To2DB : public CompactingDB {
     private:
         std::unique_ptr<const DB> _resource;
-        std::unique_ptr<DBSingle> _product_a;
-        std::unique_ptr<DBSingle> _product_b;
+        std::unique_ptr<DB> _product_a;
+        std::unique_ptr<DB> _product_b;
         std::exception_ptr _e_a;
         std::exception_ptr _e_b;
         std::string _a_end;
@@ -34,14 +34,14 @@ namespace LeviDB {
     public:
         ~Compacting1To2DB() noexcept override;
 
-        void put(const WriteOptions & options,
+        bool put(const WriteOptions & options,
                  const Slice & key,
                  const Slice & value) override;
 
-        void remove(const WriteOptions & options,
+        bool remove(const WriteOptions & options,
                     const Slice & key) override;
 
-        void write(const WriteOptions & options,
+        bool write(const WriteOptions & options,
                    const std::vector<std::pair<Slice, Slice>> & kvs) override;
 
         std::pair<std::string, bool>

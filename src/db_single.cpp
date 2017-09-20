@@ -210,6 +210,16 @@ namespace LeviDB {
         _index->tryApplyPending();
     }
 
+    Slice DBSingle::largestKey() const {
+        RWLockReadGuard read_guard(_rwlock);
+        return largestKeyUnlocked();
+    };
+
+    Slice DBSingle::smallestKey() const {
+        RWLockReadGuard read_guard(_rwlock);
+        return smallestKeyUnlocked();
+    };
+
     void DBSingle::explicitRemove(const WriteOptions & options, const Slice & key) {
         RWLockWriteGuard write_guard(_rwlock);
 
@@ -230,26 +240,26 @@ namespace LeviDB {
         return _index->immut_operating_iters() == 0 && _index->immut_pending().empty();
     }
 
-    Slice DBSingle::largestKey() const {
+    Slice DBSingle::largestKeyUnlocked() const noexcept {
         const std::string & trailing = _meta->immut_trailing();
         uint32_t from_k_len = _meta->immut_value().from_k_len;
         uint32_t to_k_len = _meta->immut_value().to_k_len;
         return {trailing.data() + from_k_len, to_k_len};
     };
 
-    Slice DBSingle::smallestKey() const {
+    Slice DBSingle::smallestKeyUnlocked() const noexcept {
         const std::string & trailing = _meta->immut_trailing();
         uint32_t from_k_len = _meta->immut_value().from_k_len;
         return {trailing.data(), from_k_len};
     };
 
     void DBSingle::updateKeyRange(const Slice & key) noexcept {
-        if (SliceComparator{}(key, smallestKey()) || smallestKey().size() == 0) { // find smaller
+        if (SliceComparator{}(key, smallestKeyUnlocked()) || smallestKeyUnlocked().size() == 0) { // find smaller
             std::string & trailing = _meta->mut_trailing();
             uint32_t from_k_len = _meta->immut_value().from_k_len;
             trailing.replace(trailing.begin(), trailing.begin() + from_k_len, key.data(), key.data() + key.size());
             _meta->mut_value().from_k_len = static_cast<uint32_t>(key.size());
-        } else if (SliceComparator{}(largestKey(), key)) { // find larger
+        } else if (SliceComparator{}(largestKeyUnlocked(), key)) { // find larger
             std::string & trailing = _meta->mut_trailing();
             uint32_t from_k_len = _meta->immut_value().from_k_len;
             uint32_t to_k_len = _meta->immut_value().to_k_len;

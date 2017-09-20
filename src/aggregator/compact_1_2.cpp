@@ -112,17 +112,17 @@ namespace LeviDB {
 
     Compacting1To2DB::~Compacting1To2DB() noexcept { assert(!_compacting); }
 
-    void Compacting1To2DB::put(const WriteOptions & options, const Slice & key, const Slice & value) {
+    bool Compacting1To2DB::put(const WriteOptions & options, const Slice & key, const Slice & value) {
 
     }
 
-    void Compacting1To2DB::remove(const WriteOptions & options, const Slice & key) {
+    bool Compacting1To2DB::remove(const WriteOptions & options, const Slice & key) {
 
     }
 
     // batch write may cause compaction not perfectly dividing db into two equal parts
     // but the effect should be really trivial
-    void Compacting1To2DB::write(const WriteOptions & options, const std::vector<std::pair<Slice, Slice>> & kvs) {
+    bool Compacting1To2DB::write(const WriteOptions & options, const std::vector<std::pair<Slice, Slice>> & kvs) {
 
     }
 
