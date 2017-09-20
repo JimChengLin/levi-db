@@ -220,11 +220,15 @@ namespace LeviDB {
         return smallestKeyUnlocked();
     };
 
-    void DBSingle::explicitRemove(const WriteOptions & options, const Slice & key) {
+    bool DBSingle::explicitRemove(const WriteOptions & options, const Slice & key) {
         RWLockWriteGuard write_guard(_rwlock);
 
         uint32_t pos = _writer->calcWritePos();
         std::vector<uint8_t> bin = LogWriter::makeRecord(key, {});
+        if (_index->immut_dst().immut_length() > UINT32_MAX - 4096/* BDT page size */
+            || pos + (bin.size() + LogWriterConst::header_size_) * 2 > UINT32_MAX) {
+            return false;
+        }
         _writer->addDelRecord({bin.data(), bin.size()});
         _index->insert(key, OffsetToData{pos});
 
@@ -233,6 +237,7 @@ namespace LeviDB {
             _af->sync();
             _index->sync();
         };
+        return true;
     }
 
 // methods below don't need lock

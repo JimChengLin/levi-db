@@ -70,6 +70,9 @@ namespace LeviDB {
         virtual Slice largestKey() const = 0;
 
         virtual Slice smallestKey() const = 0;
+
+        virtual bool explicitRemove(const WriteOptions & options,
+                                    const Slice & key) = 0;
     };
 
     typedef std::function<void(const Exception &)> reporter_t;

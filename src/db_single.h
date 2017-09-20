@@ -93,8 +93,8 @@ namespace LeviDB {
 
         Slice smallestKey() const override;
 
-    public:
-        void explicitRemove(const WriteOptions & options, const Slice & key);
+        bool explicitRemove(const WriteOptions & options,
+                            const Slice & key) override;
 
     private:
         Slice largestKeyUnlocked() const noexcept;
