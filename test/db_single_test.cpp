@@ -117,10 +117,6 @@ void db_single_test() {
         // key range
         assert(db.smallestKey() == "0");
         assert(db.largestKey() == "99");
-
-        // file size
-        assert(db.indexFileSize());
-        assert(db.dataFileSize());
     }
     // 再次打开数据库
     {

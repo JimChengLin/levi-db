@@ -58,14 +58,14 @@ namespace LeviDB {
     public:
         ~DBSingle() noexcept override = default;
 
-        void put(const WriteOptions & options,
+        bool put(const WriteOptions & options,
                  const Slice & key,
                  const Slice & value) override;
 
-        void remove(const WriteOptions & options,
+        bool remove(const WriteOptions & options,
                     const Slice & key) override;
 
-        void write(const WriteOptions & options,
+        bool write(const WriteOptions & options,
                    const std::vector<std::pair<Slice, Slice>> & kvs) override;
 
         std::pair<std::string, bool>
@@ -89,16 +89,12 @@ namespace LeviDB {
 
         bool canRelease() const override;
 
+        Slice largestKey() const override;
+
+        Slice smallestKey() const override;
+
     public:
-        uint64_t indexFileSize() const;
-
-        uint64_t dataFileSize() const;
-
         void explicitRemove(const WriteOptions & options, const Slice & key);
-
-        Slice largestKey() const noexcept;
-
-        Slice smallestKey() const noexcept;
 
     private:
         void updateKeyRange(const Slice & key) noexcept;

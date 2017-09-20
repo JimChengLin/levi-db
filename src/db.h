@@ -38,14 +38,15 @@ namespace LeviDB {
         virtual ~DB() noexcept = default;
 
         // key.empty() == sync
-        virtual void put(const WriteOptions & options,
+        // returning false means the DB is too full to insert data
+        virtual bool put(const WriteOptions & options,
                          const Slice & key,
                          const Slice & value) = 0;
 
-        virtual void remove(const WriteOptions & options,
+        virtual bool remove(const WriteOptions & options,
                             const Slice & key) = 0;
 
-        virtual void write(const WriteOptions & options,
+        virtual bool write(const WriteOptions & options,
                            const std::vector<std::pair<Slice, Slice>> & kvs) = 0;
 
         virtual std::pair<std::string, bool>
@@ -65,6 +66,10 @@ namespace LeviDB {
         virtual void tryApplyPending() = 0;
 
         virtual bool canRelease() const = 0;
+
+        virtual Slice largestKey() const = 0;
+
+        virtual Slice smallestKey() const = 0;
     };
 
     typedef std::function<void(const Exception &)> reporter_t;
