@@ -64,10 +64,11 @@ namespace LeviDB {
                     // _cend == _cbegin, corner case
                     // _cend <  _cbegin, corner case
                     // _cend == _cbegin + 1, major case
-                    if (!RIGHT_FIRST) {
-                        _cbegin -= static_cast<int>(go_right = _cend < _cbegin);
-                    } else {
-                        _cbegin -= static_cast<int>(_cend < _cbegin);
+                    if (_cend == _cbegin) {
+                        go_right = false;
+                    } else if (_cend < _cbegin) {
+                        --_cbegin;
+                        go_right = true;
                     }
 
                     do {
@@ -190,8 +191,6 @@ namespace LeviDB {
         };
 
         bool match(const USR & input) const override {
-            // would never use this to seek, only for prev
-            // so, it's fine to ignore BDT USR trailing
             return _meet_first || (_meet_first = *input.immut_src() <= _pattern);
         };
     };
@@ -375,16 +374,19 @@ namespace LeviDB {
         };
 
         void seekToFirst() override {
+            _key.clear();
             _tree.seekToFirst();
             update();
         };
 
         void seekToLast() override {
+            _key.clear();
             _tree.seekToLast();
             update();
         };
 
         void seek(const Slice & target) override {
+            _key.clear();
             _tree.seek(target);
             update();
         };

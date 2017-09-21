@@ -15,7 +15,7 @@ namespace LeviDB {
 
     public:
         // default
-        UniversalStringRepresentation() noexcept : UniversalStringRepresentation("") {}
+        UniversalStringRepresentation() noexcept : UniversalStringRepresentation(std::string{}) {}
 
         // copy/move
         UniversalStringRepresentation(std::string src) noexcept

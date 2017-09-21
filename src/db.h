@@ -71,6 +71,8 @@ namespace LeviDB {
 
         virtual Slice smallestKey() const = 0;
 
+        virtual void updateKeyRange() = 0;
+
         virtual bool explicitRemove(const WriteOptions & options,
                                     const Slice & key) = 0;
     };

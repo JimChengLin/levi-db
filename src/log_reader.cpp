@@ -388,7 +388,7 @@ namespace LeviDB {
                         if (i < key.size()) {
                             k = key[i];
                         } else if (i - key.size() < sizeof(uint32_t)) {
-                            uint32_t length = static_cast<uint32_t>(key.size());
+                            auto length = static_cast<uint32_t>(key.size());
                             k = reinterpret_cast<const char *>(&length)[i - key.size()];
                         }
 
@@ -491,7 +491,9 @@ namespace LeviDB {
             }
 
             RawIteratorBatchChecked & operator=(RawIteratorBatchChecked && rhs) noexcept {
-                auto nth = rhs._cache_cursor == rhs._cache.cend() ? -1 : rhs._cache_cursor - rhs._cache.cbegin();
+                long nth = rhs._cache_cursor == rhs._cache.cend() ? -1
+                                                                  : static_cast<long>(rhs._cache_cursor -
+                                                                                      rhs._cache.cbegin());
                 std::swap(_raw_iter, rhs._raw_iter);
                 std::swap(_disk_offsets, rhs._disk_offsets);
                 std::swap(_cache, rhs._cache);

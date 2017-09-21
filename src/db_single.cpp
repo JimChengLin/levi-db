@@ -27,7 +27,7 @@ namespace LeviDB {
                     IOEnv::deleteFile(keeper_fname);
                 }
 
-                _meta.build(std::move(keeper_fname), DBSingleWeakMeta{}, "");
+                _meta.build(std::move(keeper_fname), DBSingleWeakMeta{}, std::string{});
                 _af.build(data_fname);
                 _rf.build(std::move(data_fname));
                 _index.build(std::move(index_fname), _seq_gen, _rf.get());
@@ -57,7 +57,7 @@ namespace LeviDB {
             _rf.build(prefix + "data");
             _index.build(prefix + "index", _seq_gen, _rf.get());
             _writer.build(_af.get());
-            _meta.build(std::move(prefix) + "keeper", DBSingleWeakMeta{}, "");
+            _meta.build(std::move(prefix) + "keeper", DBSingleWeakMeta{}, std::string{});
         }
     }
 
@@ -113,6 +113,7 @@ namespace LeviDB {
     bool DBSingle::write(const WriteOptions & options,
                          const std::vector<std::pair<Slice, Slice>> & kvs) {
         RWLockWriteGuard write_guard(_rwlock);
+        assert(!kvs.empty());
 
         if (options.compress) {
             assert(options.uncompress_size != 0);
@@ -222,6 +223,30 @@ namespace LeviDB {
         return smallestKeyUnlocked();
     };
 
+    void DBSingle::updateKeyRange() {
+        RWLockWriteGuard write_guard(_rwlock);
+        auto it = _index->makeIterator(std::make_unique<Snapshot>(UINT64_MAX));
+        it->seekToFirst();
+        if (it->valid()) {
+            {
+                std::string & trailing = _meta->mut_trailing();
+                uint32_t from_k_len = _meta->immut_value().from_k_len;
+                trailing.replace(trailing.begin(), trailing.begin() + from_k_len,
+                                 it->key().data(), it->key().data() + it->key().size());
+                _meta->mut_value().from_k_len = static_cast<uint32_t>(it->key().size());
+            }
+            it->seekToLast();
+            if (it->valid()) {
+                std::string & trailing = _meta->mut_trailing();
+                uint32_t from_k_len = _meta->immut_value().from_k_len;
+                uint32_t to_k_len = _meta->immut_value().to_k_len;
+                trailing.replace(trailing.begin() + from_k_len, trailing.begin() + from_k_len + to_k_len,
+                                 it->key().data(), it->key().data() + it->key().size());
+                _meta->mut_value().to_k_len = static_cast<uint32_t>(it->key().size());
+            }
+        }
+    }
+
     bool DBSingle::explicitRemove(const WriteOptions & options, const Slice & key) {
         RWLockWriteGuard write_guard(_rwlock);
 
@@ -296,6 +321,7 @@ namespace LeviDB {
                 while (it->valid()) {
                     auto item = it->item();
                     if (item.second.back() == 1) { // del
+                        db.remove(WriteOptions{}, item.first);
                         auto find_res = q.find(item.first);
                         if (find_res != q.end()) { q.erase(find_res); }
                     } else {

@@ -15,7 +15,8 @@
 namespace LeviDB {
     class Compacting1To2DB : public CompactingDB {
     private:
-        std::unique_ptr<const DB> _resource;
+        SeqGenerator * _seq_gen;
+        std::unique_ptr<DB> _resource;
         std::unique_ptr<DB> _product_a;
         std::unique_ptr<DB> _product_b;
         std::exception_ptr _e_a;
@@ -24,12 +25,31 @@ namespace LeviDB {
         std::string _b_end;
 
         std::set<std::string, SliceComparator> _ignore;
-        mutable std::mutex _lock;
+        ReadWriteLock _rw_lock;
+        ReadWriteLock _a_lock;
+        ReadWriteLock _b_lock;
+
+        std::atomic<bool> _e_a_bool{false};
+        std::atomic<bool> _e_b_bool{false};
+        std::atomic<bool> _a_end_meet{false};
+        std::atomic<bool> _b_end_meet{false};
 
     public:
-        Compacting1To2DB(std::unique_ptr<DB> && resource, SeqGenerator * seq_gen) noexcept;
+        Compacting1To2DB(std::unique_ptr<DB> && resource, SeqGenerator * seq_gen);
+
+        Compacting1To2DB(std::unique_ptr<DB> && resource,
+                         std::unique_ptr<DB> && product_a,
+                         std::unique_ptr<DB> && product_b,
+                         SeqGenerator * seq_gen);
+
         DELETE_MOVE(Compacting1To2DB);
         DELETE_COPY(Compacting1To2DB);
+
+        EXPOSE(_compacting);
+
+        EXPOSE(_product_a);
+
+        EXPOSE(_product_b);
 
     public:
         ~Compacting1To2DB() noexcept override;
@@ -70,11 +90,10 @@ namespace LeviDB {
 
         Slice smallestKey() const override;
 
-    private:
-        // methods below are protected by mutex
-        void reportIgnoredKey(const Slice & k) noexcept;
+        void updateKeyRange() override;
 
-        bool isKeyIgnored(const Slice & k) const noexcept;
+        bool explicitRemove(const WriteOptions & options,
+                            const Slice & key) override;
     };
 }
 

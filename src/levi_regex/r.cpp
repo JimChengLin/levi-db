@@ -115,7 +115,8 @@ namespace LeviDB {
             bool res = false;
             auto it = imatch(input, {0, 0, false});
             while (it->valid()) {
-                if (!it->item().isContinue() && it->item().isSuccess()) {
+                if (!it->item().isContinue() && it->item().isSuccess()
+                    && it->item()._ed >= input.immut_src()->size() - sizeof(uint32_t)/* length trailing */) {
                     res = true;
                     break;
                 }
@@ -126,7 +127,7 @@ namespace LeviDB {
                     break;
                 }
             }
-            res = res || !getPossibleResultRef().isContinue();
+            res |= !getPossibleResultRef().isContinue();
             cacheClear();
             getPossibleResultRef() = {};
             disablePossibleMode();

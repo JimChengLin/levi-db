@@ -58,6 +58,7 @@ namespace LeviDB {
             int j{};
 
         public:
+            // coverity[generated_default_ctor_exception_spec_circularity]
             using iter_base::iter_base;
             DELETE_MOVE(stream4num_machine);
             DELETE_COPY(stream4num_machine);
@@ -253,6 +254,7 @@ namespace LeviDB {
             int counter{};
 
         public:
+            // coverity[generated_default_ctor_exception_spec_circularity]
             using iter_base::iter_base;
             DELETE_MOVE(stream4num_r);
             DELETE_COPY(stream4num_r);

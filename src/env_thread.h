@@ -44,9 +44,9 @@ namespace LeviDB {
     public:
         RWLockReadGuard() noexcept = default;
 
-        RWLockReadGuard(pthread_rwlock_t * lock);
+        explicit RWLockReadGuard(pthread_rwlock_t * lock);
 
-        RWLockReadGuard(const ReadWriteLock & lock)
+        explicit RWLockReadGuard(const ReadWriteLock & lock)
                 : RWLockReadGuard(&const_cast<ReadWriteLock &>(lock)._rwlock) {};
 
         DEFAULT_MOVE(RWLockReadGuard);
@@ -62,9 +62,9 @@ namespace LeviDB {
     public:
         RWLockWriteGuard() noexcept = default;
 
-        RWLockWriteGuard(pthread_rwlock_t * lock);
+        explicit RWLockWriteGuard(pthread_rwlock_t * lock);
 
-        RWLockWriteGuard(ReadWriteLock & lock)
+        explicit RWLockWriteGuard(ReadWriteLock & lock)
                 : RWLockWriteGuard(&lock._rwlock) {};
 
         DEFAULT_MOVE(RWLockWriteGuard);

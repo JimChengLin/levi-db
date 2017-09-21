@@ -17,7 +17,7 @@ namespace LeviDB {
         std::atomic<bool> _compacting{false};
 
     public:
-        CompactingDB() noexcept : DB("CompactingDB", {}) {};
+        CompactingDB() noexcept : DB(std::string{}, {}) {};
     };
 }
 

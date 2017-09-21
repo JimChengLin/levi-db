@@ -229,7 +229,7 @@ namespace LeviDB {
             size_t largest_at = 0;
             for (size_t i = 1; i < _cache.size(); ++i) {
                 if (_cache[i].valid() &&
-                    (!_cache[largest_at].valid() || _cmp(*_cache[largest_at].get()), *_cache[i].get())) {
+                    (!_cache[largest_at].valid() || _cmp(*_cache[largest_at].get(), *_cache[i].get()))) {
                     largest_at = i;
                 }
             }

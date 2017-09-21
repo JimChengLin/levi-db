@@ -34,6 +34,8 @@ void misc_test();
 
 void env_io_test();
 
+void compact_1_2_test();
+
 int main() {
     try {
         index_test();
@@ -47,13 +49,14 @@ int main() {
         db_single_test();
         misc_test();
         env_io_test();
+        compact_1_2_test();
 #ifdef LEVI_BENCH
         kv_write_bench();
         kv_read_bench();
 #endif
     } catch (const LeviDB::Exception & e) {
         std::cout << e.toString() << std::endl;
-        return 1;
+        return -1;
     }
     std::cout << "done." << std::endl;
     return 0;
