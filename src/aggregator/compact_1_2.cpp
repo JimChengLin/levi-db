@@ -3,7 +3,7 @@
 #include "compact_1_2.h"
 
 namespace LeviDB {
-    static uint32_t compress_block_size_ = 4096;
+    static constexpr uint32_t page_size_ = 4096;
 
     template<bool FRONT = true>
     void Task(Iterator<Slice, std::string> * it,
@@ -41,7 +41,7 @@ namespace LeviDB {
 
                     q.emplace_back(it->key().toString(), it->value());
                     options.uncompress_size += q.back().first.size() + q.back().second.size();
-                    if (options.uncompress_size >= compress_block_size_ || it->key() == end_at) {
+                    if (options.uncompress_size >= page_size_ || it->key() == end_at) {
                         for (auto const & kv:q) {
                             slice_q.emplace_back(kv.first, kv.second);
                         }
@@ -161,5 +161,13 @@ namespace LeviDB {
     };
 
     bool Compacting1To2DB::isKeyIgnored(const Slice & k) const noexcept {
+    };
+
+    Slice Compacting1To2DB::largestKey() const {
+
+    };
+
+    Slice Compacting1To2DB::smallestKey() const {
+
     };
 }

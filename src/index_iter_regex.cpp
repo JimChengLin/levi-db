@@ -72,8 +72,8 @@ namespace LeviDB {
 
                     do {
                         nth = _cbegin - _node->immut_diffs().cbegin();
-                        if (nth != 0) {
-                            mask = uint8ToChar(_node->immut_masks()[nth]);
+                        mask = uint8ToChar(_node->immut_masks()[nth]);
+                        if (mask != 0) {
                             _reveal_info->reveal(*_cbegin, mask, go_right);
                         } else {
                             _reveal_info->mut_src()->resize(1);
@@ -190,6 +190,8 @@ namespace LeviDB {
         };
 
         bool match(const USR & input) const override {
+            // would never use this to seek, only for prev
+            // so, it's fine to ignore BDT USR trailing
             return _meet_first || (_meet_first = *input.immut_src() <= _pattern);
         };
     };

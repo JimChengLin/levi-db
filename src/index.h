@@ -219,6 +219,9 @@ namespace LeviDB {
         std::tuple<size_t/* idx */, bool/* direct */, size_t/* size */>
         findBestMatch(const BDNode * node, const Slice & k) const noexcept;
 
+        std::tuple<size_t/* idx */, bool/* direct */, size_t/* size */>
+        findBestMatch(const BDNode * node, const Slice & k, USR * reveal_info) const noexcept;
+
         void combatInsert(const Slice & opponent, const Slice & k, OffsetToData v);
 
         void nodeInsert(BDNode * node, size_t replace_idx, bool replace_direct,

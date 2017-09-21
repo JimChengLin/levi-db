@@ -381,8 +381,27 @@ namespace LeviDB {
             };
 
             void seek(const Slice & target) override {
+                auto compatible = [](const Slice & key, const Slice & tar) noexcept {
+                    for (size_t i = 0; i < tar.size(); ++i) {
+                        char k = 0;
+                        char t = tar[i];
+                        if (i < key.size()) {
+                            k = key[i];
+                        } else if (i - key.size() < sizeof(uint32_t)) {
+                            uint32_t length = static_cast<uint32_t>(key.size());
+                            k = reinterpret_cast<const char *>(&length)[i - key.size()];
+                        }
+
+                        if ((k & t) == t) {
+                        } else {
+                            return false;
+                        }
+                    }
+                    return true;
+                };
+
                 seekToFirst();
-                while (valid() && SliceComparator{}(key(), target)) {
+                while (valid() && !compatible(key(), target)) {
                     next();
                 }
             };
@@ -400,6 +419,7 @@ namespace LeviDB {
             };
 
             Slice key() const override {
+                assert(valid());
                 const auto kv = *_cursor;
                 const auto k_from_to = kv.first;
                 ensureDataLoad(k_from_to.second);
@@ -407,6 +427,7 @@ namespace LeviDB {
             };
 
             std::string value() const override {
+                assert(valid());
                 const auto kv = *_cursor;
                 const auto v_from_to = kv.second;
                 ensureDataLoad(v_from_to.second);

@@ -2,6 +2,8 @@
 #include "log_reader.h"
 
 namespace LeviDB {
+    static constexpr uint32_t page_size_ = 4096;
+
     DBSingle::DBSingle(std::string name, Options options, SeqGenerator * seq_gen)
             : DB(std::move(name), options), _seq_gen(seq_gen) {
         std::string prefix = _name + '/';
@@ -73,8 +75,8 @@ namespace LeviDB {
 
         uint32_t pos = _writer->calcWritePos();
         std::vector<uint8_t> bin = LogWriter::makeRecord(key, value);
-        if (_index->immut_dst().immut_length() > UINT32_MAX - 4096/* BDT page size */
-            || pos + (bin.size() + LogWriterConst::header_size_) * 2 > UINT32_MAX) {
+        if (_index->immut_dst().immut_length() > UINT32_MAX - page_size_
+            || pos > UINT32_MAX - (bin.size() + LogWriterConst::header_size_) * 2) {
             return false;
         }
         _writer->addRecord({bin.data(), bin.size()});
@@ -93,7 +95,7 @@ namespace LeviDB {
                           const Slice & key) {
         RWLockWriteGuard write_guard(_rwlock);
 
-        if (_writer->calcWritePos() + (key.size() + LogWriterConst::header_size_) * 2 > UINT32_MAX) {
+        if (_writer->calcWritePos() > UINT32_MAX - (key.size() + LogWriterConst::header_size_) * 2) {
             return false;
         }
         std::vector<uint8_t> bin = LogWriter::makeRecord(key, {});
@@ -117,8 +119,8 @@ namespace LeviDB {
             uint32_t pos = _writer->calcWritePos();
             std::vector<uint8_t> bin = LogWriter::makeCompressRecord(kvs);
             if (bin.size() <= options.uncompress_size - options.uncompress_size / 8) { // worth
-                if (_index->immut_dst().immut_length() +
-                    (kvs.size() + IndexConst::rank_ - 1) / IndexConst::rank_ * 4096/* BDT page size */ * 3 > UINT32_MAX
+                if (_index->immut_dst().immut_length()
+                    > UINT32_MAX - (kvs.size() + IndexConst::rank_ - 1) / IndexConst::rank_ * page_size_ * 3
                     || pos + (bin.size() + LogWriterConst::header_size_) * 2 > UINT32_MAX) {
                     return false;
                 }
@@ -145,8 +147,8 @@ namespace LeviDB {
             bin_size += group.back().size();
         }
 
-        if (_index->immut_dst().immut_length() +
-            (kvs.size() + IndexConst::rank_ - 1) / IndexConst::rank_ * 4096/* BDT page size */ * 3 > UINT32_MAX
+        if (_index->immut_dst().immut_length()
+            > UINT32_MAX - (kvs.size() + IndexConst::rank_ - 1) / IndexConst::rank_ * page_size_ * 3
             || _writer->calcWritePos() + (bin_size + LogWriterConst::header_size_) * 2 > UINT32_MAX) {
             return false;
         }
@@ -225,8 +227,8 @@ namespace LeviDB {
 
         uint32_t pos = _writer->calcWritePos();
         std::vector<uint8_t> bin = LogWriter::makeRecord(key, {});
-        if (_index->immut_dst().immut_length() > UINT32_MAX - 4096/* BDT page size */
-            || pos + (bin.size() + LogWriterConst::header_size_) * 2 > UINT32_MAX) {
+        if (_index->immut_dst().immut_length() > UINT32_MAX - page_size_
+            || pos > UINT32_MAX - (bin.size() + LogWriterConst::header_size_) * 2) {
             return false;
         }
         _writer->addDelRecord({bin.data(), bin.size()});
@@ -286,15 +288,32 @@ namespace LeviDB {
                 options.error_if_exists = true;
                 DBSingle db(db_single_name + "_temp", options, &seq_gen);
 
+                WriteOptions write_opt{};
+                write_opt.compress = true;
+                std::map<std::string, std::string, SliceComparator> q;
+                std::vector<std::pair<Slice, Slice>> slice_q;
+
                 while (it->valid()) {
                     auto item = it->item();
                     if (item.second.back() == 1) { // del
-                        db.explicitRemove(WriteOptions{}, item.first);
+                        auto find_res = q.find(item.first);
+                        if (find_res != q.end()) { q.erase(find_res); }
                     } else {
                         item.second.pop_back();
-                        db.put(WriteOptions{}, item.first, item.second);
+                        write_opt.uncompress_size += item.first.size() + item.second.size();
+                        q.emplace(item.first.toString(), std::move(item.second));
                     }
                     it->next();
+                    if (write_opt.uncompress_size >= page_size_ || !it->valid()) {
+                        for (auto const & kv:q) {
+                            slice_q.emplace_back(kv.first, kv.second);
+                        }
+                        db.write(write_opt, slice_q);
+
+                        q.clear();
+                        slice_q.clear();
+                        write_opt.uncompress_size = 0;
+                    }
                 }
             }
             if (IOEnv::fileExists(db_single_name)) {

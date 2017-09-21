@@ -150,6 +150,44 @@ namespace LeviDB {
         }
     }
 
+    std::tuple<size_t/* idx */, bool/* direct */, size_t/* size */>
+    BitDegradeTree::findBestMatch(const BDNode * node, const Slice & k, USR * reveal_info) const noexcept {
+        const uint32_t * cbegin = node->immut_diffs().cbegin();
+        const uint32_t * cend;
+
+        size_t size = node->size();
+        if (size <= 1) {
+            reveal_info->mut_src()->resize(1);
+            reveal_info->mut_src()->front() = 0;
+            reveal_info->mut_extra().resize(1);
+            reveal_info->mut_extra().front() = 0;
+            return {0, false, size};
+        }
+        cend = &node->immut_diffs()[size - 1];
+
+        auto cmp = node->functor();
+        std::unique_ptr<Matcher> matcher = sliceToMatcher(k);
+        while (true) {
+            const uint32_t * min_it = std::min_element(cbegin, cend, cmp);
+            uint32_t diff_at = *min_it;
+
+            // left or right?
+            uint8_t crit_byte = matcher->size() > diff_at ? charToUint8((*matcher)[diff_at]) : static_cast<uint8_t>(0);
+            auto direct = static_cast<bool>
+            ((1 + (crit_byte | node->immut_masks()[min_it - node->immut_diffs().cbegin()])) >> 8);
+            if (!direct) { // left
+                cend = min_it;
+            } else { // right
+                cbegin = min_it + 1;
+            }
+            reveal_info->reveal(diff_at, node->immut_masks()[min_it - node->immut_diffs().cbegin()], direct);
+
+            if (cbegin == cend) {
+                return {min_it - node->immut_diffs().cbegin(), direct, size};
+            }
+        }
+    }
+
     void BitDegradeTree::combatInsert(const Slice & opponent, const Slice & k, OffsetToData v) {
         std::unique_ptr<Matcher> opponent_m = sliceToMatcher(opponent);
         std::unique_ptr<Matcher> k_m = sliceToMatcher(k);
@@ -455,11 +493,20 @@ namespace LeviDB {
         const BDNode * cursor = offToMemNode(_root);
 
         while (true) {
-            auto pos = findBestMatch(cursor, k);
+            auto pos = findBestMatch(cursor, k, &res);
             size_t idx;
             bool direct;
             std::tie(idx, direct, std::ignore) = pos;
-            res.reveal(cursor->immut_diffs()[idx], uint8ToChar(cursor->immut_masks()[idx]), direct);
+
+            char mask = uint8ToChar(cursor->immut_masks()[idx]);
+            if (mask != 0) {
+                res.reveal(cursor->immut_diffs()[idx], mask, direct);
+            } else {
+                res.mut_src()->resize(1);
+                res.mut_src()->front() = 0;
+                res.mut_extra().resize(1);
+                res.mut_extra().front() = 0;
+            }
 
             CritPtr ptr = cursor->immut_ptrs()[idx + static_cast<size_t>(direct)];
             if (ptr.isNode()) {

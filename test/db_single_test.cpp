@@ -176,7 +176,7 @@ void db_single_test() {
     // repair single db
     {
         LeviDB::repairDBSingle(db_name, [](const LeviDB::Exception & e) noexcept {
-            std::cout << e.toString() << std::endl;
+            std::cout << "RepairDBSingleTest: " << e.toString() << std::endl;
         });
 
         LeviDB::SeqGenerator seq_gen;
@@ -189,6 +189,7 @@ void db_single_test() {
             assert(it->key().toString() == std::to_string(i));
             it->next();
         }
+        assert(!db.canRelease());
     }
 
     std::cout << __FUNCTION__ << std::endl;

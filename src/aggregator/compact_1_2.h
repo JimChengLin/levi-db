@@ -66,6 +66,10 @@ namespace LeviDB {
 
         bool canRelease() const override;
 
+        Slice largestKey() const override;
+
+        Slice smallestKey() const override;
+
     private:
         // methods below are protected by mutex
         void reportIgnoredKey(const Slice & k) noexcept;
