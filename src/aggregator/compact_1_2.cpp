@@ -83,7 +83,10 @@ namespace LeviDB {
                     if (it->key() == end_at) { break; }
                 }
             }
-            target->put(WriteOptions{}, {}, {}); // sync
+            {
+                RWLockWriteGuard write_guard(target_lock);
+                target->put(WriteOptions{}, {}, {});
+            }
         } catch (const Exception & e) {
             e_ptr = std::current_exception();
             e_bool = true;
@@ -153,7 +156,8 @@ namespace LeviDB {
         }
         {
             RWLockWriteGuard write_guard(_a_lock);
-            if (!SliceComparator{}(_product_a->largestKey(), key) || (_compacting && !SliceComparator{}(_a_end, key))) {
+            if ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), key))
+                || (_compacting && !SliceComparator{}(_a_end, key))) {
                 if (!_product_a->put(options, key, value)) {
                     _product_a = std::make_unique<Compacting1To2DB>(std::move(_product_a), _seq_gen);
                     return _product_a->put(options, key, value);
@@ -181,7 +185,8 @@ namespace LeviDB {
         }
         {
             RWLockWriteGuard write_guard(_a_lock);
-            if (!SliceComparator{}(_product_a->largestKey(), key) || (_compacting && !SliceComparator{}(_a_end, key))) {
+            if ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), key))
+                || (_compacting && !SliceComparator{}(_a_end, key))) {
                 if (!_product_a->remove(options, key)) {
                     _product_a = std::make_unique<Compacting1To2DB>(std::move(_product_a), _seq_gen);
                     return _product_a->remove(options, key);
@@ -214,8 +219,9 @@ namespace LeviDB {
         const Slice & tail = kvs.back().first;
         {
             RWLockWriteGuard a_write_guard(_a_lock);
-            bool head_in_part_a = (!SliceComparator{}(_product_a->largestKey(), head)
-                                   || (_compacting && !SliceComparator{}(_a_end, head)));
+            bool head_in_part_a =
+                    ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), head))
+                     || (_compacting && !SliceComparator{}(_a_end, head)));
             if (head_in_part_a) {
                 if (!_product_a->write(options, kvs)) {
                     _product_a = std::make_unique<Compacting1To2DB>(std::move(_product_a), _seq_gen);
@@ -226,8 +232,9 @@ namespace LeviDB {
             }
 
             RWLockWriteGuard b_write_guard(_b_lock);
-            bool tail_in_part_b = (!SliceComparator{}(tail, _product_b->smallestKey())
-                                   || (_compacting && !SliceComparator{}(tail, _b_end)));
+            bool tail_in_part_b =
+                    ((_product_b->smallestKey().size() != 0 && !SliceComparator{}(tail, _product_b->smallestKey()))
+                     || (_compacting && !SliceComparator{}(tail, _b_end)));
             if (!tail_in_part_b) {
                 if (head_in_part_a) { // all in part a
                     return true;
@@ -252,7 +259,8 @@ namespace LeviDB {
             std::vector<std::pair<Slice, Slice>> tail_part;
             bool meet_first = false;
             for (const auto & kv:kvs) {
-                if (meet_first || (meet_first = (!SliceComparator{}(kv.first, _product_b->smallestKey())
+                if (meet_first || (meet_first = ((_product_b->smallestKey().size() != 0 &&
+                                                  !SliceComparator{}(kv.first, _product_b->smallestKey()))
                                                  || (_compacting && !SliceComparator{}(kv.first, _b_end))))) {
                     tail_part.emplace_back(kv.first, kv.second);
                 }
@@ -288,6 +296,7 @@ namespace LeviDB {
         }
         {
             RWLockReadGuard read_guard(_a_lock);
+            assert(_product_a->largestKey().size() != 0);
             if (!SliceComparator{}(_product_a->largestKey(), key)) {
                 return _product_a->get(options, key);
             }
@@ -351,14 +360,18 @@ namespace LeviDB {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
         RWLockReadGuard read_guard(_b_lock);
-        return std::max(_product_b->largestKey(), _resource->largestKey(), SliceComparator{});
+        if (_product_a->largestKey().size() != 0)
+            return std::max(_product_b->largestKey(), _resource->largestKey(), SliceComparator{});
+        return _resource->largestKey();
     };
 
     Slice Compacting1To2DB::smallestKey() const {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
         RWLockReadGuard read_guard(_a_lock);
-        return std::min(_product_a->smallestKey(), _resource->smallestKey(), SliceComparator{});
+        if (_product_a->smallestKey().size() != 0)
+            return std::min(_product_a->smallestKey(), _resource->smallestKey(), SliceComparator{});
+        return _resource->smallestKey();
     };
 
     void Compacting1To2DB::updateKeyRange() {
@@ -385,7 +398,8 @@ namespace LeviDB {
         }
         {
             RWLockWriteGuard write_guard(_a_lock);
-            if (!SliceComparator{}(_product_a->largestKey(), key) || (_compacting && !SliceComparator{}(_a_end, key))) {
+            if ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), key))
+                || (_compacting && !SliceComparator{}(_a_end, key))) {
                 if (!_product_a->explicitRemove(options, key)) {
                     _product_a = std::make_unique<Compacting1To2DB>(std::move(_product_a), _seq_gen);
                     return _product_a->explicitRemove(options, key);

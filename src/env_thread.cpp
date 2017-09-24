@@ -23,6 +23,11 @@ namespace LeviDB {
         }
     }
 
+    RWLockReadGuard & RWLockReadGuard::operator=(RWLockReadGuard && another) noexcept {
+        std::swap(_lock, another._lock);
+        return *this;
+    }
+
     RWLockReadGuard::~RWLockReadGuard() noexcept {
         if (_lock != nullptr) pthread_rwlock_unlock(_lock);
     }
@@ -31,6 +36,11 @@ namespace LeviDB {
         if (pthread_rwlock_wrlock(_lock) != 0) {
             throw Exception::corruptionException("wrlock fail");
         }
+    }
+
+    RWLockWriteGuard & RWLockWriteGuard::operator=(RWLockWriteGuard && another) noexcept {
+        std::swap(_lock, another._lock);
+        return *this;
     }
 
     RWLockWriteGuard::~RWLockWriteGuard() noexcept {
