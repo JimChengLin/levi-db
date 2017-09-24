@@ -36,12 +36,6 @@ namespace LeviDB {
 
     public:
         Compacting1To2DB(std::unique_ptr<DB> && resource, SeqGenerator * seq_gen);
-
-        Compacting1To2DB(std::unique_ptr<DB> && resource,
-                         std::unique_ptr<DB> && product_a,
-                         std::unique_ptr<DB> && product_b,
-                         SeqGenerator * seq_gen);
-
         DELETE_MOVE(Compacting1To2DB);
         DELETE_COPY(Compacting1To2DB);
 
@@ -95,6 +89,10 @@ namespace LeviDB {
         bool explicitRemove(const WriteOptions & options,
                             const Slice & key) override;
     };
+
+    typedef std::function<void(const Exception &)> reporter_t;
+
+    bool repairCompacting1To2DB(const std::string & db_name, reporter_t reporter) noexcept;
 }
 
 #endif //LEVIDB_ONE_TO_TWO_COMPACT_H

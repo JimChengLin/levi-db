@@ -327,7 +327,7 @@ namespace LeviDB {
                     } else {
                         item.second.pop_back();
                         write_opt.uncompress_size += item.first.size() + item.second.size();
-                        q.emplace(item.first.toString(), std::move(item.second));
+                        q[item.first.toString()] = std::move(item.second);
                     }
                     it->next();
                     if (write_opt.uncompress_size >= page_size_ || !it->valid()) {

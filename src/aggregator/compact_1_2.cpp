@@ -2,6 +2,7 @@
 #include <algorithm>
 #endif
 
+#include "../log_reader.h"
 #include "compact_1_2.h"
 
 namespace LeviDB {
@@ -93,9 +94,9 @@ namespace LeviDB {
             : _seq_gen(seq_gen),
               _resource(std::move(resource)),
               _product_a(std::make_unique<DBSingle>(_resource->immut_name() + "_a",
-                                                    _resource->immut_options(), seq_gen)),
+                                                    _resource->immut_options().createIfMissing(true), seq_gen)),
               _product_b(std::make_unique<DBSingle>(_resource->immut_name() + "_b",
-                                                    _resource->immut_options(), seq_gen)) {
+                                                    _resource->immut_options().createIfMissing(true), seq_gen)) {
         // total size
         auto it = _resource->makeIterator(std::make_unique<Snapshot>(UINT64_MAX));
         uint32_t size = 0;
@@ -400,5 +401,71 @@ namespace LeviDB {
             }
             return true;
         }
+    }
+
+    bool repairCompacting1To2DB(const std::string & db_name, reporter_t reporter) noexcept {
+        try {
+            std::string product_a_name = db_name + "_a";
+            std::string product_a_temp = product_a_name + "_temp";
+            IOEnv::renameFile(product_a_name, product_a_temp);
+
+            std::string product_b_name = db_name + "_b";
+            std::string product_b_temp = product_b_name + "_temp";
+            IOEnv::renameFile(product_b_name, product_b_temp);
+
+            SeqGenerator seq_gen;
+            Compacting1To2DB db(std::make_unique<DBSingle>(db_name, Options{}, &seq_gen), &seq_gen);
+
+            // moving values from product_a_temp and product_b_temp to db
+            for (const std::string * name:{&product_a_temp, &product_b_temp}) {
+                RandomAccessFile rf(*name + "/data");
+                auto it = LogReader::makeTableRecoveryIteratorKV(&rf, reporter);
+
+                WriteOptions write_opt{};
+                write_opt.compress = true;
+                std::map<std::string, std::string, SliceComparator> q;
+                std::vector<std::pair<Slice, Slice>> slice_q;
+
+                while (it->valid()) {
+                    auto item = it->item();
+                    if (item.second.back() == 1) { // del
+                        db.remove(WriteOptions{}, item.first);
+                        auto find_res = q.find(item.first);
+                        if (find_res != q.end()) { q.erase(find_res); }
+                    } else {
+                        item.second.pop_back();
+                        write_opt.uncompress_size += item.first.size() + item.second.size();
+                        q[item.first.toString()] = std::move(item.second);
+                    }
+                    it->next();
+
+                    if (write_opt.uncompress_size >= page_size_ || !it->valid()) {
+                        for (auto const & kv:q) {
+                            slice_q.emplace_back(kv.first, kv.second);
+                        }
+                        db.write(write_opt, slice_q);
+
+                        q.clear();
+                        slice_q.clear();
+                        write_opt.uncompress_size = 0;
+                    }
+                }
+            }
+
+            while (db.immut_compacting()) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            // delete temp dirs
+            for (const std::string * name:{&product_a_temp, &product_b_temp}) {
+                for (const std::string & child:LeviDB::IOEnv::getChildren(*name)) {
+                    LeviDB::IOEnv::deleteFile((*name + '/') += child);
+                }
+                LeviDB::IOEnv::deleteDir(*name);
+            }
+        } catch (const Exception & e) {
+            reporter(e);
+            return false;
+        }
+        return true;
     }
 }

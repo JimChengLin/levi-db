@@ -12,6 +12,12 @@ namespace LeviDB {
         bool create_if_missing = false;
         bool error_if_exists = false;
         bool compression = true;
+
+        Options createIfMissing(bool val) const noexcept {
+            Options res = *this;
+            res.create_if_missing = val;
+            return res;
+        }
     };
 
     struct ReadOptions {
