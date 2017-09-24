@@ -492,8 +492,7 @@ namespace LeviDB {
 
             RawIteratorBatchChecked & operator=(RawIteratorBatchChecked && rhs) noexcept {
                 long nth = rhs._cache_cursor == rhs._cache.cend() ? -1
-                                                                  : static_cast<long>(rhs._cache_cursor -
-                                                                                      rhs._cache.cbegin());
+                                                                  :rhs._cache_cursor - rhs._cache.cbegin();
                 std::swap(_raw_iter, rhs._raw_iter);
                 std::swap(_disk_offsets, rhs._disk_offsets);
                 std::swap(_cache, rhs._cache);

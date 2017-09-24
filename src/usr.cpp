@@ -1,5 +1,3 @@
-#include <climits>
-
 #include "usr.h"
 
 namespace LeviDB {

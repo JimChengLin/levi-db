@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <pthread.h>
 
 #ifndef __clang__
 #include <cstring>

@@ -562,8 +562,8 @@ namespace LeviDB {
 
         class imatch_iter_wrapper : public SimpleIterator<Result> {
         private:
-            std::vector<Result> * _product;
-            SimpleIterator<Result> * _producer;
+            std::vector<Result> * _product{};
+            SimpleIterator<Result> * _producer{};
             int i = -1;
 
         public:
