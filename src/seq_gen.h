@@ -60,12 +60,18 @@ namespace LeviDB {
 
         std::unique_ptr<Snapshot> makeSnapshot() noexcept;
 
-        bool empty() const noexcept { return _dummy_head._next == &_dummy_head; }
+        bool empty() const noexcept;
 
         uint64_t oldest() const noexcept;
 
         uint64_t newest() const noexcept;
     };
+
+    // dirty hack, 让 SeqGenerator 暂时变为 empty
+    void stashCurrSeqGen() noexcept;
+
+    // 恢复 SeqGenerator
+    void stashPopCurrSeqGen() noexcept;
 }
 
 #endif //LEVIDB_SEQ_GEN_H

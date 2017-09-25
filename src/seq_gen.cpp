@@ -3,6 +3,8 @@
 #include "seq_gen.h"
 
 namespace LeviDB {
+    thread_local static bool fraud = false;
+
     Snapshot::Snapshot(uint64_t seq_num, Snapshot * dummy_head) noexcept: _seq_num(seq_num) {
         _next = dummy_head;
         _prev = dummy_head->_prev;
@@ -19,6 +21,10 @@ namespace LeviDB {
         return std::make_unique<Snapshot>(uniqueSeqAtomic(), &_dummy_head);
     }
 
+    bool SeqGenerator::empty() const noexcept {
+        return fraud || _dummy_head._next == &_dummy_head;
+    }
+
     uint64_t SeqGenerator::oldest() const noexcept {
         assert(!empty());
         return _dummy_head._next->immut_seq_num();
@@ -28,4 +34,8 @@ namespace LeviDB {
         assert(!empty());
         return _dummy_head._prev->immut_seq_num();
     }
+
+    void stashCurrSeqGen() noexcept { fraud = true; };
+
+    void stashPopCurrSeqGen() noexcept { fraud = false; };
 }
