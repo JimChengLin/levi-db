@@ -223,13 +223,13 @@ namespace LeviDB {
 
     std::unique_ptr<Iterator<Slice, OffsetToData>>
     IndexMVCC::pendingPart(uint64_t seq_num) const noexcept {
-        auto iter = new MultiHistoryIterator;
+        auto iter = std::make_unique<MultiHistoryIterator>();
         for (const bundle & b:_pending) {
             if (b.first < seq_num) {
                 iter->addHistory(b.second);
             }
         }
-        return std::unique_ptr<Iterator<Slice, OffsetToData>>(iter);
+        return std::unique_ptr<Iterator<Slice, OffsetToData>>(std::move(iter));
     }
 
     void IndexMVCC::tryApplyPending() {

@@ -213,7 +213,7 @@ namespace LeviDB {
 
     private:
         void findSmallest() {
-            static_assert(SMALL_FIRST, "wrong direction");
+            assert(SMALL_FIRST);
             size_t smallest_at = 0;
             for (size_t i = 1; i < _cache.size(); ++i) {
                 if (_cache[i].valid() &&
@@ -225,7 +225,7 @@ namespace LeviDB {
         }
 
         void findLargest() {
-            static_assert(!SMALL_FIRST, "wrong direction");
+            assert(!SMALL_FIRST);
             size_t largest_at = 0;
             for (size_t i = 1; i < _cache.size(); ++i) {
                 if (_cache[i].valid() &&
