@@ -36,6 +36,8 @@ void env_io_test();
 
 void compact_1_2_test();
 
+void compact_1_2_iter_test();
+
 int main() {
     try {
         index_test();
@@ -50,6 +52,7 @@ int main() {
         misc_test();
         env_io_test();
         compact_1_2_test();
+        compact_1_2_iter_test();
 #ifdef LEVI_BENCH
         kv_write_bench();
         kv_read_bench();

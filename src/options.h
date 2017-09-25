@@ -18,6 +18,12 @@ namespace LeviDB {
             res.create_if_missing = val;
             return res;
         }
+
+        Options errorIfExists(bool val) const noexcept {
+            Options res = *this;
+            res.error_if_exists = val;
+            return res;
+        }
     };
 
     struct ReadOptions {

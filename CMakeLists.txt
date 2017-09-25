@@ -3,7 +3,7 @@ project(LeviDB)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_compile_options(-msse4.2 -pthread)
+add_compile_options(-msse4.2)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
@@ -22,7 +22,7 @@ set(SOURCE_FILES main.cpp
         src/aggregator/aggregator.cpp src/aggregator/aggregator.h
         src/aggregator/compact.h
         src/aggregator/compact_1_2.cpp src/aggregator/compact_1_2.h
-        src/aggregator/compact_2_1.cpp src/aggregator/compact_2_1.h
+        src/aggregator/compact_2_1.cpp src/aggregator/compact_2_1.h src/aggregator/compact_1_2_.cpp
         src/compress.h src/compress.cpp
         src/crc32c.cpp src/crc32c.h
         src/db.cpp src/db.h
@@ -59,7 +59,8 @@ set(SOURCE_FILES main.cpp
         test/log_test.cpp
         test/misc_test.cpp
         test/regex_test.cpp
-        test/compact_1_2_test.cpp)
+        test/compact_1_2_test.cpp
+        test/compact_1_2_iter_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
 

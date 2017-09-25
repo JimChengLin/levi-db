@@ -29,8 +29,8 @@ namespace LeviDB {
                         if (ignore.find(it->key()) != ignore.end()) {
                         } else {
                             // coverity[double_lock]
-                            RWLockWriteGuard write_guard(target_lock);
                             stashCurrSeqGen();
+                            RWLockWriteGuard write_guard(target_lock);
                             if (!target->put(options, it->key(), it->value())) {
                                 target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);
                                 target->put(options, it->key(), it->value());
@@ -70,8 +70,8 @@ namespace LeviDB {
                                                          }), slice_q.end());
                             if (!slice_q.empty()) {
                                 // coverity[double_lock]
-                                RWLockWriteGuard write_guard(target_lock);
                                 stashCurrSeqGen();
+                                RWLockWriteGuard write_guard(target_lock);
                                 if (!target->write(options, slice_q)) {
                                     target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);
                                     target->write(options, slice_q);
@@ -101,9 +101,11 @@ namespace LeviDB {
             : _seq_gen(seq_gen),
               _resource(std::move(resource)),
               _product_a(std::make_unique<DBSingle>(_resource->immut_name() + "_a",
-                                                    _resource->immut_options().createIfMissing(true), seq_gen)),
+                                                    _resource->immut_options()
+                                                            .createIfMissing(true).errorIfExists(true), seq_gen)),
               _product_b(std::make_unique<DBSingle>(_resource->immut_name() + "_b",
-                                                    _resource->immut_options().createIfMissing(true), seq_gen)) {
+                                                    _resource->immut_options()
+                                                            .createIfMissing(true).errorIfExists(true), seq_gen)) {
         // total size
         auto it = _resource->makeIterator(std::make_unique<Snapshot>(UINT64_MAX));
         uint32_t size = 0;
@@ -132,6 +134,7 @@ namespace LeviDB {
                 } catch (const Exception & e) {}
             }
         });
+        front_task.detach();
         std::thread back_task(
                 [iter = _resource->makeIterator(std::make_unique<Snapshot>(UINT64_MAX)), this]() noexcept {
                     Task<false>(iter.get(), _product_b, _b_end, _e_b, _e_b_bool, _ignore, _rw_lock, _b_lock, _seq_gen);
@@ -144,10 +147,10 @@ namespace LeviDB {
                         } catch (const Exception & e) {}
                     }
                 });
-        front_task.detach();
         back_task.detach();
     }
 
+    // coverity[exn_spec_violation]
     Compacting1To2DB::~Compacting1To2DB() noexcept { assert(canRelease()); }
 
     bool Compacting1To2DB::put(const WriteOptions & options, const Slice & key, const Slice & value) {
@@ -286,7 +289,7 @@ namespace LeviDB {
 
         if (_compacting) {
             RWLockReadGuard read_guard(_rw_lock);
-            if (_ignore.find(key) == _ignore.end()) {
+            if (_compacting && _ignore.find(key) == _ignore.end()) { // double check
                 return _resource->get(options, key);
             }
         }
@@ -310,26 +313,6 @@ namespace LeviDB {
         return _seq_gen->makeSnapshot();
     }
 
-    std::unique_ptr<Iterator<Slice, std::string>>
-    Compacting1To2DB::makeIterator(std::unique_ptr<Snapshot> && snapshot) const {
-        if (_e_a_bool) { std::rethrow_exception(_e_a); }
-        if (_e_b_bool) { std::rethrow_exception(_e_b); }
-    };
-
-    std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
-    Compacting1To2DB::makeRegexIterator(std::shared_ptr<Regex::R> regex,
-                                        std::unique_ptr<Snapshot> && snapshot) const {
-        if (_e_a_bool) { std::rethrow_exception(_e_a); }
-        if (_e_b_bool) { std::rethrow_exception(_e_b); }
-    };
-
-    std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
-    Compacting1To2DB::makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
-                                                std::unique_ptr<Snapshot> && snapshot) const {
-        if (_e_a_bool) { std::rethrow_exception(_e_a); }
-        if (_e_b_bool) { std::rethrow_exception(_e_b); }
-    };
-
     void Compacting1To2DB::tryApplyPending() {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
@@ -347,9 +330,22 @@ namespace LeviDB {
     bool Compacting1To2DB::canRelease() const {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
-        RWLockReadGuard a_read_guard(_a_lock);
-        RWLockReadGuard b_read_guard(_b_lock);
-        return !_compacting && _resource->canRelease() && _product_a->canRelease() && _product_b->canRelease();
+        if (_compacting || !_resource->canRelease()) {
+            return false;
+        }
+        {
+            RWLockReadGuard a_read_guard(_a_lock);
+            if (!_product_a->canRelease()) {
+                return false;
+            }
+        }
+        {
+            RWLockReadGuard b_read_guard(_b_lock);
+            if (!_product_b->canRelease()) {
+                return false;
+            }
+        }
+        return true;
     };
 
     Slice Compacting1To2DB::largestKey() const {
