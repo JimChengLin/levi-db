@@ -26,6 +26,10 @@ void compact_1_2_test() {
     {
         // 分裂
         LeviDB::Compacting1To2DB compact_db(std::move(db), &seq_gen);
+        {
+            auto snapshot = seq_gen.makeSnapshot();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
         assert(compact_db.get(LeviDB::ReadOptions{}, "1").first == "1");
         for (int i = 0; i < 100; i += 2) {
             compact_db.put(LeviDB::WriteOptions{}, std::to_string(i), "#");

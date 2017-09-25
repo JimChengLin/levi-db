@@ -30,10 +30,12 @@ namespace LeviDB {
                         } else {
                             // coverity[double_lock]
                             RWLockWriteGuard write_guard(target_lock);
+                            stashCurrSeqGen();
                             if (!target->put(options, it->key(), it->value())) {
                                 target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);
                                 target->put(options, it->key(), it->value());
                             };
+                            stashPopCurrSeqGen();
                         }
                     }
                     if (it->key() == end_at) { break; }
@@ -69,10 +71,12 @@ namespace LeviDB {
                             if (!slice_q.empty()) {
                                 // coverity[double_lock]
                                 RWLockWriteGuard write_guard(target_lock);
+                                stashCurrSeqGen();
                                 if (!target->write(options, slice_q)) {
                                     target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);
                                     target->write(options, slice_q);
                                 };
+                                stashPopCurrSeqGen();
                             }
                         }
 
