@@ -17,8 +17,8 @@ void compact_1_2_test() {
     LeviDB::SeqGenerator seq_gen;
     LeviDB::Options options{};
     options.create_if_missing = true;
+    options.compression = false;
     auto db = std::make_unique<LeviDB::DBSingle>(db_name, options, &seq_gen);
-
     for (int i = 0; i < 100; ++i) {
         db->put(LeviDB::WriteOptions{}, std::to_string(i), std::to_string(i));
     }
@@ -26,6 +26,7 @@ void compact_1_2_test() {
     {
         // 分裂
         LeviDB::Compacting1To2DB compact_db(std::move(db), &seq_gen);
+        assert(compact_db.get(LeviDB::ReadOptions{}, "1").first == "1");
         for (int i = 0; i < 100; i += 2) {
             compact_db.put(LeviDB::WriteOptions{}, std::to_string(i), "#");
         }
@@ -36,6 +37,11 @@ void compact_1_2_test() {
         while (compact_db.immut_compacting()) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
+        assert(compact_db.canRelease());
+        compact_db.tryApplyPending();
+        compact_db.updateKeyRange();
+        assert(compact_db.largestKey() == "97");
+        assert(compact_db.smallestKey() == "10");
 
         // 确认数据
         const auto & db_a = compact_db.immut_product_a();

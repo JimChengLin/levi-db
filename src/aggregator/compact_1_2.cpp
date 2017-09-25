@@ -235,19 +235,11 @@ namespace LeviDB {
             bool tail_in_part_b =
                     ((_product_b->smallestKey().size() != 0 && !SliceComparator{}(tail, _product_b->smallestKey()))
                      || (_compacting && !SliceComparator{}(tail, _b_end)));
-            if (!tail_in_part_b) {
-                if (head_in_part_a) { // all in part a
-                    return true;
-                }
-                // kvs are in the middle
-                if (!_product_b->write(options, kvs)) {
-                    _product_b = std::make_unique<Compacting1To2DB>(std::move(_product_b), _seq_gen);
-                    return _product_b->write(options, kvs);
-                };
+            if (!tail_in_part_b && head_in_part_a) { // all in part a
                 return true;
             }
 
-            if (!head_in_part_a) { // all in part b
+            if (!head_in_part_a) { // kvs are in the middle / all in part b
                 if (!_product_b->write(options, kvs)) {
                     _product_b = std::make_unique<Compacting1To2DB>(std::move(_product_b), _seq_gen);
                     return _product_b->write(options, kvs);
@@ -360,8 +352,12 @@ namespace LeviDB {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
         RWLockReadGuard read_guard(_b_lock);
-        if (_product_a->largestKey().size() != 0)
+        if (_product_b->largestKey().size() != 0) {
+            if (!_compacting) {
+                return _product_b->largestKey();
+            }
             return std::max(_product_b->largestKey(), _resource->largestKey(), SliceComparator{});
+        }
         return _resource->largestKey();
     };
 
@@ -369,8 +365,12 @@ namespace LeviDB {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
         RWLockReadGuard read_guard(_a_lock);
-        if (_product_a->smallestKey().size() != 0)
+        if (_product_a->smallestKey().size() != 0) {
+            if (!_compacting) {
+                return _product_a->smallestKey();
+            }
             return std::min(_product_a->smallestKey(), _resource->smallestKey(), SliceComparator{});
+        }
         return _resource->smallestKey();
     };
 
