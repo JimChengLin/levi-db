@@ -37,7 +37,6 @@ namespace LeviDB {
     public:
         virtual ~DB() noexcept = default;
 
-        // key.empty() == sync
         // returning false means the DB is too full to insert data
         virtual bool put(const WriteOptions & options,
                          const Slice & key,

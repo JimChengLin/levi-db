@@ -1,4 +1,5 @@
 #include "compact_1_2.h"
+#include <iostream>
 
 namespace LeviDB {
     class Compacting1To2Iterator : public Iterator<Slice, std::string> {
@@ -9,8 +10,7 @@ namespace LeviDB {
         const DB * _product_b;
         const std::atomic<bool> * _compacting;
         const std::set<std::string, SliceComparator> * _ignore;
-        const ReadWriteLock * _rd_only_lock;
-        std::set<std::string, SliceComparator>::const_iterator _ignore_cursor;
+        const ReadWriteLock * _ignore_lock;
         std::unique_ptr<Iterator<Slice, std::string>> _resource_iter;
 
         // mode 2
@@ -18,7 +18,6 @@ namespace LeviDB {
         std::unique_ptr<Iterator<Slice, std::string>> _b_iter;
 
         std::string _key_;
-        std::string _value_;
         Slice _key;
 
         enum Position {
@@ -28,7 +27,7 @@ namespace LeviDB {
             AT_B,
             AT_NONE,
         };
-        Position _current_at = AT_NONE;
+        mutable Position _current_at = AT_NONE;
 
         enum IterMode {
             MODE_1,
@@ -56,8 +55,13 @@ namespace LeviDB {
                   _product_b(product_b),
                   _compacting(compacting),
                   _ignore(ignore),
-                  _rd_only_lock(ignore_lock),
-                  _resource_iter(std::move(resource_iter)) {}
+                  _ignore_lock(ignore_lock),
+                  _resource_iter(std::move(resource_iter)) {
+
+//            for (auto begin = (*_ignore).cbegin(); begin != (*_ignore).cend(); ++begin) {
+//                printf("ignore %s\n", (*begin).c_str());
+//            }
+        }
 
         DELETE_MOVE(Compacting1To2Iterator);
         DELETE_COPY(Compacting1To2Iterator);
@@ -72,13 +76,13 @@ namespace LeviDB {
         void seekToFirst() override {
             _direction = FORWARD;
 
-            if (*_compacting) {
+            if (true) {
                 _mode = MODE_1;
 
                 _resource_iter->seekToFirst();
-                RWLockReadGuard read_guard(*_rd_only_lock);
-                if (*_compacting) {
-                    _ignore_cursor = _ignore->cbegin();
+                RWLockReadGuard read_guard(*_ignore_lock);
+                if (true) {
+                    _key_ = _ignore->cbegin() != _ignore->cend() ? *_ignore->cbegin() : "";
                     findSmallest();
                     return;
                 }
@@ -98,9 +102,9 @@ namespace LeviDB {
                 _mode = MODE_1;
 
                 _resource_iter->seekToLast();
-                RWLockReadGuard read_guard(*_rd_only_lock);
+                RWLockReadGuard read_guard(*_ignore_lock);
                 if (*_compacting) {
-                    _ignore_cursor = (_ignore->cbegin() == _ignore->cend() ? _ignore->cend() : --_ignore->cend());
+                    _key_ = _ignore->cbegin() != _ignore->cend() ? *(--_ignore->cend()) : "";
                     findLargest();
                     return;
                 }
@@ -120,9 +124,10 @@ namespace LeviDB {
                 _mode = MODE_1;
 
                 _resource_iter->seek(target);
-                RWLockReadGuard read_guard(*_rd_only_lock);
+                RWLockReadGuard read_guard(*_ignore_lock);
                 if (*_compacting) {
-                    _ignore_cursor = _ignore->lower_bound(target);
+                    auto res = _ignore->lower_bound(target);
+                    _key_ = res != _ignore->cend() ? *res : "";
                     findSmallest();
                     return;
                 }
@@ -147,54 +152,22 @@ namespace LeviDB {
 
         void next() override {
             assert(valid());
-
-            if (_mode == MODE_2) {
-                if (_direction != FORWARD) {
-                    if (_current_at == AT_A) {
-                        _b_iter->seekToFirst();
-                    } else {
-                        assert(_current_at == AT_B);
-                    }
-                    _direction = FORWARD;
-                }
-
-                if (_current_at == AT_A) {
-                    _a_iter->next();
-                    if (_a_iter->valid()) {
-                        _key = _a_iter->key();
-                    } else {
-                        if (_b_iter->valid()) {
-                            _current_at = AT_B;
-                            _key = _b_iter->key();
-                        } else {
-                            _current_at = AT_NONE;
-                        }
-                    }
-                } else {
-                    assert(_current_at == AT_B);
-                    _b_iter->next();
-                    if (_b_iter->valid()) {
-                        _key = _b_iter->key();
-                    } else {
-                        _current_at = AT_NONE;
-                    }
-                }
-                return;
-            }
-
             assert(_mode == MODE_1);
-            if (!*_compacting) {
-                seek(_key);
-                return next();
-            }
-            RWLockReadGuard read_guard(*_rd_only_lock);
-            if (!*_compacting) {
-                seek(_key);
-                return next();
-            }
+//            if (!*_compacting) {
+//                seek(_key);
+//                return next();
+//            }
+            RWLockReadGuard read_guard(*_ignore_lock);
+//            if (!*_compacting) {
+//                seek(_key);
+//                return next();
+//            }
 
             if (_current_at == AT_IGNORE) {
-                ++_ignore_cursor;
+                if (!_key_.empty()) {
+                    auto res = _ignore->upper_bound(_key_);
+                    _key_ = res != _ignore->cend() ? *res : "";
+                }
             } else {
                 assert(_current_at == AT_RESOURCE);
                 _resource_iter->next();
@@ -243,17 +216,21 @@ namespace LeviDB {
                 seek(_key);
                 return prev();
             }
-            RWLockReadGuard read_guard(*_rd_only_lock);
+            RWLockReadGuard read_guard(*_ignore_lock);
             if (!*_compacting) {
                 seek(_key);
                 return prev();
             }
 
             if (_current_at == AT_IGNORE) {
-                if (_ignore_cursor == _ignore->cbegin()) {
-                    _ignore_cursor = _ignore->cend();
-                } else {
-                    --_ignore_cursor;
+                if (!_key_.empty()) {
+                    auto res = _ignore->lower_bound(_key_);
+                    if (res != _ignore->cbegin()) {
+                        --res;
+                    } else {
+                        res = _ignore->cend();
+                    }
+                    _key_ = res != _ignore->cend() ? *res : "";
                 }
             } else {
                 assert(_current_at == AT_RESOURCE);
@@ -270,10 +247,27 @@ namespace LeviDB {
         std::string value() const override {
             assert(valid());
             switch (_current_at) {
-                case AT_IGNORE:
-                    return _value_;
+                case AT_IGNORE: {
+//                    printf("key %s at Ignore", key().toString().c_str());
+                    ReadOptions options;
+                    options.sequence_number = _seq_num;
+                    auto a_res = _product_a->get(options, _key_);
+                    if (a_res.second) {
+                        return a_res.first;
+                    } else {
+                        auto b_res = _product_b->get(options, _key_);
+                        assert(b_res.second);
+                        return b_res.first;
+                    }
+                }
 
                 case AT_RESOURCE:
+//                    if (_ignore->find(key()) == _ignore->cend()) {
+//                        _current_at = AT_IGNORE;
+//                        return value();
+//                    }
+//                    assert(_ignore->find(key()) == _ignore->cend());
+
                     return _resource_iter->value();
 
                 case AT_A:
@@ -290,114 +284,69 @@ namespace LeviDB {
     private:
         void findSmallest() {
             assert(_mode == MODE_1);
-            if (_ignore_cursor == _ignore->cbegin() && !_resource_iter->valid()) {
+            if (_key_.empty() && !_resource_iter->valid()) {
                 _current_at = AT_NONE;
                 return;
             }
-            if (_ignore_cursor != _ignore->cbegin()) {
+            if (!_key_.empty()) {
                 ReadOptions options{};
                 options.sequence_number = _seq_num;
-                auto a_res = _product_a->get(options, *_ignore_cursor);
+                auto a_res = _product_a->get(options, _key_);
                 if (a_res.second) {
-                    _value_ = std::move(a_res.first);
                 } else {
-                    auto b_res = _product_b->get(options, *_ignore_cursor);
+                    auto b_res = _product_b->get(options, _key_);
                     if (b_res.second) {
-                        _value_ = std::move(b_res.first);
                     } else {
-                        ++_ignore_cursor;
+//                        printf("cannot find %s\n", _key_.c_str());
+                        auto res = _ignore->upper_bound(_key_);
+                        if (res != _ignore->cend()) {
+                            _key_ = *res;
+                        } else {
+                            _key_.clear();
+                        }
                         return findSmallest();
                     }
                 }
             }
-            if (_ignore_cursor == _ignore->cbegin()) {
+            if (_key_.empty()) {
                 _current_at = AT_RESOURCE;
                 _key = _resource_iter->key();
                 return;
             }
             if (!_resource_iter->valid()) {
                 _current_at = AT_IGNORE;
-                _key_ = *_ignore_cursor;
                 _key = _key_;
                 return;
             }
-            if (_resource_iter->key() == *_ignore_cursor) {
+            if (_resource_iter->key() == _key_) {
                 _resource_iter->next();
-                return findSmallest();
+                _current_at = AT_IGNORE;
+                _key = _key_;
+                return;
             }
 
-            if (SliceComparator{}(_resource_iter->key(), *_ignore_cursor)) {
+            if (SliceComparator{}(_resource_iter->key(), _key_)) {
                 _current_at = AT_RESOURCE;
                 _key = _resource_iter->key();
             } else {
-                assert(_resource_iter->key() != *_ignore_cursor);
+                assert(_resource_iter->key() != _key_);
                 _current_at = AT_IGNORE;
-                _key_ = *_ignore_cursor;
                 _key = _key_;
             }
         }
 
         void findLargest() {
-            assert(_mode == MODE_1);
-            if (_ignore_cursor == _ignore->cbegin() && !_resource_iter->valid()) {
-                _current_at = AT_NONE;
-                return;
-            }
-            if (_ignore_cursor != _ignore->cbegin()) {
-                ReadOptions options{};
-                options.sequence_number = _seq_num;
-                auto a_res = _product_a->get(options, *_ignore_cursor);
-                if (a_res.second) {
-                    _value_ = std::move(a_res.first);
-                } else {
-                    auto b_res = _product_b->get(options, *_ignore_cursor);
-                    if (b_res.second) {
-                        _value_ = std::move(b_res.first);
-                    } else {
-                        if (_ignore_cursor == _ignore->cbegin()) {
-                            _ignore_cursor = _ignore->cend();
-                        } else {
-                            --_ignore_cursor;
-                        }
-                        return findLargest();
-                    }
-                }
-            }
-            if (_ignore_cursor == _ignore->cbegin()) {
-                _current_at = AT_RESOURCE;
-                _key = _resource_iter->key();
-                return;
-            }
-            if (!_resource_iter->valid()) {
-                _current_at = AT_IGNORE;
-                _key_ = *_ignore_cursor;
-                _key = _key_;
-                return;
-            }
-            if (_resource_iter->key() == *_ignore_cursor) {
-                _resource_iter->prev();
-                return findLargest();
-            }
-
-            if (SliceComparator{}(_resource_iter->key(), *_ignore_cursor)) {
-                _current_at = AT_IGNORE;
-                _key_ = *_ignore_cursor;
-                _key = _key_;
-            } else {
-                assert(_resource_iter->key() != *_ignore_cursor);
-                _current_at = AT_RESOURCE;
-                _key = _resource_iter->key();
-            }
         }
 
         void switchToMode2() {
-            assert(!*_compacting);
-            _mode = MODE_2;
-            if (_a_iter == nullptr) {
-                assert(_b_iter == nullptr);
-                _a_iter = _product_a->makeIterator(std::make_unique<Snapshot>(_seq_num));
-                _b_iter = _product_b->makeIterator(std::make_unique<Snapshot>(_seq_num));
-            }
+            assert(false);
+//            assert(!*_compacting);
+//            _mode = MODE_2;
+//            if (_a_iter == nullptr) {
+//                assert(_b_iter == nullptr);
+//                _a_iter = _product_a->makeIterator(std::make_unique<Snapshot>(_seq_num));
+//                _b_iter = _product_b->makeIterator(std::make_unique<Snapshot>(_seq_num));
+//            }
         }
     };
 
@@ -405,6 +354,8 @@ namespace LeviDB {
     Compacting1To2DB::makeIterator(std::unique_ptr<Snapshot> && snapshot) const {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
+        RWLockReadGuard a(_a_lock);
+        RWLockReadGuard b(_b_lock);
         uint64_t seq_num = snapshot->immut_seq_num();
         return std::make_unique<Compacting1To2Iterator>(_resource->makeIterator(std::move(snapshot)),
                                                         &_ignore,

@@ -177,8 +177,6 @@ namespace LeviDB {
 
     std::unique_ptr<Snapshot>
     DBSingle::makeSnapshot() {
-        RWLockWriteGuard write_guard(_rwlock);
-        _index->tryApplyPending();
         return _seq_gen->makeSnapshot();
     };
 

@@ -21,20 +21,24 @@ namespace LeviDB {
     }
 
     std::unique_ptr<Snapshot> SeqGenerator::makeSnapshot() noexcept {
+        std::lock_guard<std::mutex> guard(_lock);
         return std::make_unique<Snapshot>(uniqueSeqAtomic(), &_dummy_head);
     }
 
     bool SeqGenerator::empty() const noexcept {
+        std::lock_guard<std::mutex> guard(_lock);
         return _dummy_head._next == &_dummy_head;
     }
 
     uint64_t SeqGenerator::oldest() const noexcept {
         assert(!empty());
+        std::lock_guard<std::mutex> guard(_lock);
         return _dummy_head._next->immut_seq_num();
     }
 
     uint64_t SeqGenerator::newest() const noexcept {
         assert(!empty());
+        std::lock_guard<std::mutex> guard(_lock);
         return _dummy_head._prev->immut_seq_num();
     }
 

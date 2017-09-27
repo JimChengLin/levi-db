@@ -19,6 +19,7 @@ namespace LeviDB {
         if (counterpart->valid() && counterpart->key() == k) {
             offset = counterpart->value().val == IndexConst::del_marker_ ? OffsetToData{IndexConst::disk_null_}
                                                                          : counterpart->value();
+//            printf("key %s, BBat %d \n", k.toString().c_str(), seq_num);
         } else { // 再查 mmap
             offset = BitDegradeTree::find(k);
         }
@@ -27,8 +28,10 @@ namespace LeviDB {
 
     void IndexMVCC::insert(const Slice & k, OffsetToData v) {
         if (_seq_gen->empty() || isFraudMode()) { // 没有快照
+//            printf("%d %d,key %s, Aat %d \n", _seq_gen->empty(), isFraudMode(), k.toString().c_str(), v.val);
             BitDegradeTree::insert(k, v);
         } else {
+//            printf("key %s, Bat %d \n", k.toString().c_str(), v.val);
             if (!_pending.empty() && _seq_gen->newest() == _pending.back().first) { // 已有相应 bundle
             } else {
                 assert(_pending.empty() || _seq_gen->newest() > _pending.back().first);

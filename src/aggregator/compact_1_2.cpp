@@ -89,7 +89,7 @@ namespace LeviDB {
             }
             {
                 RWLockWriteGuard write_guard(target_lock);
-                target->put(WriteOptions{}, {}, {});
+                target->sync();
             }
         } catch (const Exception & e) {
             e_ptr = std::current_exception();
@@ -128,10 +128,6 @@ namespace LeviDB {
             _a_end_meet = true;
             if (_b_end_meet) {
                 _compacting = false;
-                try {
-                    RWLockWriteGuard write_guard(_rw_lock);
-                    _ignore.clear();
-                } catch (const Exception & e) {}
             }
         });
         front_task.detach();
@@ -141,10 +137,6 @@ namespace LeviDB {
                     _b_end_meet = true;
                     if (_a_end_meet) {
                         _compacting = false;
-                        try {
-                            RWLockWriteGuard write_guard(_rw_lock);
-                            _ignore.clear();
-                        } catch (const Exception & e) {}
                     }
                 });
         back_task.detach();
@@ -157,10 +149,11 @@ namespace LeviDB {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
 
-        if (_compacting) {
-            RWLockWriteGuard write_guard(_rw_lock);
+        RWLockWriteGuard ignore_guard;
+//        if (_compacting) {
+            ignore_guard = RWLockWriteGuard(_rw_lock);
             _ignore.emplace(key.toString());
-        }
+//        }
         {
             RWLockWriteGuard write_guard(_a_lock);
             if ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), key))
@@ -186,10 +179,11 @@ namespace LeviDB {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
 
-        if (_compacting) {
-            RWLockWriteGuard write_guard(_rw_lock);
+        RWLockWriteGuard ignore_guard;
+//        if (_compacting) {
+            ignore_guard = RWLockWriteGuard(_rw_lock);
             _ignore.emplace(key.toString());
-        }
+//        }
         {
             RWLockWriteGuard write_guard(_a_lock);
             if ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), key))
@@ -215,12 +209,13 @@ namespace LeviDB {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
 
-        if (_compacting) {
-            RWLockWriteGuard write_guard(_rw_lock);
+        RWLockWriteGuard ignore_guard;
+//        if (_compacting) {
+            ignore_guard = RWLockWriteGuard(_rw_lock);
             for (const auto & kv:kvs) {
                 _ignore.emplace(kv.first.toString());
             }
-        }
+//        }
 
         const Slice & head = kvs.front().first;
         const Slice & tail = kvs.back().first;
@@ -392,10 +387,11 @@ namespace LeviDB {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
 
-        if (_compacting) {
-            RWLockWriteGuard write_guard(_rw_lock);
+        RWLockWriteGuard ignore_guard;
+//        if (_compacting) {
+            ignore_guard = RWLockWriteGuard(_rw_lock);
             _ignore.emplace(key.toString());
-        }
+//        }
         {
             RWLockWriteGuard write_guard(_a_lock);
             if ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), key))
@@ -414,6 +410,19 @@ namespace LeviDB {
                 return _product_b->explicitRemove(options, key);
             }
             return true;
+        }
+    }
+
+    void Compacting1To2DB::sync() {
+        if (_e_a_bool) { std::rethrow_exception(_e_a); }
+        if (_e_b_bool) { std::rethrow_exception(_e_b); }
+        {
+            RWLockWriteGuard write_guard(_a_lock);
+            _product_a->sync();
+        }
+        {
+            RWLockWriteGuard write_guard(_b_lock);
+            _product_b->sync();
         }
     }
 
