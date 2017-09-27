@@ -22,6 +22,8 @@ void compact_1_2_iter_test() {
         db->put(LeviDB::WriteOptions{}, std::to_string(i), std::to_string(i));
     }
     LeviDB::Compacting1To2DB compact_db(std::move(db), &seq_gen);
+    assert(compact_db.immut_product_a()->canRelease());
+    assert(compact_db.immut_product_b()->canRelease());
 
     std::thread task([&compact_db, it = compact_db.makeIterator(compact_db.makeSnapshot())]() noexcept {
         try {

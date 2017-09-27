@@ -88,6 +88,8 @@ namespace LeviDB {
 
         bool explicitRemove(const WriteOptions & options,
                             const Slice & key) override;
+
+        void sync() override;
     };
 
     typedef std::function<void(const Exception &)> reporter_t;
