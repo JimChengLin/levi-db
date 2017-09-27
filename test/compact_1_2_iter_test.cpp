@@ -23,10 +23,9 @@ void compact_1_2_iter_test() {
     }
     LeviDB::Compacting1To2DB compact_db(std::move(db), &seq_gen);
 
-    std::thread task([&compact_db]() noexcept {
+    std::thread task([&compact_db, it = compact_db.makeIterator(compact_db.makeSnapshot())]() noexcept {
         try {
             int i = 0;
-            auto it = compact_db.makeIterator(compact_db.makeSnapshot());
             it->seekToFirst();
             while (it->valid()) {
                 ++i;
@@ -44,10 +43,9 @@ void compact_1_2_iter_test() {
         compact_db.put(LeviDB::WriteOptions{}, std::to_string(i), "#");
     }
 
-    std::thread task_2([&compact_db]() {
+    std::thread task_2([&compact_db, it = compact_db.makeIterator(compact_db.makeSnapshot())]() noexcept {
         try {
             int i = 0;
-            auto it = compact_db.makeIterator(compact_db.makeSnapshot());
             it->seekToFirst();
             while (it->valid()) {
                 ++i;

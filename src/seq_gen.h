@@ -67,11 +67,13 @@ namespace LeviDB {
         uint64_t newest() const noexcept;
     };
 
-    // dirty hack, 让 SeqGenerator 暂时变为 empty
+    // dirty hack, 让 SeqGenerator 暂时进入欺骗模式, 效果类似于永远 empty
     void stashCurrSeqGen() noexcept;
 
     // 恢复 SeqGenerator
     void stashPopCurrSeqGen() noexcept;
+
+    bool isFraudMode() noexcept;
 }
 
 #endif //LEVIDB_SEQ_GEN_H

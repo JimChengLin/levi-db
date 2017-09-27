@@ -22,7 +22,7 @@ namespace LeviDB {
     }
 
     bool SeqGenerator::empty() const noexcept {
-        return fraud || _dummy_head._next == &_dummy_head;
+        return _dummy_head._next == &_dummy_head;
     }
 
     uint64_t SeqGenerator::oldest() const noexcept {
@@ -38,4 +38,6 @@ namespace LeviDB {
     void stashCurrSeqGen() noexcept { fraud = true; };
 
     void stashPopCurrSeqGen() noexcept { fraud = false; };
+
+    bool isFraudMode() noexcept { return fraud; };
 }

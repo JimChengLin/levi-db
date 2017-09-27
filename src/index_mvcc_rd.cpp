@@ -26,7 +26,7 @@ namespace LeviDB {
     }
 
     void IndexMVCC::insert(const Slice & k, OffsetToData v) {
-        if (_seq_gen->empty()) { // 没有快照
+        if (_seq_gen->empty() || isFraudMode()) { // 没有快照
             BitDegradeTree::insert(k, v);
         } else {
             if (!_pending.empty() && _seq_gen->newest() == _pending.back().first) { // 已有相应 bundle
