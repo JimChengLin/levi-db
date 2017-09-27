@@ -75,6 +75,8 @@ namespace LeviDB {
 
         virtual bool explicitRemove(const WriteOptions & options,
                                     const Slice & key) = 0;
+
+        virtual void sync() = 0;
     };
 
     typedef std::function<void(const Exception &)> reporter_t;

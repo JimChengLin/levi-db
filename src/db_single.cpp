@@ -64,14 +64,8 @@ namespace LeviDB {
     bool DBSingle::put(const WriteOptions & options,
                        const Slice & key,
                        const Slice & value) {
-        assert(!options.compress);
+        assert(!options.compress && key.size() != 0);
         RWLockWriteGuard write_guard(_rwlock);
-
-        if (key.size() == 0) {
-            _af->sync();
-            _index->sync();
-            return true;
-        }
 
         uint32_t pos = _writer->calcWritePos();
         std::vector<uint8_t> bin = LogWriter::makeRecord(key, value);
@@ -213,6 +207,11 @@ namespace LeviDB {
         _index->tryApplyPending();
     }
 
+    bool DBSingle::canRelease() const {
+        RWLockReadGuard read_guard(_rwlock);
+        return _index->immut_operating_iters() == 0 && _index->immut_pending().empty();
+    }
+
     Slice DBSingle::largestKey() const {
         RWLockReadGuard read_guard(_rwlock);
         return largestKeyUnlocked();
@@ -267,11 +266,13 @@ namespace LeviDB {
         return true;
     }
 
-// methods below don't need lock
-    bool DBSingle::canRelease() const {
-        return _index->immut_operating_iters() == 0 && _index->immut_pending().empty();
+    void DBSingle::sync() {
+        RWLockWriteGuard write_guard(_rwlock);
+        _af->sync();
+        _index->sync();
     }
 
+// methods below don't need lock
     Slice DBSingle::largestKeyUnlocked() const noexcept {
         const std::string & trailing = _meta->immut_trailing();
         uint32_t from_k_len = _meta->immut_value().from_k_len;
