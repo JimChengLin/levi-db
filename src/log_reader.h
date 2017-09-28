@@ -17,7 +17,6 @@
 namespace LeviDB {
     namespace LogReader {
         using kv_iter_t = Iterator<Slice, std::string>;
-
         using reporter_t = std::function<void(const Exception &)>;
 
         [[noreturn]] void defaultReporter(const Exception & e);

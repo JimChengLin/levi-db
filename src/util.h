@@ -28,11 +28,11 @@ inline const auto & immut ##  field() const noexcept { return field; }
 namespace LeviDB {
     static_assert(sizeof(uint8_t) == sizeof(char), "cannot reinterpret safely");
 
-    inline uint8_t charToUint8(char c) {
+    inline uint8_t charToUint8(char c) noexcept {
         return *reinterpret_cast<uint8_t *>(&c);
     }
 
-    inline char uint8ToChar(uint8_t i) {
+    inline char uint8ToChar(uint8_t i) noexcept {
         return *reinterpret_cast<char *>(&i);
     }
 }

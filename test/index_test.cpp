@@ -23,7 +23,7 @@ void index_test() {
 
     for (int i = 0; i < test_times_; i += 2) {
         auto val = static_cast<uint32_t>(i);
-        tree.remove({reinterpret_cast<char *>(&val), sizeof(val)});
+        tree.remove({reinterpret_cast<char *>(&val), sizeof(val)}, {});
         assert(tree.find({reinterpret_cast<char *>(&val), sizeof(val)}).val != val);
         for (int j = i + 2; j < test_times_; j += 2) {
             val = static_cast<uint32_t>(j);

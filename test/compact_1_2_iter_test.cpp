@@ -21,9 +21,7 @@ void compact_1_2_iter_test() {
     for (int i = 0; i < 100; ++i) {
         db->put(LeviDB::WriteOptions{}, std::to_string(i), std::to_string(i));
     }
-//    printf("A\n");
     LeviDB::Compacting1To2DB compact_db(std::move(db), &seq_gen);
-//    printf("B\n");
     assert(compact_db.immut_product_a()->canRelease());
     assert(compact_db.immut_product_b()->canRelease());
 
@@ -40,7 +38,6 @@ void compact_1_2_iter_test() {
         } catch (const LeviDB::Exception & e) {
             std::cout << e.toString() << std::endl;
         }
-//        printf("Done\n");
     });
     task.detach();
 

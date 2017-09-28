@@ -73,7 +73,7 @@ namespace LeviDB {
 
                     do {
                         nth = _cbegin - _node->immut_diffs().cbegin();
-                        mask = uint8ToChar(_node->immut_masks()[nth]);
+                        mask = uint8ToChar(normalMask(_node->immut_masks()[nth]));
                         if (mask != 0) {
                             _reveal_info->reveal(*_cbegin, mask, go_right);
                         } else {
@@ -98,14 +98,12 @@ namespace LeviDB {
                                     node_iter->next();
                                 }
                             } else {
-                                if (ptr.asData().val != IndexConst::del_marker_) {
-                                    log_iter = LogReader::makeIterator(_index->_data_file, ptr.asData().val);
-                                    log_iter->seek(_reveal_info->toSlice());
-                                    _item = {log_iter->key(), log_iter->value()};
-                                    if (_judge == nullptr
-                                        || (_reveal_info->reveal(_item.first), _judge->match(*_reveal_info))) {
-                                        YIELD();
-                                    }
+                                log_iter = LogReader::makeIterator(_index->_data_file, ptr.asData().val);
+                                log_iter->seek(_reveal_info->toSlice());
+                                _item = {log_iter->key(), log_iter->value()};
+                                if (_judge == nullptr
+                                    || (_reveal_info->reveal(_item.first), _judge->match(*_reveal_info))) {
+                                    YIELD();
                                 }
                             }
                         }
@@ -116,7 +114,7 @@ namespace LeviDB {
                 } else {
                     min_it = std::min_element(_cbegin, _cend, _node->functor());
                     do {
-                        mask = uint8ToChar(_node->immut_masks()[min_it - _node->immut_diffs().cbegin()]);
+                        mask = uint8ToChar(normalMask(_node->immut_masks()[min_it - _node->immut_diffs().cbegin()]));
                         _reveal_info->reveal(*min_it, mask, go_right);
 
                         if (_judge == nullptr || _judge->possible(*_reveal_info)) {
@@ -327,7 +325,7 @@ namespace LeviDB {
 
         std::string value() const override {
             assert(valid());
-            if (_offset_iter->value().val == IndexConst::del_marker_) { // 显式删除
+            if (_offset_iter->value().val == IndexConst::disk_null_) {
                 return "\1"; // del
             }
             auto kv_iter = LogReader::makeIterator(_data_file, _offset_iter->value().val);

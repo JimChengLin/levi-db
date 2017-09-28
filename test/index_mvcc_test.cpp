@@ -22,6 +22,7 @@ void index_mvcc_test() {
                 if (e_group.find({reinterpret_cast<char *>(&val), sizeof(val)}, seq_num).val != val)
                     return false;
             } else {
+                auto x = e_group.find({reinterpret_cast<char *>(&val), sizeof(val)}, seq_num).val;
                 if (e_group.find({reinterpret_cast<char *>(&val), sizeof(val)}, seq_num).val == val)
                     return false;
             }
@@ -48,7 +49,7 @@ void index_mvcc_test() {
 
         std::vector<uint32_t> ctrl_group3 = ctrl_group2;
         uint32_t v = ctrl_group3.back();
-        index.remove({reinterpret_cast<char *>(&v), sizeof(v)});
+        index.remove({reinterpret_cast<char *>(&v), sizeof(v)}, {});
         ctrl_group3.pop_back();
         for (int i = 0; i < test_times_; ++i) {
             uint32_t val = (init += 2);
@@ -75,7 +76,7 @@ void index_mvcc_test() {
     }
     uint32_t val = ctrl_group.back();
     ctrl_group.pop_back();
-    index.remove({reinterpret_cast<char *>(&val), sizeof(val)});
+    index.remove({reinterpret_cast<char *>(&val), sizeof(val)}, {});
 
     bool res = index.sync();
     assert(res);

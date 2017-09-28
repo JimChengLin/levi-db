@@ -43,8 +43,12 @@ void index_rd_test() {
     bdt_rd.insert("A", LeviDB::OffsetToData{pos});
     bdt_rd.insert("C", LeviDB::OffsetToData{pos});
     bdt_rd.insert("E", LeviDB::OffsetToData{pos});
-    bdt_rd.remove("A");
-    bdt_rd.remove("A");
+
+    pos = writer.calcWritePos();
+    bin = LeviDB::LogWriter::makeRecord("A", "");
+    writer.addDelRecord({bin.data(), bin.size()});
+    bdt_rd.remove("A", LeviDB::OffsetToData{pos});
+    bdt_rd.remove("A", LeviDB::OffsetToData{pos});
 
     assert(!bdt_rd.find("A").second);
     auto a = bdt_rd.find("E");

@@ -80,8 +80,8 @@ void index_iter_test() {
         iter->prev();
         assert(iter->value() == "B");
 
-        index.remove("0");
-        index.remove("E");
+        index.remove("0", {});
+        index.remove("E", {});
         for (const std::string & k:{"A", "6"}) {
             pos = writer.calcWritePos();
             std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(k, "_");

@@ -106,10 +106,10 @@ namespace LeviDB {
                         throw Exception::corruptionException("checksum mismatch");
                     }
 
-                    // store meta char
+                    // add meta char
                     _backing_store[length] = buf[4];
                     _item = Slice(_backing_store, length + 1);
-                } catch (const Exception & e) { // anything wrong? drop and report
+                } catch (const Exception & e) {
                     if (e.isIOError()) {
                         _eof = true;
                     }
@@ -491,8 +491,9 @@ namespace LeviDB {
             }
 
             RawIteratorBatchChecked & operator=(RawIteratorBatchChecked && rhs) noexcept {
-                long nth = rhs._cache_cursor == rhs._cache.cend() ? -1
-                                                                  :rhs._cache_cursor - rhs._cache.cbegin();
+                auto nth = rhs._cache_cursor == rhs._cache.cend() ? static_cast<long>(-1)
+                                                                  : static_cast<long>(rhs._cache_cursor -
+                                                                                      rhs._cache.cbegin());
                 std::swap(_raw_iter, rhs._raw_iter);
                 std::swap(_disk_offsets, rhs._disk_offsets);
                 std::swap(_cache, rhs._cache);
@@ -625,7 +626,7 @@ namespace LeviDB {
                             }
                         } while (true);
                         // exit as EOF(not valid)
-                    } catch (const Exception & e) { // make it exception free
+                    } catch (const Exception & e) { // exception free
                         _raw_iter_batch_ob->_disk_offsets.emplace_back(backup_offset);
                         throw e;
                     }

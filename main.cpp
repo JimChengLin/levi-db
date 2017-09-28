@@ -59,7 +59,7 @@ int main() {
 #endif
     } catch (const LeviDB::Exception & e) {
         std::cout << e.toString() << std::endl;
-        return -1;
+        return 1;
     }
     std::cout << "done." << std::endl;
     return 0;

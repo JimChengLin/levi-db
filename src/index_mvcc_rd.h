@@ -24,7 +24,8 @@
 namespace LeviDB {
     class IndexMVCC : protected BitDegradeTree {
     public:
-        typedef std::map<std::string/* k */, OffsetToData/* v */, SliceComparator> history_type;
+        typedef std::map<std::string/* k */, std::pair<OffsetToData/* v */, bool/* del */>, SliceComparator>
+                history_type;
         typedef std::shared_ptr<history_type> history; // 有可能被多个 iterator 引用
         typedef std::pair<uint64_t/* seq_num */, history> bundle;
 
@@ -48,11 +49,10 @@ namespace LeviDB {
         // 返回最接近 k 的结果
         OffsetToData find(const Slice & k, uint64_t seq_num = 0) const;
 
-        // 以下方法的调用者必须有读写锁保护且快照只读
-        // 无需显式提供 seq_num
+        // 无需提供 seq_num
         void insert(const Slice & k, OffsetToData v);
 
-        void remove(const Slice & k);
+        void remove(const Slice & k, OffsetToData v);
 
         bool sync();
 

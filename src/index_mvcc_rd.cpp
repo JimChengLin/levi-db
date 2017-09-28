@@ -17,9 +17,7 @@ namespace LeviDB {
         auto counterpart = pendingPart(seq_num);
         counterpart->seek(k);
         if (counterpart->valid() && counterpart->key() == k) {
-            offset = counterpart->value().val == IndexConst::del_marker_ ? OffsetToData{IndexConst::disk_null_}
-                                                                         : counterpart->value();
-//            printf("key %s, BBat %d \n", k.toString().c_str(), seq_num);
+            offset = counterpart->value();
         } else { // 再查 mmap
             offset = BitDegradeTree::find(k);
         }
@@ -28,29 +26,27 @@ namespace LeviDB {
 
     void IndexMVCC::insert(const Slice & k, OffsetToData v) {
         if (_seq_gen->empty() || isFraudMode()) { // 没有快照
-//            printf("%d %d,key %s, Aat %d \n", _seq_gen->empty(), isFraudMode(), k.toString().c_str(), v.val);
             BitDegradeTree::insert(k, v);
         } else {
-//            printf("key %s, Bat %d \n", k.toString().c_str(), v.val);
             if (!_pending.empty() && _seq_gen->newest() == _pending.back().first) { // 已有相应 bundle
             } else {
                 assert(_pending.empty() || _seq_gen->newest() > _pending.back().first);
                 _pending.emplace_back(_seq_gen->newest(), std::make_shared<history_type>());
             }
-            (*_pending.back().second)[k.toString()] = v;
+            (*_pending.back().second)[k.toString()] = {v, false};
         }
     }
 
-    void IndexMVCC::remove(const Slice & k) {
+    void IndexMVCC::remove(const Slice & k, OffsetToData v) {
         if (_seq_gen->empty()) {
-            BitDegradeTree::remove(k);
+            BitDegradeTree::remove(k, v);
         } else {
             if (!_pending.empty() && _seq_gen->newest() == _pending.back().first) {
             } else {
                 assert(_pending.empty() || _seq_gen->newest() > _pending.back().first);
                 _pending.emplace_back(_seq_gen->newest(), std::make_shared<history_type>());
             }
-            (*_pending.back().second)[k.toString()] = OffsetToData{IndexConst::del_marker_};
+            (*_pending.back().second)[k.toString()] = {v, true};
         }
     }
 
@@ -96,39 +92,39 @@ namespace LeviDB {
         bool valid() const override { return _cursor != nullptr; };
 
         void seekToFirst() override {
+            _direction = FORWARD;
             for (seq_iter & iter:_history_q) {
                 iter.second = iter.first->cbegin();
             }
             findSmallest();
-            _direction = FORWARD;
         };
 
         void seekToLast() override {
+            _direction = REVERSE;
             for (seq_iter & iter:_history_q) {
                 iter.second = --iter.first->cend();
             }
             findLargest();
-            _direction = REVERSE;
         };
 
         void seek(const Slice & target) override {
+            _direction = FORWARD;
             for (seq_iter & iter:_history_q) {
                 iter.second = iter.first->lower_bound(target);
             }
             findSmallest();
-            _direction = FORWARD;
         };
 
         void next() override {
             assert(valid());
 
             if (_direction != FORWARD) {
+                _direction = FORWARD;
                 for (seq_iter & iter:_history_q) {
                     if (&iter != _cursor) {
                         iter.second = iter.first->upper_bound(key());
                     }
                 }
-                _direction = FORWARD;
             }
 
             ++_cursor->second;
@@ -139,6 +135,7 @@ namespace LeviDB {
             assert(valid());
 
             if (_direction != REVERSE) {
+                _direction = REVERSE;
                 for (seq_iter & iter:_history_q) {
                     if (&iter != _cursor) {
                         iter.second = iter.first->lower_bound(key());
@@ -153,7 +150,6 @@ namespace LeviDB {
                         }
                     }
                 }
-                _direction = REVERSE;
             }
 
             if (_cursor->second == _cursor->first->cbegin()) {
@@ -171,7 +167,8 @@ namespace LeviDB {
 
         OffsetToData value() const override {
             assert(valid());
-            return _cursor->second->second;
+            return _cursor->second->second.second ? OffsetToData{IndexConst::disk_null_}
+                                                  : _cursor->second->second.first;
         };
 
     private:
@@ -247,10 +244,10 @@ namespace LeviDB {
             }
         }
         for (const auto & kv:merged_history) {
-            if (kv.second.val == IndexConst::del_marker_) { // 删除
-                BitDegradeTree::remove(kv.first);
+            if (kv.second.second) { // 删除
+                BitDegradeTree::remove(kv.first, kv.second.first);
             } else { // 增改
-                BitDegradeTree::insert(kv.first, kv.second);
+                BitDegradeTree::insert(kv.first, kv.second.first);
             }
         }
     }
@@ -359,7 +356,7 @@ namespace LeviDB {
             return static_cast<size_t>(!LogReader::isRecordIteratorCompress(_iter.get()));
         };
 
-        // 以下方法在 BitDegradeTree 中没有用到, 所以不强行实现
+        // 以下方法在 BitDegradeTree 中没有用到, 所以不实现
         [[noreturn]] bool operator==(const Matcher & another) const override {
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };

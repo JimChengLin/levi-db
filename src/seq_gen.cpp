@@ -42,9 +42,15 @@ namespace LeviDB {
         return _dummy_head._prev->immut_seq_num();
     }
 
-    void stashCurrSeqGen() noexcept { _fraud = true; };
+    void stashCurrSeqGen() noexcept {
+        assert(!_fraud);
+        _fraud = true;
+    };
 
-    void stashPopCurrSeqGen() noexcept { _fraud = false; };
+    void stashPopCurrSeqGen() noexcept {
+        assert(_fraud);
+        _fraud = false;
+    };
 
     bool isFraudMode() noexcept { return _fraud; };
 }

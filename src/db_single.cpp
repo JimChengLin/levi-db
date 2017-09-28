@@ -92,9 +92,10 @@ namespace LeviDB {
         if (_writer->calcWritePos() > UINT32_MAX - (key.size() + LogWriterConst::header_size_) * 2) {
             return false;
         }
+        uint32_t pos = _writer->calcWritePos();
         std::vector<uint8_t> bin = LogWriter::makeRecord(key, {});
         _writer->addDelRecord({bin.data(), bin.size()});
-        _index->remove(key);
+        _index->remove(key, OffsetToData{pos});
 
         _index->tryApplyPending();
         if (options.sync) {
@@ -270,7 +271,6 @@ namespace LeviDB {
         _index->sync();
     }
 
-// methods below don't need lock
     Slice DBSingle::largestKeyUnlocked() const noexcept {
         const std::string & trailing = _meta->immut_trailing();
         uint32_t from_k_len = _meta->immut_value().from_k_len;

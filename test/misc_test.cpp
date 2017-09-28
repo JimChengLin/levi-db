@@ -17,7 +17,7 @@ void misc_test() {
             }
             for (int i = 0; i < LeviDB::IndexConst::rank_ * 2 + 3; i += 2) {
                 auto val = static_cast<uint32_t>(i);
-                bdt.remove({reinterpret_cast<char *>(&val), sizeof(val)});
+                bdt.remove({reinterpret_cast<char *>(&val), sizeof(val)}, {});
             }
         }
         {

@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <functional>
 #include <string>
 
 namespace LeviDB {
@@ -82,6 +83,26 @@ namespace LeviDB {
 
         bool operator()(const Slice & a, const std::string & b) const noexcept {
             return operator()(a, Slice(b));
+        }
+    };
+
+    struct SliceHasher {
+        size_t operator()(const Slice & key) const noexcept {
+            size_t hash{};
+            size_t left = key.size();
+            const char * limit = key.data() + key.size();
+            while (left != 0) {
+                size_t local{};
+                if (left >= sizeof(local)) {
+                    memcpy(&local, limit - left, sizeof(local));
+                    left -= sizeof(local);
+                } else {
+                    memcpy(&local, limit - left, left);
+                    left = 0;
+                }
+                hash ^= std::hash<size_t>{}(local);
+            }
+            return hash;
         }
     };
 }

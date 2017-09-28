@@ -26,8 +26,22 @@ namespace LeviDB {
         static constexpr int rank_ = 454;
         // 索引和数据文件最大为 4GB, 又 sizeof(record) > 4, 所以 UINT32_MAX 可以作为 NULL 使用
         static constexpr uint32_t disk_null_ = UINT32_MAX; // 无效且不合法
-        // 无效但合法的 input, 用于显式删除, 输出时过滤
+        // 无效但合法的 input
         static constexpr uint32_t del_marker_ = disk_null_ - 1;
+    }
+
+    inline bool isSpecialMask(uint8_t mask) noexcept {
+        return mask > 0 && ((((mask >> 2) & 1) + ((mask >> 1) & 1) + (mask & 1)) < 2);
+    }
+
+    inline uint8_t normalMask(uint8_t mask) noexcept {
+        bool is_spec = isSpecialMask(mask);
+        uint8_t m = 0;
+        m |= static_cast<uint8_t>(is_spec);
+        m |= (m << 1);
+        m |= (m << 2);
+        m |= (m << 4);
+        return mask ^ m;
     }
 
     // 数据文件中单条 record 的偏移量
@@ -135,7 +149,7 @@ namespace LeviDB {
                     return true;
                 }
                 if (a == b) {
-                    return _masks[&a - _diffs.cbegin()] < _masks[&b - _diffs.cbegin()];
+                    return normalMask(_masks[&a - _diffs.cbegin()]) < normalMask(_masks[&b - _diffs.cbegin()]);
                 }
                 return false;
             };
@@ -205,13 +219,14 @@ namespace LeviDB {
         // null_disk_ 说明未找到
         OffsetToData find(const Slice & k) const;
 
+        // 当有 compress record 时, size 不准确, 仅用作内部测试
         size_t size() const { return size(offToMemNode(_root)); };
 
         size_t size(const BDNode * node) const;
 
         void insert(const Slice & k, OffsetToData v);
 
-        void remove(const Slice & k);
+        void remove(const Slice & k, OffsetToData v);
 
         void sync() { _dst.sync(); };
 

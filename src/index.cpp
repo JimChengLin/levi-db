@@ -15,8 +15,7 @@ namespace LeviDB {
             std::tie(idx, direct, std::ignore) = pos;
 
             CritPtr ptr = cursor->immut_ptrs()[idx + static_cast<size_t>(direct)];
-            if (ptr.isNull()
-                || (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
+            if (ptr.isNull()) {
                 return {IndexConst::disk_null_};
             }
             if (ptr.isNode()) {
@@ -30,8 +29,7 @@ namespace LeviDB {
     size_t BitDegradeTree::size(const BDNode * node) const {
         size_t cnt = 0;
         for (CritPtr ptr:node->immut_ptrs()) {
-            if (ptr.isNull()
-                || (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
+            if (ptr.isNull()) {
                 break;
             }
             if (ptr.isData()) {
@@ -53,8 +51,7 @@ namespace LeviDB {
             std::tie(idx, direct, std::ignore) = pos;
 
             CritPtr & ptr = cursor->mut_ptrs()[idx + static_cast<size_t>(direct)];
-            if (ptr.isNull()
-                || (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
+            if (ptr.isNull()) {
                 ptr.setData(v);
                 cursor->updateChecksum();
                 break;
@@ -76,11 +73,11 @@ namespace LeviDB {
         }
     }
 
-    void BitDegradeTree::remove(const Slice & k) {
+    void BitDegradeTree::remove(const Slice & k, OffsetToData v) {
         BDNode * parent = nullptr;
-        std::tuple<size_t, bool, size_t> parent_info;
-
         BDNode * cursor = offToMemNode(_root);
+        decltype(findBestMatch(cursor, k)) parent_info;
+
         while (true) {
             auto pos = findBestMatch(cursor, k);
             size_t idx;
@@ -89,8 +86,7 @@ namespace LeviDB {
             std::tie(idx, direct, size) = pos;
 
             CritPtr & ptr = cursor->mut_ptrs()[idx + static_cast<size_t>(direct)];
-            if (ptr.isNull()
-                || (ptr.isData() && ptr.asData().val == IndexConst::del_marker_/* compress record case*/)) {
+            if (ptr.isNull()) {
                 break;
             }
             if (ptr.isNode()) {
@@ -100,8 +96,12 @@ namespace LeviDB {
             } else {
                 std::unique_ptr<Matcher> matcher = offToMatcher(ptr.asData());
                 if (*matcher == k) {
-                    if (matcher->size() == 0) { // compress record case
-                        ptr.setData(IndexConst::del_marker_);
+                    if (isSpecialMask(cursor->immut_masks()[idx])) {
+                        ptr.setData(v);
+                        cursor->updateChecksum();
+                    } else if (matcher->size() == 0) { // compress record case
+                        cursor->mut_masks()[idx] = (~cursor->immut_masks()[idx]);
+                        ptr.setData(v);
                         cursor->updateChecksum();
                     } else {
                         nodeRemove(cursor, idx, direct, size);
@@ -137,7 +137,7 @@ namespace LeviDB {
             // left or right?
             uint8_t crit_byte = matcher->size() > diff_at ? charToUint8((*matcher)[diff_at]) : static_cast<uint8_t>(0);
             auto direct = static_cast<bool>
-            ((1 + (crit_byte | node->immut_masks()[min_it - node->immut_diffs().cbegin()])) >> 8);
+            ((1 + (crit_byte | normalMask(node->immut_masks()[min_it - node->immut_diffs().cbegin()]))) >> 8);
             if (!direct) { // left
                 cend = min_it;
             } else { // right
@@ -173,14 +173,14 @@ namespace LeviDB {
 
             // left or right?
             uint8_t crit_byte = matcher->size() > diff_at ? charToUint8((*matcher)[diff_at]) : static_cast<uint8_t>(0);
-            auto direct = static_cast<bool>
-            ((1 + (crit_byte | node->immut_masks()[min_it - node->immut_diffs().cbegin()])) >> 8);
+            uint8_t mask = normalMask(node->immut_masks()[min_it - node->immut_diffs().cbegin()]);
+            auto direct = static_cast<bool>((1 + (crit_byte | mask)) >> 8);
             if (!direct) { // left
                 cend = min_it;
             } else { // right
                 cbegin = min_it + 1;
             }
-            reveal_info->reveal(diff_at, node->immut_masks()[min_it - node->immut_diffs().cbegin()], direct);
+            reveal_info->reveal(diff_at, mask, direct);
 
             if (cbegin == cend) {
                 return {min_it - node->immut_diffs().cbegin(), direct, size};
@@ -216,7 +216,8 @@ namespace LeviDB {
             const uint32_t * min_it = std::min_element(cbegin, cend, cmp);
 
             if (*min_it > diff_at
-                || (*min_it == diff_at && cursor->immut_masks()[min_it - cursor->immut_diffs().cbegin()] > mask)) {
+                || (*min_it == diff_at
+                    && normalMask(cursor->immut_masks()[min_it - cursor->immut_diffs().cbegin()]) > mask)) {
                 if (!direct) { // left
                     replace_idx = 0;
                     replace_direct = false;
@@ -234,7 +235,8 @@ namespace LeviDB {
                         uint8_t crit_byte = k_m->size() > crit_diff_at ? charToUint8((*k_m)[crit_diff_at])
                                                                        : static_cast<uint8_t>(0);
                         auto crit_direct = static_cast<bool>
-                        ((1 + (crit_byte | cursor->immut_masks()[min_it - cursor->immut_diffs().cbegin()])) >> 8);
+                        ((1 + (crit_byte |
+                               normalMask(cursor->immut_masks()[min_it - cursor->immut_diffs().cbegin()]))) >> 8);
                         if (!crit_direct) {
                             cend = min_it;
                         } else {
@@ -249,8 +251,8 @@ namespace LeviDB {
 
                         const uint32_t * next_it = std::min_element(cbegin, cend, cmp);
                         if (*next_it > diff_at
-                            || (*next_it == diff_at
-                                && cursor->immut_masks()[next_it - cursor->immut_diffs().cbegin()] > mask)) {
+                            || (*next_it == diff_at &&
+                                normalMask(cursor->immut_masks()[next_it - cursor->immut_diffs().cbegin()]) > mask)) {
                             if (!direct) { // left
                                 replace_idx = cbegin - cursor->immut_diffs().cbegin();
                                 replace_direct = false;
@@ -267,7 +269,8 @@ namespace LeviDB {
 
             CritPtr ptr = cursor->immut_ptrs()[replace_idx + static_cast<size_t>(replace_direct)];
             if (cursor->immut_diffs()[replace_idx] > diff_at
-                || (cursor->immut_diffs()[replace_idx] == diff_at && cursor->immut_masks()[replace_idx] > mask)
+                || (cursor->immut_diffs()[replace_idx] == diff_at
+                    && normalMask(cursor->immut_masks()[replace_idx]) > mask)
                 || ptr.isData()) {
                 if (cursor->full()) {
                     auto off = static_cast<uint32_t>(reinterpret_cast<char *>(cursor) -
@@ -497,16 +500,6 @@ namespace LeviDB {
             size_t idx;
             bool direct;
             std::tie(idx, direct, std::ignore) = pos;
-
-            char mask = uint8ToChar(cursor->immut_masks()[idx]);
-            if (mask != 0) {
-                res.reveal(cursor->immut_diffs()[idx], mask, direct);
-            } else {
-                res.mut_src()->resize(1);
-                res.mut_src()->front() = 0;
-                res.mut_extra().resize(1);
-                res.mut_extra().front() = 0;
-            }
 
             CritPtr ptr = cursor->immut_ptrs()[idx + static_cast<size_t>(direct)];
             if (ptr.isNode()) {

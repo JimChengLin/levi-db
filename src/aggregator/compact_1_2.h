@@ -6,8 +6,7 @@
  */
 
 #include <exception>
-#include <mutex>
-#include <set>
+#include <unordered_set>
 
 #include "../db_single.h"
 #include "compact.h"
@@ -16,6 +15,8 @@ namespace LeviDB {
     class Compacting1To2DB : public CompactingDB {
     private:
         SeqGenerator * _seq_gen;
+        uint64_t _action_num; // 如果 snapshot 早于此序列号, 可以直接查询 _resource
+
         std::unique_ptr<DB> _resource;
         std::unique_ptr<DB> _product_a;
         std::unique_ptr<DB> _product_b;
@@ -24,11 +25,10 @@ namespace LeviDB {
         std::string _a_end;
         std::string _b_end;
 
-        std::set<std::string, SliceComparator> _ignore;
-        ReadWriteLock _rw_lock;
-        ReadWriteLock _a_lock;
-        ReadWriteLock _b_lock;
+        std::vector<std::pair<uint64_t, std::string>> _pending;
+        std::unordered_set<Slice, SliceHasher> _ignore;
 
+        ReadWriteLock _rwlock;
         std::atomic<bool> _e_a_bool{false};
         std::atomic<bool> _e_b_bool{false};
         std::atomic<bool> _a_end_meet{false};
@@ -90,6 +90,10 @@ namespace LeviDB {
                             const Slice & key) override;
 
         void sync() override;
+
+    private:
+        std::vector<Slice>
+        pendingPart(uint64_t seq_num) const noexcept;
     };
 
     typedef std::function<void(const Exception &)> reporter_t;
