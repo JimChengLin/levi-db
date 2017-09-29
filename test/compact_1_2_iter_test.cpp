@@ -35,6 +35,49 @@ void compact_1_2_iter_test() {
                 it->next();
             }
             assert(i == 100);
+
+            i = 0;
+            it->seekToLast();
+            while (it->valid()) {
+                ++i;
+                assert(it->key() == it->value());
+                it->prev();
+            }
+            assert(i == 100);
+
+            i = 0;
+            it->seekToLast();
+            while (it->valid() && i < 50) {
+                ++i;
+                assert(it->key() == it->value());
+                if (i == 50) {
+                    break;
+                }
+                it->prev();
+            }
+            while (it->valid()) {
+                ++i;
+                assert(it->key() == it->value());
+                it->next();
+            }
+            assert(i == 100);
+
+            i = 0;
+            it->seekToFirst();
+            while (it->valid() && i < 50) {
+                ++i;
+                assert(it->key() == it->value());
+                if (i == 50) {
+                    break;
+                }
+                it->next();
+            }
+            while (it->valid()) {
+                ++i;
+                assert(it->key() == it->value());
+                it->prev();
+            }
+            assert(i == 100);
         } catch (const LeviDB::Exception & e) {
             std::cout << e.toString() << std::endl;
         }
@@ -59,6 +102,64 @@ void compact_1_2_iter_test() {
                     assert(v == "#");
                 }
                 it->next();
+            }
+            assert(i == 100);
+
+            i = 0;
+            it->seekToLast();
+            while (it->valid() && i < 50) {
+                ++i;
+                const std::string k = it->key().toString();
+                const std::string v = it->value();
+                if (k == v) {
+                    assert((std::stoi(k) & 1) == 1);
+                } else {
+                    assert(v == "#");
+                }
+                if (i == 50) {
+                    break;
+                }
+                it->prev();
+            }
+            while (it->valid()) {
+                ++i;
+                const std::string k = it->key().toString();
+                const std::string v = it->value();
+                if (k == v) {
+                    assert((std::stoi(k) & 1) == 1);
+                } else {
+                    assert(v == "#");
+                }
+                it->next();
+            }
+            assert(i == 100);
+
+            i = 0;
+            it->seekToFirst();
+            while (it->valid() && i < 50) {
+                ++i;
+                const std::string k = it->key().toString();
+                const std::string v = it->value();
+                if (k == v) {
+                    assert((std::stoi(k) & 1) == 1);
+                } else {
+                    assert(v == "#");
+                }
+                if (i == 50) {
+                    break;
+                }
+                it->next();
+            }
+            while (it->valid()) {
+                ++i;
+                const std::string k = it->key().toString();
+                const std::string v = it->value();
+                if (k == v) {
+                    assert((std::stoi(k) & 1) == 1);
+                } else {
+                    assert(v == "#");
+                }
+                it->prev();
             }
             assert(i == 100);
         } catch (const LeviDB::Exception & e) {

@@ -24,12 +24,12 @@ namespace LeviDB {
                      it->valid();
                      FRONT ? it->next() : it->prev()) {
                     {
+                        // coverity[double_lock]
                         RWLockWriteGuard write_guard(lock);
                         // compact 搬运 KV 时, 如果当前 KV 还没写入 product
                         // 但已经被后续操作改变, 跳过此条
                         if (ignore.find(it->key()) != ignore.end()) {
                         } else {
-                            // coverity[double_lock]
                             stashCurrSeqGen(); // 越过 MVCC 机制透传
                             if (!target->put(options, it->key(), it->value())) { // full again
                                 target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);
@@ -63,13 +63,13 @@ namespace LeviDB {
                         }
 
                         {
+                            // coverity[double_lock]
                             RWLockWriteGuard write_guard(lock);
                             slice_q.erase(std::remove_if(slice_q.begin(), slice_q.end(),
                                                          [&ignore](const std::pair<Slice, Slice> & k) noexcept {
                                                              return ignore.find(k.first) != ignore.end();
                                                          }), slice_q.end());
                             if (!slice_q.empty()) {
-                                // coverity[double_lock]
                                 stashCurrSeqGen();
                                 if (!target->write(options, slice_q)) {
                                     target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);

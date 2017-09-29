@@ -54,14 +54,33 @@ namespace LeviDB {
 
         void seekToLast() override {
             _direction = REVERSE;
+            _resource_iter->seekToLast();
+            _pending_cursor = _pending.cbegin() == _pending.cend() ? _pending.cend() : (--_pending.cend());
+            findLargest();
         }
 
         void seek(const Slice & target) override {
             _direction = FORWARD;
+            _resource_iter->seek(target);
+            _pending_cursor = std::lower_bound(_pending.cbegin(), _pending.cend(), target, SliceComparator{});
+            findSmallest();
         }
 
         void next() override {
             assert(valid());
+
+            if (_direction != FORWARD) {
+                _direction = FORWARD;
+                if (_current_at == AT_PENDING) {
+                    _resource_iter->seek(key());
+                    if (_resource_iter->valid() && key() == _resource_iter->key()) {
+                        _resource_iter->next();
+                    }
+                } else {
+                    _pending_cursor = std::upper_bound(_pending.cbegin(), _pending.cend(), key(), SliceComparator{});
+                }
+            }
+
             if (_current_at == AT_PENDING) {
                 ++_pending_cursor;
             } else {
@@ -72,6 +91,40 @@ namespace LeviDB {
 
         void prev() override {
             assert(valid());
+
+            if (_direction != REVERSE) {
+                _direction = REVERSE;
+                if (_current_at == AT_PENDING) {
+                    _resource_iter->seek(key());
+                    if (_resource_iter->valid()) {
+                        _resource_iter->prev();
+                    } else {
+                        _resource_iter->seekToLast();
+                    }
+                } else {
+                    _pending_cursor = std::lower_bound(_pending.cbegin(), _pending.cend(), key(), SliceComparator{});
+                    if (_pending_cursor != _pending.cend()) {
+                        if (_pending_cursor == _pending.cbegin()) {
+                            _pending_cursor = _pending.cend();
+                        } else {
+                            --_pending_cursor;
+                        }
+                    } else if (_pending.cbegin() != _pending.cend()) {
+                        --_pending_cursor;
+                    }
+                }
+            }
+
+            if (_current_at == AT_PENDING) {
+                if (_pending_cursor == _pending.cbegin()) {
+                    _pending_cursor = _pending.cend();
+                } else {
+                    --_pending_cursor;
+                }
+            } else {
+                _resource_iter->prev();
+            }
+            findLargest();
         }
 
         Slice key() const override {
@@ -151,6 +204,51 @@ namespace LeviDB {
         }
 
         void findLargest() {
+            if (_pending_cursor == _pending.cend() && !_resource_iter->valid()) {
+                _current_at = AT_NONE;
+                return;
+            }
+
+            if (_pending_cursor != _pending.cend() && _resource_iter->valid()
+                && _resource_iter->key() == *_pending_cursor) {
+                _resource_iter->prev();
+                _current_at = AT_PENDING;
+            }
+
+            if (_pending_cursor != _pending.cend()) {
+                ReadOptions options{};
+                options.sequence_number = _seq_num;
+                auto a_res = _product_a->get(options, *_pending_cursor);
+                if (a_res.second) {
+                } else {
+                    auto b_res = _product_b->get(options, *_pending_cursor);
+                    if (b_res.second) {
+                    } else {
+                        if (_pending_cursor == _pending.cbegin()) {
+                            _pending_cursor = _pending.cend();
+                        } else {
+                            --_pending_cursor;
+                        }
+                        return findLargest();
+                    }
+                }
+            }
+
+            if (_pending_cursor == _pending.cend()) {
+                _current_at = AT_RESOURCE;
+                return;
+            }
+            if (!_resource_iter->valid()) {
+                _current_at = AT_PENDING;
+                return;
+            }
+
+            if (SliceComparator{}(*_pending_cursor, _resource_iter->key())) {
+                _current_at = AT_RESOURCE;
+            } else {
+                assert(_resource_iter->key() != *_pending_cursor);
+                _current_at = AT_PENDING;
+            }
         }
     };
 
@@ -203,10 +301,26 @@ namespace LeviDB {
 
         void seek(const Slice & target) override {
             _direction = FORWARD;
+            _a_iter->seek(target);
+            if (_a_iter->valid()) {
+                _current_at = AT_A;
+                _b_iter->seekToFirst();
+            } else {
+                _b_iter->seek(target);
+                _current_at = _b_iter->valid() ? AT_B : AT_NONE;
+            }
         }
 
         void next() override {
             assert(valid());
+
+            if (_direction != FORWARD) {
+                _direction = FORWARD;
+                if (_current_at == AT_A) {
+                    _b_iter->seekToFirst();
+                }
+            }
+
             if (_current_at == AT_A) {
                 _a_iter->next();
                 if (_a_iter->valid()) {
@@ -214,7 +328,6 @@ namespace LeviDB {
                     _current_at = AT_B;
                 }
             } else {
-                assert(_current_at == AT_B);
                 _b_iter->next();
                 if (_b_iter->valid()) {
                 } else {
@@ -225,6 +338,28 @@ namespace LeviDB {
 
         void prev() override {
             assert(valid());
+
+            if (_direction != REVERSE) {
+                _direction = REVERSE;
+                if (_current_at == AT_A) {
+                } else {
+                    _a_iter->seekToLast();
+                }
+            }
+
+            if (_current_at == AT_A) {
+                _a_iter->prev();
+                if (_a_iter->valid()) {
+                } else {
+                    _current_at = AT_NONE;
+                }
+            } else {
+                _b_iter->prev();
+                if (_b_iter->valid()) {
+                } else {
+                    _current_at = AT_A;
+                }
+            }
         }
 
         Slice key() const override {

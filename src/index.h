@@ -26,8 +26,6 @@ namespace LeviDB {
         static constexpr int rank_ = 454;
         // 索引和数据文件最大为 4GB, 又 sizeof(record) > 4, 所以 UINT32_MAX 可以作为 NULL 使用
         static constexpr uint32_t disk_null_ = UINT32_MAX; // 无效且不合法
-        // 无效但合法的 input
-        static constexpr uint32_t del_marker_ = disk_null_ - 1;
     }
 
     inline bool isSpecialMask(uint8_t mask) noexcept {
