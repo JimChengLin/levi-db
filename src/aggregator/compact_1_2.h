@@ -6,6 +6,7 @@
  */
 
 #include <exception>
+#include <forward_list>
 #include <unordered_set>
 
 #include "../db_single.h"
@@ -25,7 +26,8 @@ namespace LeviDB {
         std::string _a_end;
         std::string _b_end;
 
-        std::vector<std::pair<uint64_t, std::string>> _pending;
+        std::forward_list<std::pair<uint64_t, std::string>> _pending;
+        std::forward_list<std::pair<uint64_t, std::string>>::const_iterator _pending_tail;
         std::unordered_set<Slice, SliceHasher> _ignore;
 
         ReadWriteLock _rwlock;
@@ -93,7 +95,7 @@ namespace LeviDB {
 
     private:
         std::vector<Slice>
-        pendingPart(uint64_t seq_num) const noexcept;
+        pendingPartUnlocked(uint64_t seq_num) const noexcept;
     };
 
     typedef std::function<void(const Exception &)> reporter_t;

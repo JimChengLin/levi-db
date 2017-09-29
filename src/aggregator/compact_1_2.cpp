@@ -105,7 +105,8 @@ namespace LeviDB {
                                                             .createIfMissing(true).errorIfExists(true), seq_gen)),
               _product_b(std::make_unique<DBSingle>(_resource->immut_name() + "_b",
                                                     _resource->immut_options()
-                                                            .createIfMissing(true).errorIfExists(true), seq_gen)) {
+                                                            .createIfMissing(true).errorIfExists(true), seq_gen)),
+              _pending_tail(_pending.before_begin()) {
         // total number
         auto it = _resource->makeIterator(std::make_unique<Snapshot>(UINT64_MAX));
         uint32_t size = 0;
@@ -152,8 +153,8 @@ namespace LeviDB {
         RWLockWriteGuard write_guard(_rwlock);
 
         if (_compacting && _ignore.find(key) == _ignore.end()) {
-            _pending.emplace_back(_seq_gen->uniqueSeqAtomic(), key.toString());
-            _ignore.emplace(_pending.back().second);
+            _pending_tail = _pending.emplace_after(_pending_tail, _seq_gen->uniqueSeqAtomic(), key.toString());
+            _ignore.emplace((*_pending_tail).second);
         }
 
         if ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), key))
@@ -178,8 +179,8 @@ namespace LeviDB {
         RWLockWriteGuard write_guard(_rwlock);
 
         if (_compacting && _ignore.find(key) == _ignore.end()) {
-            _pending.emplace_back(_seq_gen->uniqueSeqAtomic(), key.toString());
-            _ignore.emplace(_pending.back().second);
+            _pending_tail = _pending.emplace_after(_pending_tail, _seq_gen->uniqueSeqAtomic(), key.toString());
+            _ignore.emplace((*_pending_tail).second);
         }
 
         if ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), key))
@@ -207,8 +208,8 @@ namespace LeviDB {
             for (const auto & kv:kvs) {
                 const Slice & key = kv.first;
                 if (_ignore.find(key) == _ignore.end()) {
-                    _pending.emplace_back(_seq_gen->uniqueSeqAtomic(), key.toString());
-                    _ignore.emplace(_pending.back().second);
+                    _pending_tail = _pending.emplace_after(_pending_tail, _seq_gen->uniqueSeqAtomic(), key.toString());
+                    _ignore.emplace((*_pending_tail).second);
                 }
             }
         }
@@ -320,7 +321,7 @@ namespace LeviDB {
         if (_compacting || !_resource->canRelease()) {
             return false;
         }
-        RWLockWriteGuard write_guard(_rwlock);
+        RWLockReadGuard read_guard(_rwlock);
         if (!_product_a->canRelease()) {
             return false;
         }
@@ -368,8 +369,8 @@ namespace LeviDB {
         RWLockWriteGuard write_guard(_rwlock);
 
         if (_compacting && _ignore.find(key) == _ignore.end()) {
-            _pending.emplace_back(_seq_gen->uniqueSeqAtomic(), key.toString());
-            _ignore.emplace(_pending.back().second);
+            _pending_tail = _pending.emplace_after(_pending_tail, _seq_gen->uniqueSeqAtomic(), key.toString());
+            _ignore.emplace((*_pending_tail).second);
         }
 
         if ((_product_a->largestKey().size() != 0 && !SliceComparator{}(_product_a->largestKey(), key))
@@ -396,8 +397,7 @@ namespace LeviDB {
     }
 
     std::vector<Slice>
-    Compacting1To2DB::pendingPart(uint64_t seq_num) const noexcept {
-        RWLockReadGuard read_guard(_rwlock);
+    Compacting1To2DB::pendingPartUnlocked(uint64_t seq_num) const noexcept {
         std::vector<Slice> res;
         for (const auto & p:_pending) {
             if (p.first < seq_num) {
