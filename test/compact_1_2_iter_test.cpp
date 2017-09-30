@@ -25,7 +25,7 @@ void compact_1_2_iter_test() {
     assert(compact_db.immut_product_a()->canRelease());
     assert(compact_db.immut_product_b()->canRelease());
 
-    std::thread task([&compact_db, it = compact_db.makeIterator(compact_db.makeSnapshot())]() noexcept {
+    std::thread task([it = compact_db.makeIterator(compact_db.makeSnapshot())]() noexcept {
         try {
             int i = 0;
             it->seekToFirst();
@@ -88,7 +88,7 @@ void compact_1_2_iter_test() {
         compact_db.put(LeviDB::WriteOptions{}, std::to_string(i), "#");
     }
 
-    std::thread task_2([&compact_db, it = compact_db.makeIterator(compact_db.makeSnapshot())]() noexcept {
+    std::thread task_2([it = compact_db.makeIterator(compact_db.makeSnapshot())]() noexcept {
         try {
             int i = 0;
             it->seekToFirst();

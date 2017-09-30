@@ -116,7 +116,8 @@ namespace LeviDB {
             auto it = imatch(input, {0, 0, false});
             while (it->valid()) {
                 if (!it->item().isContinue() && it->item().isSuccess()
-                    && it->item()._ed >= input.immut_src()->size() - sizeof(uint32_t)/* length trailing */) {
+                    && it->item()._ed >= static_cast<int>(input.immut_src()->size()) -
+                                         static_cast<int>(sizeof(uint32_t))/* length trailing */) {
                     res = true;
                     break;
                 }

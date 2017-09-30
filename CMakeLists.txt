@@ -48,6 +48,9 @@ set(SOURCE_FILES main.cpp
         src/usr.cpp src/usr.h
         src/util.h
         src/varint.cpp src/varint.h
+        test/compact_1_2_iter_test.cpp
+        test/compact_1_2_regex_test.cpp
+        test/compact_1_2_test.cpp
         test/compress_test.cpp
         test/db_single_test.cpp
         test/env_io_test.cpp
@@ -59,8 +62,7 @@ set(SOURCE_FILES main.cpp
         test/log_test.cpp
         test/misc_test.cpp
         test/regex_test.cpp
-        test/compact_1_2_test.cpp
-        test/compact_1_2_iter_test.cpp)
+        )
 
 add_executable(LeviDB ${SOURCE_FILES})
 
