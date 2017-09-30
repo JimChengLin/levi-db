@@ -51,6 +51,7 @@ set(SOURCE_FILES main.cpp
         test/compact_1_2_iter_test.cpp
         test/compact_1_2_regex_test.cpp
         test/compact_1_2_test.cpp
+        test/compact_2_1_test.cpp
         test/compress_test.cpp
         test/db_single_test.cpp
         test/env_io_test.cpp
