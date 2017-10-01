@@ -68,8 +68,7 @@ namespace LeviDB {
         }
 
         std::string old_name = std::move(_product->mut_name());
-        std::string new_name = old_name;
-        new_name[new_name.find('+')] = '-';
+        std::string new_name = old_name + '-';
         IOEnv::renameFile(old_name, new_name);
 
         _product->sync();
