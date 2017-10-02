@@ -30,10 +30,6 @@ namespace LeviDB {
         uint64_t sequence_number = 0;
     };
 
-    struct IteratorOptions {
-        std::unique_ptr<Snapshot> snapshot;
-    };
-
     struct WriteOptions {
         uint32_t uncompress_size = 0;
         bool sync = false;

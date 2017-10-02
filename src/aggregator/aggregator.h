@@ -1,5 +1,5 @@
-#ifndef LEVIDB_DB_AGGREGATOR_H
-#define LEVIDB_DB_AGGREGATOR_H
+#ifndef LEVIDB_AGGREGATOR_H
+#define LEVIDB_AGGREGATOR_H
 
 /*
  * Aggregator 管理大量的数据库分片
@@ -13,10 +13,6 @@
  * 4. lock
  */
 
-#include <deque>
-#include <map>
-#include <unordered_map>
-
 #include "../db.h"
 #include "../env_io.h"
 #include "../env_thread.h"
@@ -24,9 +20,16 @@
 #include "../optional.h"
 
 namespace LeviDB {
+    struct AggregatorNode {
+        std::unique_ptr<AggregatorNode> next;
+        std::unique_ptr<DB> db;
+        std::string db_name;
+        std::string lower_bound;
+        ReadWriteLock lock;
+    };
+
     struct AggregatorStrongMeta {
         uint64_t counter = 0;
-        uint64_t file_num = 0;
 
         // 程序变动时 +1
         const uint64_t db_version = 1;
@@ -35,21 +38,12 @@ namespace LeviDB {
 
     class Aggregator : public DB {
     private:
-        typedef std::pair<std::mutex, std::condition_variable> sync_pack;
-
-        enum SearchMapCommand {
-            SET,
-            DEL,
-        };
-
-        SeqGenerator seq_gen;
-        std::map<std::string/* lower_bound */, std::string/* db_name */, SliceComparator> search_map;
-        std::unordered_map<Slice/* dn_name */, std::pair<std::shared_ptr<DB>, sync_pack>, SliceHasher> db_cache;
-        std::deque<std::pair<SearchMapCommand, std::pair<std::string, std::string>>> _pending;
-        std::mutex _dispatcher_lock;
+        SeqGenerator _seq_gen;
+        AggregatorNode _head;
         Optional<FileLock> _file_lock;
-        Optional<Logger> _logger;
         Optional<StrongKeeper<AggregatorStrongMeta>> _meta;
+        Optional <Logger> _logger;
+        std::atomic<int> _operating_dbs{0};
 
     public:
         Aggregator(std::string name, Options options);
@@ -57,7 +51,7 @@ namespace LeviDB {
         DELETE_COPY(Aggregator);
 
     public:
-        ~Aggregator() noexcept override = default;
+        ~Aggregator() noexcept override;
 
         bool put(const WriteOptions & options,
                  const Slice & key,
@@ -100,7 +94,10 @@ namespace LeviDB {
                             const Slice & key) override;
 
         void sync() override;
+
+    private:
+        void insertNode(std::unique_ptr<AggregatorNode> node) noexcept;
     };
 }
 
-#endif //LEVIDB_DB_AGGREGATOR_H
+#endif //LEVIDB_AGGREGATOR_H

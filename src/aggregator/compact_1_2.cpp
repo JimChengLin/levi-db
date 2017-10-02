@@ -318,7 +318,7 @@ namespace LeviDB {
     bool Compacting1To2DB::canRelease() const {
         if (_e_a_bool) { std::rethrow_exception(_e_a); }
         if (_e_b_bool) { std::rethrow_exception(_e_b); }
-        if (_compacting || !_resource->canRelease()) {
+        if (_compacting || (_resource && !_resource->canRelease())) {
             return false;
         }
         RWLockReadGuard read_guard(_rwlock);
@@ -396,6 +396,26 @@ namespace LeviDB {
         _product_b->sync();
     }
 
+    void Compacting1To2DB::syncFiles() {
+        assert(canRelease());
+
+        if (_product_a->immut_name().empty()) {
+            static_cast<Compacting1To2DB *>(_product_a.get())->syncFiles();
+        }
+        if (_product_b->immut_name().empty()) {
+            static_cast<Compacting1To2DB *>(_product_b.get())->syncFiles();
+        }
+
+        std::string resource_name = std::move(_resource->mut_name());
+        assert(!resource_name.empty());
+        _resource = nullptr;
+
+        for (const std::string & child:LeviDB::IOEnv::getChildren(resource_name)) {
+            LeviDB::IOEnv::deleteFile((resource_name + '/') += child);
+        }
+        LeviDB::IOEnv::deleteDir(resource_name);
+    }
+
     std::vector<Slice>
     Compacting1To2DB::pendingPartUnlocked(uint64_t seq_num) const noexcept {
         std::vector<Slice> res;
@@ -409,21 +429,38 @@ namespace LeviDB {
     }
 
     bool repairCompacting1To2DB(const std::string & db_name, reporter_t reporter) noexcept {
-        try {
-            std::string product_a_name = db_name + "_a";
+        std::vector<std::string> sub_dbs;
+
+        std::function<void(const std::string &)> add_name = [&](const std::string & root) {
+            std::string product_a_name = root + "_a";
             std::string product_a_temp = product_a_name + "_temp";
-            IOEnv::renameFile(product_a_name, product_a_temp);
+            if (IOEnv::fileExists(product_a_name)) {
+                IOEnv::renameFile(product_a_name, product_a_temp);
+            }
+            if (IOEnv::fileExists(product_a_temp)) {
+                sub_dbs.emplace_back(std::move(product_a_temp));
+                add_name(product_a_name);
+            }
 
-            std::string product_b_name = db_name + "_b";
+            std::string product_b_name = root + "_b";
             std::string product_b_temp = product_b_name + "_temp";
-            IOEnv::renameFile(product_b_name, product_b_temp);
+            if (IOEnv::fileExists(product_b_name)) {
+                IOEnv::renameFile(product_b_name, product_b_temp);
+            }
+            if (IOEnv::fileExists(product_b_temp)) {
+                sub_dbs.emplace_back(std::move(product_b_temp));
+                add_name(product_b_name);
+            }
+        };
 
+        try {
+            add_name(db_name);
             SeqGenerator seq_gen;
             Compacting1To2DB db(std::make_unique<DBSingle>(db_name, Options{}, &seq_gen), &seq_gen);
 
             // moving values from product_a_temp and product_b_temp to db
-            for (const std::string * name:{&product_a_temp, &product_b_temp}) {
-                RandomAccessFile rf(*name + "/data");
+            for (const std::string & name:sub_dbs) {
+                RandomAccessFile rf(name + "/data");
                 auto it = LogReader::makeTableRecoveryIteratorKV(&rf, reporter);
 
                 WriteOptions write_opt{};
@@ -460,12 +497,13 @@ namespace LeviDB {
             while (db.immut_compacting()) {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
+            db.syncFiles();
             // delete temp dirs
-            for (const std::string * name:{&product_a_temp, &product_b_temp}) {
-                for (const std::string & child:LeviDB::IOEnv::getChildren(*name)) {
-                    LeviDB::IOEnv::deleteFile((*name + '/') += child);
+            for (const std::string & name:sub_dbs) {
+                for (const std::string & child:LeviDB::IOEnv::getChildren(name)) {
+                    LeviDB::IOEnv::deleteFile((name + '/') += child);
                 }
-                LeviDB::IOEnv::deleteDir(*name);
+                LeviDB::IOEnv::deleteDir(name);
             }
         } catch (const Exception & e) {
             reporter(e);

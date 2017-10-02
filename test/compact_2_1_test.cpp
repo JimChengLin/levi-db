@@ -3,7 +3,7 @@
 #include "../src/aggregator/compact_2_1.h"
 
 void compact_2_1_test() {
-    for (const std::string & name:{"/tmp/lv_db_a+lv_db_b", "/tmp/lv_db_a-lv_db_b"}) {
+    for (const std::string & name:{"/tmp/lv_db_a+lv_db_b", "/tmp/lv_db_a+lv_db_b-"}) {
         if (LeviDB::IOEnv::fileExists(name)) {
             for (const std::string & child:LeviDB::IOEnv::getChildren(name)) {
                 LeviDB::IOEnv::deleteFile((name + '/') += child);

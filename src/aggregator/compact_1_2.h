@@ -93,6 +93,9 @@ namespace LeviDB {
 
         void sync() override;
 
+    public:
+        void syncFiles();
+
     private:
         std::vector<Slice>
         pendingPartUnlocked(uint64_t seq_num) const noexcept;
