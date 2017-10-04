@@ -100,6 +100,9 @@ namespace LeviDB {
 
         void sync() override;
 
+    public:
+        uint64_t spaceUsage() const noexcept;
+
     private:
         Slice largestKeyUnlocked() const noexcept;
 

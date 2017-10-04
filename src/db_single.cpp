@@ -271,6 +271,10 @@ namespace LeviDB {
         _index->sync();
     }
 
+    uint64_t DBSingle::spaceUsage() const noexcept {
+        return _af->immut_length() + _index->immut_dst().immut_length();
+    }
+
     Slice DBSingle::largestKeyUnlocked() const noexcept {
         const std::string & trailing = _meta->immut_trailing();
         uint32_t from_k_len = _meta->immut_value().from_k_len;
