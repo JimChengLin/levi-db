@@ -21,7 +21,7 @@
 
 namespace LeviDB {
     namespace AggregatorConst {
-        static constexpr int max_dbs_ = 25;
+        static constexpr int max_dbs_ = 100;
         static constexpr int merge_threshold_ = 128 * 1024;
     }
 
@@ -31,6 +31,7 @@ namespace LeviDB {
         std::string db_name;
         std::string lower_bound;
         ReadWriteLock lock;
+        mutable std::atomic<int> hit{0};
     };
 
     struct AggregatorStrongMeta {
@@ -45,10 +46,10 @@ namespace LeviDB {
     private:
         SeqGenerator _seq_gen;
         AggregatorNode _head;
-        Optional <FileLock> _file_lock;
-        Optional <StrongKeeper<AggregatorStrongMeta>> _meta;
-        Optional <Logger> _logger;
-        std::atomic<bool> _ready_gc{false};
+        Optional<FileLock> _file_lock;
+        Optional<StrongKeeper<AggregatorStrongMeta>> _meta;
+        Optional<Logger> _logger;
+        mutable std::atomic<bool> _ready_gc{false};
 
     public:
         Aggregator(std::string name, Options options);
@@ -92,7 +93,7 @@ namespace LeviDB {
         bool explicitRemove(const WriteOptions & options,
                             const Slice & key) override;
 
-        // 大规模分片时, 以下方法浪费性能且没有意义, 不实现
+        // 大规模分片时, 以下方法耗费性能且没有实际意义
         [[noreturn]] void tryApplyPending() override { // 析构时自动 apply
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };
@@ -109,7 +110,7 @@ namespace LeviDB {
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };
 
-        [[noreturn]] void updateKeyRange() override { // 没有意义
+        [[noreturn]] void updateKeyRange() override { // 没必要让外部手动调用
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };
 
@@ -120,11 +121,9 @@ namespace LeviDB {
     private:
         void insertNodeUnlocked(std::unique_ptr<AggregatorNode> && node) noexcept;
 
-        std::pair<AggregatorNode *, RWLockWriteGuard>
-        findBestMatchForWrite(const Slice & target);
+        AggregatorNode * findBestMatchForWrite(const Slice & target, RWLockWriteGuard * lock);
 
-        std::pair<AggregatorNode *, RWLockReadGuard>
-        findBestMatchForRead(const Slice & target) const;
+        const AggregatorNode * findBestMatchForRead(const Slice & target, RWLockReadGuard * lock) const;
 
         void gc();
     };

@@ -3,6 +3,7 @@
 #include "../db_single.h"
 #include "aggregator.h"
 #include "compact_1_2.h"
+#include "compact_2_1.h"
 
 namespace LeviDB {
     Aggregator::Aggregator(std::string name, Options options)
@@ -57,8 +58,7 @@ namespace LeviDB {
 
             children = IOEnv::getChildren(prefix);
             children.erase(std::remove_if(children.begin(), children.end(), [&prefix](std::string & child) noexcept {
-                child = prefix + child;
-                return not(child.back() >= '0' && child.back() <= '9');
+                return not(child[0] >= '0' && child[0] <= '9') || (child = prefix + child, false);
             }), children.end());
             // 写入 search_map
             for (std::string & child:children) {
@@ -89,6 +89,7 @@ namespace LeviDB {
             node->db = std::make_unique<DBSingle>(std::to_string(_meta->immut_value().counter), opt, &_seq_gen);
             _meta->update(offsetof(AggregatorStrongMeta, counter), _meta->immut_value().counter + 1);
             node->db_name = node->db->immut_name();
+            insertNodeUnlocked(std::move(node));
         }
 
         // 日志
@@ -112,13 +113,18 @@ namespace LeviDB {
             if (cursor == nullptr) {
                 break;
             }
-            if (cursor->db) {
+            if (cursor->db != nullptr) {
+                cursor->db->tryApplyPending();
+                assert(cursor->db->canRelease());
+                cursor->db = nullptr;
+            }
+
+            if (!cursor->db_name.empty() &&
+                not(cursor->db_name.back() >= '0' && cursor->db_name.back() <= '9')) {
                 Logger::logForMan(_logger.get(), "rename %s to %llu",
                                   cursor->db_name.c_str(),
                                   _meta->immut_value().counter);
-                std::string name = std::move(cursor->db->mut_name());
-                cursor->db = nullptr;
-                IOEnv::renameFile(name, std::to_string(_meta->immut_value().counter));
+                IOEnv::renameFile(cursor->db_name, std::to_string(_meta->immut_value().counter));
                 _meta->update(offsetof(AggregatorStrongMeta, counter), _meta->immut_value().counter + 1);
             }
         }
@@ -126,24 +132,27 @@ namespace LeviDB {
     }
 
     static void mayOpenDB(AggregatorNode * match, SeqGenerator * seq_gen) {
-        if (match->db == nullptr) { // open DB
+        if (match->db == nullptr) {
             match->db = std::make_unique<DBSingle>(match->db_name, Options{}, seq_gen);
         }
     }
 
     static void ifCompact1To2Done(AggregatorNode * match) {
-        if (match->db->immut_name().empty() && match->db->canRelease()) { // compact 1 to 2 done
+        if (match->db->immut_name().empty() && match->db->canRelease()) {
+            assert(match->db_name.empty());
             auto * compact_db = static_cast<Compacting1To2DB *>(match->db.get());
             compact_db->syncFiles();
             std::unique_ptr<DB> product_a = std::move(compact_db->mut_product_a());
             std::unique_ptr<DB> product_b = std::move(compact_db->mut_product_b());
             match->db = std::move(product_a);
+            match->db_name = match->db->immut_name();
 
             auto next_node = std::make_unique<AggregatorNode>();
             next_node->db = std::move(product_b);
             next_node->db_name = next_node->db->immut_name();
             next_node->lower_bound = next_node->db->smallestKey().toString();
             next_node->next = std::move(match->next);
+            next_node->hit.store(match->hit = match->hit / 2);
             match->next = std::move(next_node);
         }
     }
@@ -151,13 +160,14 @@ namespace LeviDB {
     bool Aggregator::put(const WriteOptions & options,
                          const Slice & key,
                          const Slice & value) {
-        auto find_res = findBestMatchForWrite(key);
-        AggregatorNode * match = find_res.first;
+        RWLockWriteGuard guard;
+        AggregatorNode * match = findBestMatchForWrite(key, &guard);
 
         mayOpenDB(match, &_seq_gen);
         if (!match->db->put(options, key, value)) {
             Logger::logForMan(_logger.get(), "split %s when put", match->db_name.c_str());
             match->db = std::make_unique<Compacting1To2DB>(std::move(match->db), &_seq_gen);
+            match->db_name.clear();
             match->db->put(options, key, value);
         }
         ifCompact1To2Done(match);
@@ -166,13 +176,14 @@ namespace LeviDB {
 
     bool Aggregator::remove(const WriteOptions & options,
                             const Slice & key) {
-        auto find_res = findBestMatchForWrite(key);
-        AggregatorNode * match = find_res.first;
+        RWLockWriteGuard guard;
+        AggregatorNode * match = findBestMatchForWrite(key, &guard);
 
         mayOpenDB(match, &_seq_gen);
         if (!match->db->remove(options, key)) {
             Logger::logForMan(_logger.get(), "split %s when remove", match->db_name.c_str());
             match->db = std::make_unique<Compacting1To2DB>(std::move(match->db), &_seq_gen);
+            match->db_name.clear();
             match->db->remove(options, key);
         }
         ifCompact1To2Done(match);
@@ -181,13 +192,14 @@ namespace LeviDB {
 
     bool Aggregator::write(const WriteOptions & options,
                            const std::vector<std::pair<Slice, Slice>> & kvs) {
-        auto find_res = findBestMatchForWrite(kvs.front().first);
-        AggregatorNode * match = find_res.first;
+        RWLockWriteGuard guard;
+        AggregatorNode * match = findBestMatchForWrite(kvs.front().first, &guard);
 
         mayOpenDB(match, &_seq_gen);
         if (!match->db->write(options, kvs)) {
-            Logger::logForMan(_logger.get(), "split %s when write()", match->db_name.c_str());
+            Logger::logForMan(_logger.get(), "split %s when write", match->db_name.c_str());
             match->db = std::make_unique<Compacting1To2DB>(std::move(match->db), &_seq_gen);
+            match->db_name.clear();
             match->db->write(options, kvs);
         }
 
@@ -197,24 +209,39 @@ namespace LeviDB {
         while (true) {
             AggregatorNode * next_cursor = cursor->next.get();
             if (next_cursor != nullptr) {
-                auto it = std::lower_bound(kvs.cbegin(), kvs.cend(), next_cursor->lower_bound, SliceComparator{});
+                auto it = std::lower_bound(kvs.begin(), kvs.end(),
+                                           std::make_pair(Slice(next_cursor->lower_bound), Slice()),
+                                           [](const std::pair<Slice, Slice> & a,
+                                              const std::pair<Slice, Slice> & b) noexcept {
+                                               return SliceComparator{}(a.first, b.first);
+                                           });
                 if (it == kvs.cend()) {
                     break;
                 }
-                RWLockWriteGuard next_write_guard(next_cursor->lock);
+                RWLockWriteGuard next_guard(next_cursor->lock);
                 mayOpenDB(next_cursor, &_seq_gen);
 
                 AggregatorNode * next_next_cursor = next_cursor->next.get();
                 if (next_next_cursor != nullptr) {
-                    RWLockReadGuard next_next_read_guard(next_next_cursor->lock);
-
                     while (it != kvs.cend() && SliceComparator{}(it->first, next_next_cursor->lower_bound)) {
-                        next_cursor->db->put(opt, it->first, it->second);
+                        if (!next_cursor->db->put(opt, it->first, it->second)) {
+                            Logger::logForMan(_logger.get(), "split %s when put inside write",
+                                              next_cursor->db_name.c_str());
+                            next_cursor->db = std::make_unique<Compacting1To2DB>(std::move(next_cursor->db), &_seq_gen);
+                            next_cursor->db_name.clear();
+                            next_cursor->db->put(opt, it->first, it->second);
+                        }
                         ++it;
                     }
                 } else {
                     while (it != kvs.cend()) {
-                        next_cursor->db->put(opt, it->first, it->second);
+                        if (!next_cursor->db->put(opt, it->first, it->second)) {
+                            Logger::logForMan(_logger.get(), "split %s when put inside write",
+                                              next_cursor->db_name.c_str());
+                            next_cursor->db = std::make_unique<Compacting1To2DB>(std::move(next_cursor->db), &_seq_gen);
+                            next_cursor->db_name.clear();
+                            next_cursor->db->put(opt, it->first, it->second);
+                        }
                         ++it;
                     }
                 }
@@ -225,13 +252,22 @@ namespace LeviDB {
             }
         }
 
-        // don't need any lock here, because we have locked next_cursor once
-        // no other threads can reach here
-        AggregatorNode * next_cursor = cursor->next.get();
+        AggregatorNode * next_cursor = match->next.get();
         if (next_cursor != nullptr) {
-            auto it = std::lower_bound(kvs.cbegin(), kvs.cend(), next_cursor->lower_bound, SliceComparator{});
+            auto it = std::lower_bound(kvs.begin(), kvs.end(),
+                                       std::make_pair(Slice(next_cursor->lower_bound), Slice()),
+                                       [](const std::pair<Slice, Slice> & a,
+                                          const std::pair<Slice, Slice> & b) noexcept {
+                                           return SliceComparator{}(a.first, b.first);
+                                       });
             while (it != kvs.cend()) {
-                match->db->remove(opt, it->first);
+                if (!match->db->remove(opt, it->first)) {
+                    Logger::logForMan(_logger.get(), "split %s when remove inside write", match->db_name.c_str());
+                    match->db = std::make_unique<Compacting1To2DB>(std::move(match->db), &_seq_gen);
+                    match->db_name.clear();
+                    match->db->remove(opt, it->first);
+                }
+                ++it;
             }
         }
         match->db->updateKeyRange();
@@ -240,8 +276,8 @@ namespace LeviDB {
 
     std::pair<std::string, bool>
     Aggregator::get(const ReadOptions & options, const Slice & key) const {
-        auto find_res = findBestMatchForRead(key);
-        return find_res.first->db->get(options, key);
+        RWLockReadGuard guard;
+        return findBestMatchForRead(key, &guard)->db->get(options, key);
     };
 
     std::unique_ptr<Snapshot>
@@ -251,12 +287,12 @@ namespace LeviDB {
 
     bool Aggregator::explicitRemove(const WriteOptions & options,
                                     const Slice & key) {
-        auto find_res = findBestMatchForWrite(key);
-        AggregatorNode * match = find_res.first;
+        RWLockWriteGuard guard;
+        AggregatorNode * match = findBestMatchForWrite(key, &guard);
 
         mayOpenDB(match, &_seq_gen);
         if (!match->db->explicitRemove(options, key)) {
-            Logger::logForMan(_logger.get(), "split %s when e-remove", match->db_name.c_str());
+            Logger::logForMan(_logger.get(), "split %s when explicit remove", match->db_name.c_str());
             match->db = std::make_unique<Compacting1To2DB>(std::move(match->db), &_seq_gen);
             match->db->explicitRemove(options, key);
         }
@@ -269,36 +305,113 @@ namespace LeviDB {
         AggregatorNode * cursor{};
         while (true) {
             cursor = prev->next.get();
-            if (cursor == nullptr) {
+            if (cursor != nullptr && SliceComparator{}(cursor->lower_bound, node->lower_bound)) {
+                prev = cursor;
+            } else {
+                node->next = std::move(prev->next);
                 prev->next = std::move(node);
                 break;
-            } else {
-                if (SliceComparator{}(cursor->lower_bound, node->lower_bound)) {
-                    prev = cursor;
-                } else {
-                    node->next = std::move(prev->next);
-                    prev->next = std::move(node);
-                    break;
-                }
             }
         }
     };
 
-    std::pair<AggregatorNode *, RWLockWriteGuard>
-    Aggregator::findBestMatchForWrite(const Slice & target) {
+    AggregatorNode * Aggregator::findBestMatchForWrite(const Slice & target, RWLockWriteGuard * lock) {
         bool expected = true;
         if (_ready_gc.compare_exchange_strong(expected, false)) {
             gc();
         }
+
+        int open_cnt = 0;
+        AggregatorNode * cursor = &_head;
+        AggregatorNode * next{};
+        RWLockWriteGuard write_guard;
+        while (true) {
+            next = cursor->next.get();
+            if (next == nullptr ||
+                (open_cnt += static_cast<int>(next->db != nullptr), SliceComparator{}(target, next->lower_bound))) {
+                *lock = std::move(write_guard);
+                ++cursor->hit;
+                break;
+            }
+            write_guard = RWLockWriteGuard(next->lock);
+            cursor = next;
+        }
+
+        if (open_cnt > AggregatorConst::max_dbs_) {
+            bool expect = false;
+            _ready_gc.compare_exchange_strong(expect, true);
+        }
+        return cursor;
     };
 
-    std::pair<AggregatorNode *, RWLockReadGuard>
-    Aggregator::findBestMatchForRead(const Slice & target) const {
+    const AggregatorNode * Aggregator::findBestMatchForRead(const Slice & target, RWLockReadGuard * lock) const {
+        int open_cnt = 0;
+        const AggregatorNode * cursor = &_head;
+        const AggregatorNode * next{};
+        RWLockReadGuard read_guard;
+        while (true) {
+            next = cursor->next.get();
+            if (next == nullptr ||
+                (open_cnt += static_cast<int>(next->db != nullptr), SliceComparator{}(target, next->lower_bound))) {
+                *lock = std::move(read_guard);
+                ++cursor->hit;
+                break;
+            }
+            read_guard = RWLockReadGuard(next->lock);
+            cursor = next;
+        }
 
+        if (open_cnt > AggregatorConst::max_dbs_) {
+            bool expect = false;
+            _ready_gc.compare_exchange_strong(expect, true);
+        }
+        return cursor;
     };
 
     void Aggregator::gc() {
+        std::vector<AggregatorNode *> gc_q;
+        RWLockWriteGuard fixed_guard(_head.next->lock);
 
+        AggregatorNode * cursor = _head.next.get();
+        AggregatorNode * next{};
+        RWLockWriteGuard move_guard;
+        while (true) {
+            if (cursor->db != nullptr) {
+                gc_q.emplace_back(cursor);
+            }
+
+            next = cursor->next.get();
+            if (next == nullptr) {
+                break;
+            }
+            move_guard = RWLockWriteGuard(next->lock);
+            if (cursor->db != nullptr && next->db != nullptr
+                && !cursor->db->immut_name().empty() && !next->db->immut_name().empty()
+                && cursor->db->canRelease() && next->db->canRelease()
+                && static_cast<DBSingle *>(cursor->db.get())->spaceUsage() +
+                   static_cast<DBSingle *>(next->db.get())->spaceUsage() < AggregatorConst::merge_threshold_) {
+                Compacting2To1Worker worker(std::move(cursor->db), std::move(next->db), &_seq_gen);
+                cursor->db = std::move(worker.mut_product());
+                cursor->db_name = cursor->db->immut_name();
+
+                cursor->hit += next->hit;
+                cursor->next = std::move(next->next);
+            }
+            cursor = next;
+        }
+
+        std::sort(gc_q.begin(), gc_q.end(), [](const AggregatorNode * a,
+                                               const AggregatorNode * b) noexcept { return a->hit < b->hit; });
+        size_t curr_dbs = gc_q.size();
+        for (AggregatorNode * node:gc_q) {
+            node->db->tryApplyPending();
+            if (node->db->canRelease()) {
+                node->db = nullptr;
+                if (--curr_dbs <= AggregatorConst::max_dbs_ / 2) {
+                    break;
+                }
+            }
+        }
     }
 
     bool repairDB(const std::string & db_name, reporter_t reporter) noexcept {

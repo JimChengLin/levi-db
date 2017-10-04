@@ -12,6 +12,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 #include "exception.h"
 #include "iterator.h"
