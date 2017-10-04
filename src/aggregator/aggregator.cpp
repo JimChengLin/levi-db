@@ -265,7 +265,23 @@ namespace LeviDB {
     };
 
     void Aggregator::insertNodeUnlocked(std::unique_ptr<AggregatorNode> && node) noexcept {
-
+        AggregatorNode * prev = &_head;
+        AggregatorNode * cursor{};
+        while (true) {
+            cursor = prev->next.get();
+            if (cursor == nullptr) {
+                prev->next = std::move(node);
+                break;
+            } else {
+                if (SliceComparator{}(cursor->lower_bound, node->lower_bound)) {
+                    prev = cursor;
+                } else {
+                    node->next = std::move(prev->next);
+                    prev->next = std::move(node);
+                    break;
+                }
+            }
+        }
     };
 
     std::pair<AggregatorNode *, RWLockWriteGuard>
