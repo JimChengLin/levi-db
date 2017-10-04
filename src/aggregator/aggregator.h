@@ -20,6 +20,11 @@
 #include "../optional.h"
 
 namespace LeviDB {
+    namespace AggregatorConst {
+        static constexpr int max_dbs_ = 25;
+        static constexpr int merge_threshold_ = 128 * 1024;
+    }
+
     struct AggregatorNode {
         std::unique_ptr<AggregatorNode> next;
         std::unique_ptr<DB> db;
@@ -40,15 +45,17 @@ namespace LeviDB {
     private:
         SeqGenerator _seq_gen;
         AggregatorNode _head;
-        Optional<FileLock> _file_lock;
-        Optional<StrongKeeper<AggregatorStrongMeta>> _meta;
+        Optional <FileLock> _file_lock;
+        Optional <StrongKeeper<AggregatorStrongMeta>> _meta;
         Optional <Logger> _logger;
-        std::atomic<int> _operating_dbs{0};
+        std::atomic<bool> _ready_gc{false};
 
     public:
         Aggregator(std::string name, Options options);
         DELETE_MOVE(Aggregator);
         DELETE_COPY(Aggregator);
+
+        EXPOSE(_logger);
 
     public:
         ~Aggregator() noexcept override;
@@ -69,6 +76,7 @@ namespace LeviDB {
         std::unique_ptr<Snapshot>
         makeSnapshot() override;
 
+        // @formatter:off
         std::unique_ptr<Iterator<Slice, std::string>>
         makeIterator(std::unique_ptr<Snapshot> && snapshot) const override;
 
@@ -79,24 +87,46 @@ namespace LeviDB {
         std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
         makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
                                   std::unique_ptr<Snapshot> && snapshot) const override;
-
-        void tryApplyPending() override;
-
-        bool canRelease() const override;
-
-        Slice largestKey() const override;
-
-        Slice smallestKey() const override;
-
-        void updateKeyRange() override;
+        // @formatter:on
 
         bool explicitRemove(const WriteOptions & options,
                             const Slice & key) override;
 
-        void sync() override;
+        // 大规模分片时, 以下方法浪费性能且没有意义, 不实现
+        [[noreturn]] void tryApplyPending() override { // 析构时自动 apply
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
+
+        [[noreturn]] bool canRelease() const override { // 调用者必须自行保证可以 release
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
+
+        [[noreturn]] Slice largestKey() const override { // 可以用 iter 替代
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
+
+        [[noreturn]] Slice smallestKey() const override { // 可以用 iter 替代
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
+
+        [[noreturn]] void updateKeyRange() override { // 没有意义
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
+
+        [[noreturn]] void sync() override { // 设置 sync 为 true 替代
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
 
     private:
-        void insertNode(std::unique_ptr<AggregatorNode> node) noexcept;
+        void insertNodeUnlocked(std::unique_ptr<AggregatorNode> && node) noexcept;
+
+        std::pair<AggregatorNode *, RWLockWriteGuard>
+        findBestMatchForWrite(const Slice & target);
+
+        std::pair<AggregatorNode *, RWLockReadGuard>
+        findBestMatchForRead(const Slice & target) const;
+
+        void gc();
     };
 }
 

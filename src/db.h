@@ -45,6 +45,7 @@ namespace LeviDB {
         virtual bool remove(const WriteOptions & options,
                             const Slice & key) = 0;
 
+        // kvs must be ordered
         virtual bool write(const WriteOptions & options,
                            const std::vector<std::pair<Slice, Slice>> & kvs) = 0;
 

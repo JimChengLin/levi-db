@@ -19,7 +19,7 @@ set(SOURCE_FILES main.cpp
         bench/db_write_bench.cpp
         bench/kv_read_bench.cpp
         bench/kv_write_bench.cpp
-        src/aggregator/aggregator.cpp src/aggregator/aggregator.h
+        src/aggregator/aggregator.cpp src/aggregator/aggregator.h src/aggregator/aggregator_.cpp
         src/aggregator/compact.h
         src/aggregator/compact_1_2.cpp src/aggregator/compact_1_2.h
         src/aggregator/compact_2_1.cpp src/aggregator/compact_2_1.h src/aggregator/compact_1_2_.cpp
@@ -62,8 +62,7 @@ set(SOURCE_FILES main.cpp
         test/index_test.cpp
         test/log_test.cpp
         test/misc_test.cpp
-        test/regex_test.cpp
-        )
+        test/regex_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
 
