@@ -276,8 +276,18 @@ namespace LeviDB {
 
     std::pair<std::string, bool>
     Aggregator::get(const ReadOptions & options, const Slice & key) const {
-        RWLockReadGuard guard;
-        return findBestMatchForRead(key, &guard)->db->get(options, key);
+        RWLockReadGuard read_guard;
+        const AggregatorNode * match = findBestMatchForRead(key, &read_guard);
+        if (match->db == nullptr) {
+            {
+                RWLockReadGuard _(std::move(read_guard));
+            }
+            RWLockWriteGuard write_guard;
+            AggregatorNode * m = const_cast<Aggregator *>(this)->findBestMatchForWrite(key, &write_guard);
+            mayOpenDB(m, &const_cast<Aggregator *>(this)->_seq_gen);
+            return m->db->get(options, key);
+        }
+        return match->db->get(options, key);
     };
 
     std::unique_ptr<Snapshot>
@@ -423,7 +433,7 @@ namespace LeviDB {
                     std::string prefixed_child = (db_name + '/') += child;
                     if (child.size() > sizeof(tmp_postfix) &&
                         std::equal(tmp_postfix, tmp_postfix + sizeof(tmp_postfix),
-                                   child.cend() - sizeof(tmp_postfix), child.cend())) { // failed repairing files
+                                   child.cend() - sizeof(tmp_postfix), child.cend())) { // temp files
                         for (const std::string & c:LeviDB::IOEnv::getChildren(prefixed_child)) {
                             LeviDB::IOEnv::deleteFile((prefixed_child + '/') += c);
                         }
@@ -435,13 +445,14 @@ namespace LeviDB {
                 }
             }
 
-            std::string keeper_name = db_name + "/keeper";
-            if (IOEnv::fileExists(keeper_name)) {
-                IOEnv::deleteFile(keeper_name);
+            for (const std::string & keeper_name:{db_name + "/keeper_a", db_name + "/keeper_b"}) {
+                if (IOEnv::fileExists(keeper_name)) {
+                    IOEnv::deleteFile(keeper_name);
+                }
             }
             AggregatorStrongMeta meta{};
             meta.counter = max_num + 1;
-            StrongKeeper<AggregatorStrongMeta>(std::move(keeper_name), meta, std::string{});
+            StrongKeeper<AggregatorStrongMeta>(db_name + "/keeper", meta, std::string{});
         } catch (const Exception & e) {
             reporter(e);
             return false;
