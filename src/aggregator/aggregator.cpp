@@ -25,7 +25,7 @@ namespace LeviDB {
             }
 
             // 获取分片信息并简单修复
-            std::vector<std::string> children = IOEnv::getChildren(prefix);
+            std::vector<std::string> children = IOEnv::getChildren(_name);
             for (const std::string & child:children) {
                 std::string prefixed_child;
                 if (not(child[0] >= '0' && child[0] <= '9')
@@ -56,7 +56,7 @@ namespace LeviDB {
                 }
             }
 
-            children = IOEnv::getChildren(prefix);
+            children = IOEnv::getChildren(_name);
             children.erase(std::remove_if(children.begin(), children.end(), [&prefix](std::string & child) noexcept {
                 return not(child[0] >= '0' && child[0] <= '9') || (child = prefix + child, false);
             }), children.end());
@@ -415,6 +415,37 @@ namespace LeviDB {
     }
 
     bool repairDB(const std::string & db_name, reporter_t reporter) noexcept {
+        static constexpr char tmp_postfix[] = "_tmp";
+        try {
+            uint64_t max_num = 0;
+            for (const std::string & child:IOEnv::getChildren(db_name)) {
+                if (child[0] >= '0' && child[0] <= '9') { // find db
+                    std::string prefixed_child = (db_name + '/') += child;
+                    if (child.size() > sizeof(tmp_postfix) &&
+                        std::equal(tmp_postfix, tmp_postfix + sizeof(tmp_postfix),
+                                   child.cend() - sizeof(tmp_postfix), child.cend())) { // failed repairing files
+                        for (const std::string & c:LeviDB::IOEnv::getChildren(prefixed_child)) {
+                            LeviDB::IOEnv::deleteFile((prefixed_child + '/') += c);
+                        }
+                        LeviDB::IOEnv::deleteDir(prefixed_child);
+                    } else {
+                        max_num = std::max(max_num, std::stoull(child));
+                        repairDBSingle(prefixed_child, reporter);
+                    }
+                }
+            }
 
+            std::string keeper_name = db_name + "/keeper";
+            if (IOEnv::fileExists(keeper_name)) {
+                IOEnv::deleteFile(keeper_name);
+            }
+            AggregatorStrongMeta meta{};
+            meta.counter = max_num + 1;
+            StrongKeeper<AggregatorStrongMeta>(std::move(keeper_name), meta, std::string{});
+        } catch (const Exception & e) {
+            reporter(e);
+            return false;
+        }
+        return true;
     };
 }
