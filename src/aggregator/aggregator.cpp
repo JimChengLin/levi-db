@@ -123,7 +123,7 @@ namespace LeviDB {
                 not(cursor->db_name.back() >= '0' && cursor->db_name.back() <= '9')) {
                 Logger::logForMan(_logger.get(), "rename %s to %llu",
                                   cursor->db_name.c_str(),
-                                  _meta->immut_value().counter);
+                                  static_cast<unsigned long long>(_meta->immut_value().counter));
                 IOEnv::renameFile(cursor->db_name, std::to_string(_meta->immut_value().counter));
                 _meta->update(offsetof(AggregatorStrongMeta, counter), _meta->immut_value().counter + 1);
             }
@@ -152,7 +152,7 @@ namespace LeviDB {
             next_node->db_name = next_node->db->immut_name();
             next_node->lower_bound = next_node->db->smallestKey().toString();
             next_node->next = std::move(match->next);
-            next_node->hit.store(match->hit = match->hit / 2);
+            next_node->hit = (match->hit = match->hit / 2);
             match->next = std::move(next_node);
         }
     }
@@ -439,7 +439,7 @@ namespace LeviDB {
                         }
                         LeviDB::IOEnv::deleteDir(prefixed_child);
                     } else {
-                        max_num = std::max(max_num, std::stoull(child));
+                        max_num = std::max<unsigned long long>(max_num, std::stoull(child));
                         repairDBSingle(prefixed_child, reporter);
                     }
                 }

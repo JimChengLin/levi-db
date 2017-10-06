@@ -7,7 +7,7 @@
  * TODO: 这部分设计强烈依赖工程调优, 用户可自行改进
  *
  * Aggregator 物理文件结构:
- * 1. /1/, /2/... - 大量 DBSingle 分片
+ * 1. /1/, /2/... - DBSingle 分片
  * 2. log_prev.txt, log.txt - 人类可读日志
  * 3. keeper_a, keeper_b - double buffer 的 meta keeper
  * 4. lock
@@ -50,6 +50,12 @@ namespace LeviDB {
         Optional<StrongKeeper<AggregatorStrongMeta>> _meta;
         Optional<Logger> _logger;
         mutable std::atomic<bool> _ready_gc{false};
+
+        class ChainIterator;
+
+        class ChainRegexIterator;
+
+        class ChainReversedRegexIterator;
 
     public:
         Aggregator(std::string name, Options options);
