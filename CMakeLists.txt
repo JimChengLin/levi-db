@@ -25,7 +25,7 @@ set(SOURCE_FILES main.cpp
         src/aggregator/compact_2_1.cpp src/aggregator/compact_2_1.h src/aggregator/compact_1_2_.cpp
         src/compress.h src/compress.cpp
         src/crc32c.cpp src/crc32c.h
-        src/db.cpp src/db.h
+        src/db.h
         src/db_single.cpp src/db_single.h
         src/env_io.cpp src/env_io.h
         src/env_thread.cpp src/env_thread.h
@@ -39,6 +39,7 @@ set(SOURCE_FILES main.cpp
         src/levi_regex/state_machine.cpp src/levi_regex/state_machine.h
         src/log_reader.cpp src/log_reader.h
         src/log_writer.cpp src/log_writer.h
+        src/lv_db.cpp src/lv_db.h
         src/merger.h
         src/meta_keeper.h
         src/optional.h
@@ -62,7 +63,8 @@ set(SOURCE_FILES main.cpp
         test/index_test.cpp
         test/log_test.cpp
         test/misc_test.cpp
-        test/regex_test.cpp)
+        test/regex_test.cpp
+        )
 
 add_executable(LeviDB ${SOURCE_FILES})
 

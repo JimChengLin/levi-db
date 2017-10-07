@@ -66,7 +66,7 @@ namespace LeviDB {
     private:
         class RegexIterator;
 
-        class ReversedRegexIterator;
+        class RegexReversedIterator;
 
     public:
         using IndexIter::IndexIter;

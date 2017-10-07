@@ -55,7 +55,7 @@ namespace LeviDB {
 
         class ChainRegexIterator;
 
-        class ChainReversedRegexIterator;
+        class ChainRegexReversedIterator;
 
     public:
         Aggregator(std::string name, Options options);

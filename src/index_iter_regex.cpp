@@ -534,7 +534,7 @@ namespace LeviDB {
         return std::make_unique<RegexIterator>(this, std::move(regex), std::move(snapshot));
     }
 
-    class IndexRegex::ReversedRegexIterator : public SimpleIterator<std::pair<Slice, std::string>> {
+    class IndexRegex::RegexReversedIterator : public SimpleIterator<std::pair<Slice, std::string>> {
     private:
         const IndexIter * _index;
         std::shared_ptr<Regex::R> _regex;
@@ -547,7 +547,7 @@ namespace LeviDB {
         bool _valid = false;
 
     public:
-        ReversedRegexIterator(const IndexIter * index, std::shared_ptr<Regex::R> regex,
+        RegexReversedIterator(const IndexIter * index, std::shared_ptr<Regex::R> regex,
                               std::unique_ptr<Snapshot> && snapshot)
                 : _index(index),
                   _regex(std::move(regex)),
@@ -559,11 +559,11 @@ namespace LeviDB {
             next();
         }
 
-        DEFAULT_MOVE(ReversedRegexIterator);
-        DELETE_COPY(ReversedRegexIterator);
+        DEFAULT_MOVE(RegexReversedIterator);
+        DELETE_COPY(RegexReversedIterator);
 
     public:
-        ~ReversedRegexIterator() noexcept override { --_index->_operating_iters; }
+        ~RegexReversedIterator() noexcept override { --_index->_operating_iters; }
 
         bool valid() const override {
             return _valid;
@@ -614,6 +614,6 @@ namespace LeviDB {
     std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
     IndexRegex::makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
                                           std::unique_ptr<Snapshot> && snapshot) const {
-        return std::make_unique<ReversedRegexIterator>(this, std::move(regex), std::move(snapshot));
+        return std::make_unique<RegexReversedIterator>(this, std::move(regex), std::move(snapshot));
     }
 }

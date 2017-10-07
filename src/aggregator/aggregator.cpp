@@ -106,7 +106,6 @@ namespace LeviDB {
     };
 
     Aggregator::~Aggregator() noexcept {
-        Logger::logForMan(_logger.get(), "rename dbs");
         AggregatorNode * cursor = &_head;
         while (true) {
             cursor = cursor->next.get();
@@ -124,7 +123,14 @@ namespace LeviDB {
                 Logger::logForMan(_logger.get(), "rename %s to %llu",
                                   cursor->db_name.c_str(),
                                   static_cast<unsigned long long>(_meta->immut_value().counter));
-                IOEnv::renameFile(cursor->db_name, std::to_string(_meta->immut_value().counter));
+                try {
+                    IOEnv::renameFile(cursor->db_name, std::to_string(_meta->immut_value().counter));
+                } catch (const Exception & e) {
+                    Logger::logForMan(_logger.get(), "rename %s to %llu failed, because %s",
+                                      cursor->db_name.c_str(),
+                                      static_cast<unsigned long long>(_meta->immut_value().counter),
+                                      e.toString().c_str());
+                }
                 _meta->update(offsetof(AggregatorStrongMeta, counter), _meta->immut_value().counter + 1);
             }
         }

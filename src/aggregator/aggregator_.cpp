@@ -92,6 +92,7 @@ namespace LeviDB {
                 {
                     RWLockReadGuard _(std::move(read_guard));
                 }
+                // coverity[double_lock]
                 RWLockWriteGuard write_guard(node->lock);
                 node->db = std::make_unique<DBSingle>(node->db_name, Options{}, &_aggregator->_seq_gen);
                 return node->db->makeIterator(std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
@@ -175,6 +176,7 @@ namespace LeviDB {
                         {
                             RWLockReadGuard _(std::move(read_guard));
                         }
+                        // coverity[double_lock]
                         RWLockWriteGuard write_guard(_cursor->lock);
                         _cursor->db = std::make_unique<DBSingle>(_cursor->db_name, Options{}, &_aggregator->_seq_gen);
                         _iter = _cursor->db->makeRegexIterator(_regex,
@@ -196,7 +198,7 @@ namespace LeviDB {
         return std::make_unique<ChainRegexIterator>(this, std::move(regex), std::move(snapshot));
     };
 
-    class Aggregator::ChainReversedRegexIterator : public SimpleIterator<std::pair<Slice, std::string>> {
+    class Aggregator::ChainRegexReversedIterator : public SimpleIterator<std::pair<Slice, std::string>> {
     private:
         Aggregator * _aggregator;
         AggregatorNode * _cursor;
@@ -205,18 +207,18 @@ namespace LeviDB {
         std::unique_ptr<Snapshot> _snapshot;
 
     public:
-        ChainReversedRegexIterator(const Aggregator * aggregator,
+        ChainRegexReversedIterator(const Aggregator * aggregator,
                                    std::shared_ptr<Regex::R> regex,
                                    std::unique_ptr<Snapshot> && snapshot)
                 : _aggregator(const_cast<Aggregator *>(aggregator)),
                   _cursor(&_aggregator->_head),
                   _regex(std::move(regex)),
                   _snapshot(std::move(snapshot)) { maySetNextValidCursorAndIterBefore(nullptr); }
-        DELETE_MOVE(ChainReversedRegexIterator);
-        DELETE_COPY(ChainReversedRegexIterator);
+        DELETE_MOVE(ChainRegexReversedIterator);
+        DELETE_COPY(ChainRegexReversedIterator);
 
     public:
-        ~ChainReversedRegexIterator() noexcept override = default;
+        ~ChainRegexReversedIterator() noexcept override = default;
 
         bool valid() const override {
             return _iter != nullptr && _iter->valid();
@@ -270,6 +272,6 @@ namespace LeviDB {
     std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
     Aggregator::makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
                                           std::unique_ptr<Snapshot> && snapshot) const {
-        return std::make_unique<ChainReversedRegexIterator>(this, std::move(regex), std::move(snapshot));
+        return std::make_unique<ChainRegexReversedIterator>(this, std::move(regex), std::move(snapshot));
     };
 }
