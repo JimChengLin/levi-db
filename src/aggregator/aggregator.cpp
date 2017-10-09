@@ -431,22 +431,23 @@ namespace LeviDB {
     }
 
     bool repairDB(const std::string & db_name, reporter_t reporter) noexcept {
-        static constexpr char tmp_postfix[] = "_tmp";
+        static constexpr char postfix[] = "_tmp";
         try {
             uint64_t max_num = 0;
             for (const std::string & child:IOEnv::getChildren(db_name)) {
                 if (child[0] >= '0' && child[0] <= '9') { // find db
                     std::string prefixed_child = (db_name + '/') += child;
-                    if (child.size() > sizeof(tmp_postfix) &&
-                        std::equal(tmp_postfix, tmp_postfix + sizeof(tmp_postfix),
-                                   child.cend() - sizeof(tmp_postfix), child.cend())) { // temp files
+                    if (child.size() > sizeof(postfix) &&
+                        std::equal(postfix, postfix + sizeof(postfix),
+                                   child.cend() - sizeof(postfix), child.cend())) { // temp files
                         for (const std::string & c:LeviDB::IOEnv::getChildren(prefixed_child)) {
                             LeviDB::IOEnv::deleteFile((prefixed_child + '/') += c);
                         }
                         LeviDB::IOEnv::deleteDir(prefixed_child);
                     } else {
                         max_num = std::max<unsigned long long>(max_num, std::stoull(child));
-                        if (!repairDBSingle(prefixed_child, reporter)) {
+                        if (!IOEnv::fileExists(prefixed_child + "/keeper") &&
+                            !repairDBSingle(prefixed_child, reporter)) {
                             return false;
                         };
                     }
