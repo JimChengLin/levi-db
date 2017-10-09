@@ -28,9 +28,6 @@ namespace LeviDB {
         void remove(const WriteOptions & options,
                     const Slice & key);
 
-        void explicitRemove(const WriteOptions & options,
-                            const Slice & key);
-
         void write(const WriteOptions & options,
                    const std::vector<std::pair<Slice, Slice>> & kvs);
 

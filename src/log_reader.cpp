@@ -697,10 +697,18 @@ namespace LeviDB {
         public:
             TableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept
                     : _data_file(data_file), _reporter(std::move(reporter)) {
-                try {
-                    _t.build(std::make_unique<RawIteratorBatchChecked>(std::make_unique<RawIterator>(data_file, 0)));
-                } catch (const Exception & e) {
-                    _reporter(e);
+                uint32_t offset = 0;
+                while (!_t.valid()) {
+                    try {
+                        _t.build(std::make_unique<RawIteratorBatchChecked>
+                                         (std::make_unique<RawIterator>(data_file, offset)));
+                    } catch (const Exception & e) {
+                        _reporter(e);
+                        if (e.isIOError()) {
+                            break;
+                        }
+                        offset += LogWriterConst::block_size_;
+                    }
                 }
             }
 

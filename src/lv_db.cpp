@@ -22,16 +22,6 @@ namespace LeviDB {
         }
     }
 
-    void LvDB::explicitRemove(const WriteOptions & options,
-                              const Slice & key) {
-        try {
-            _aggregator.explicitRemove(options, key);
-        } catch (const Exception & e) {
-            Logger::logForMan(_aggregator.mut_logger().get(), "ExplicitRemove: %s", e.toString().c_str());
-            throw e;
-        }
-    }
-
     void LvDB::write(const WriteOptions & options,
                      const std::vector<std::pair<Slice, Slice>> & kvs) {
         try {
