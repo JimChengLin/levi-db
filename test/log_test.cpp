@@ -64,6 +64,8 @@ void log_test() {
     assert(compress_kv_iter->key() == "C");
     compress_kv_iter->prev();
     assert(compress_kv_iter->key() == "A");
+    compress_kv_iter->prev();
+    assert(!compress_kv_iter->valid());
 
     pos = writer.calcWritePos();
     std::string value_input(UINT16_MAX, 'B');

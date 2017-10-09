@@ -446,7 +446,9 @@ namespace LeviDB {
                         LeviDB::IOEnv::deleteDir(prefixed_child);
                     } else {
                         max_num = std::max<unsigned long long>(max_num, std::stoull(child));
-                        repairDBSingle(prefixed_child, reporter);
+                        if (!repairDBSingle(prefixed_child, reporter)) {
+                            return false;
+                        };
                     }
                 }
             }

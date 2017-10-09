@@ -730,6 +730,11 @@ namespace LeviDB {
                 }
             }
 
+        public:
+            bool initSuccess() const noexcept {
+                return _t.valid();
+            }
+
         private:
             void handle(const Exception & e) const noexcept {
                 uint32_t curr_disk_offset = _t->_table._raw_iter_batch_ob->diskOffset();
@@ -763,7 +768,12 @@ namespace LeviDB {
 
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
         makeTableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept {
-            return std::make_unique<TableRecoveryIterator>(data_file, std::move(reporter));
+            auto res = std::make_unique<TableRecoveryIterator>(data_file, std::move(reporter));
+            if (res->initSuccess()) {
+                return res;
+            } else {
+                return nullptr;
+            }
         };
 
         class TableRecoveryIteratorKV : public SimpleIterator<std::pair<Slice, std::string>> {
@@ -790,11 +800,21 @@ namespace LeviDB {
             void next() override {
                 _tb.next();
             }
+
+        public:
+            bool initSuccess() const noexcept {
+                return _tb.initSuccess();
+            }
         };
 
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
         makeTableRecoveryIteratorKV(RandomAccessFile * data_file, reporter_t reporter) noexcept {
-            return std::make_unique<TableRecoveryIteratorKV>(data_file, std::move(reporter));
+            auto res = std::make_unique<TableRecoveryIteratorKV>(data_file, std::move(reporter));
+            if (res->initSuccess()) {
+                return res;
+            } else {
+                return nullptr;
+            }
         }
     }
 }

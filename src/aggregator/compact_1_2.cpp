@@ -462,6 +462,9 @@ namespace LeviDB {
             for (const std::string & name:sub_dbs) {
                 RandomAccessFile rf(name + "/data");
                 auto it = LogReader::makeTableRecoveryIteratorKV(&rf, reporter);
+                if (it == nullptr) {
+                    return false;
+                }
 
                 WriteOptions write_opt{};
                 write_opt.compress = true;

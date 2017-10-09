@@ -309,6 +309,9 @@ namespace LeviDB {
             {
                 RandomAccessFile rf(db_single_name + "/data");
                 auto it = LogReader::makeTableRecoveryIteratorKV(&rf, reporter);
+                if (it == nullptr) {
+                    return false;
+                }
 
                 SeqGenerator seq_gen;
                 Options options{};
