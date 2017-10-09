@@ -112,6 +112,7 @@ void log_test() {
     auto table_recovery_iter =
             LeviDB::LogReader::makeTableRecoveryIterator(&r_mirror, [](const LeviDB::Exception & e) noexcept {});
     for (int i = 0; i < 4; ++i) {
+        assert(table_recovery_iter->item().first.size() != 0);
         table_recovery_iter->next();
     }
     assert(!table_recovery_iter->valid());

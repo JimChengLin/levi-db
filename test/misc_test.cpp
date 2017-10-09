@@ -75,8 +75,8 @@ void misc_test() {
         LeviDB::IOEnv::deleteFile(fname);
         LeviDB::AppendableFile af(fname);
         LeviDB::LogWriter writer(&af);
-        std::vector<uint8_t> bkv = LeviDB::LogWriter::makeRecord(std::string(32752, 'A'), "");
-        for (int i = 0; i < 2; ++i) {
+        for (int i = 0; i < 3; ++i) {
+            std::vector<uint8_t> bkv = LeviDB::LogWriter::makeRecord(std::string(32752, 'A' + i), "");
             writer.addRecord({bkv.data(), bkv.size()});
         }
 
@@ -85,6 +85,17 @@ void misc_test() {
         while (iter->valid()) {
             assert(iter->item().size() == 32752 + 3 + 1);
             iter->next();
+        }
+    }
+    { // skip errors when recovery
+        LeviDB::RandomWriteFile wf(fname);
+        LeviDB::RandomAccessFile rf(fname);
+        wf.write(0, "6");
+        wf.write(50000, "6");
+        auto it = LeviDB::LogReader::makeTableRecoveryIterator(&rf, [](const LeviDB::Exception & e) noexcept {});
+        while (it->valid()) {
+            assert(it->item().first.size() == 32752 && it->item().first[0] == 'C');
+            it->next();
         }
     }
 
