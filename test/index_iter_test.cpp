@@ -10,7 +10,7 @@
 void index_iter_test() {
     const std::string index_fname = "/tmp/bdt_iter_index";
     const std::string data_fname = "/tmp/bdt_iter_data";
-    static constexpr int test_times_ = 100;
+    static constexpr int test_times_ = 500;
 
     if (LeviDB::IOEnv::fileExists(index_fname)) {
         LeviDB::IOEnv::deleteFile(index_fname);
@@ -99,7 +99,7 @@ void index_iter_test() {
 
         mvcc_iter->seek("0");
         assert(mvcc_iter->key() == "1");
-        assert(mvcc_iter->value() == "101");
+        assert(mvcc_iter->value() == "501");
 
         mvcc_iter->seek("C");
         mvcc_iter->next();

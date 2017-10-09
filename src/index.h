@@ -191,7 +191,7 @@ namespace LeviDB {
         // Matcher 有可能包装 multi-KV batch, target 用于区分
         virtual std::string toString(const Slice & target) const { return toString(); };
 
-        virtual std::string getValue(const Slice & target) const { return toString(); };
+        virtual std::string getValue(const Slice & target) const { return {}; };
     };
 
     class BitDegradeTree {
