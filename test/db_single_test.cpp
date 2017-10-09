@@ -12,21 +12,48 @@ void db_single_test() {
         LeviDB::IOEnv::deleteDir(db_name);
     }
 
+    auto write_opt = []() noexcept {
+        static int seed = 0;
+        LeviDB::WriteOptions opt{};
+        if (((seed++) & 1) == 0) {
+            opt.sync = true;
+        }
+        return opt;
+    };
+
     // 新建数据库
     {
         LeviDB::SeqGenerator seq_gen;
         LeviDB::Options options{};
+
+        try {
+            LeviDB::DBSingle db(db_name, options, &seq_gen);
+            assert(false);
+        } catch (const LeviDB::Exception & e) {
+            assert(e.isNotFound());
+        }
+
         options.create_if_missing = true;
         LeviDB::DBSingle db(db_name, options, &seq_gen);
     }
     {
-        // 正常打开数据库
         LeviDB::SeqGenerator seq_gen;
+
+        try {
+            LeviDB::Options options{};
+            options.error_if_exists = true;
+            LeviDB::DBSingle db(db_name, options, &seq_gen);
+            assert(false);
+        } catch (const LeviDB::Exception & e) {
+            assert(e.isInvalidArgument());
+        }
+
+        // 正常打开数据库
         LeviDB::DBSingle db(db_name, LeviDB::Options{}, &seq_gen);
 
         // 逐条写入数据
         for (int i = 0; i < 100; ++i) {
-            db.put(LeviDB::WriteOptions{}, std::to_string(i), std::to_string(i));
+            db.put(write_opt(), std::to_string(i), std::to_string(i));
         }
 
         // 逐条读取数据
@@ -38,7 +65,7 @@ void db_single_test() {
 
         // 逐条删除数据
         for (int i = -100; i < 100 / 2; ++i) {
-            db.remove(LeviDB::WriteOptions{}, std::to_string(i));
+            db.remove(write_opt(), std::to_string(i));
         }
 
         // 确认删除成功
@@ -55,8 +82,8 @@ void db_single_test() {
         // batch 写入
         std::string k = "100";
         std::string k2 = "101";
-        db.write(LeviDB::WriteOptions{}, {{k,  k},
-                                          {k2, k2}});
+        db.write(write_opt(), {{k,  k},
+                               {k2, k2}});
 
         // 迭代器
         auto it = db.makeIterator(db.makeSnapshot());
@@ -73,7 +100,7 @@ void db_single_test() {
 
         // 快照以及显式删除
         for (int i = 50; i < 60; ++i) {
-            db.explicitRemove(LeviDB::WriteOptions{}, std::to_string(i));
+            db.explicitRemove(write_opt(), std::to_string(i));
         }
         assert(!db.get(LeviDB::ReadOptions{}, "51").second);
         it->seekToFirst();
@@ -165,7 +192,7 @@ void db_single_test() {
         // compress write
         std::string k = "1000" + std::string(UINT8_MAX, 'A');
         std::string k2 = "1011" + std::string(UINT8_MAX, 'B');
-        LeviDB::WriteOptions options;
+        LeviDB::WriteOptions options{};
         options.compress = true;
         options.uncompress_size = static_cast<uint32_t>(k.size() * 2 + k2.size() * 2);
         db.write(options, {{k,  k},
@@ -175,6 +202,8 @@ void db_single_test() {
     }
     // repair single db
     {
+        assert(!LeviDB::repairDBSingle("/PATH_NOT_EXIST", [](const LeviDB::Exception & e) noexcept {}));
+
         LeviDB::repairDBSingle(db_name, [](const LeviDB::Exception & e) noexcept {
             std::cout << "RepairDBSingleTest: " << e.toString() << std::endl;
         });
@@ -190,6 +219,18 @@ void db_single_test() {
             it->next();
         }
         assert(!db.canRelease());
+    }
+    {
+        LeviDB::SeqGenerator seq_gen;
+        LeviDB::Options options{};
+
+        LeviDB::IOEnv::deleteFile(db_name + "/data");
+        try {
+            LeviDB::DBSingle db(db_name, options, &seq_gen);
+            assert(false);
+        } catch (const LeviDB::Exception & e) {
+            assert(e.isNotFound());
+        }
     }
 
     std::cout << __FUNCTION__ << std::endl;

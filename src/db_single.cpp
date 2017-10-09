@@ -23,7 +23,8 @@ namespace LeviDB {
             if (!IOEnv::fileExists(index_fname) || !IOEnv::fileExists(keeper_fname)) { // repair
                 if (IOEnv::fileExists(index_fname)) {
                     IOEnv::deleteFile(index_fname);
-                } else {
+                }
+                if (IOEnv::fileExists(keeper_fname)) {
                     IOEnv::deleteFile(keeper_fname);
                 }
 
