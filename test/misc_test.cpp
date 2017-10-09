@@ -1,9 +1,11 @@
 #include <iostream>
+#include <unordered_set>
 
 #include "../src/exception.h"
 #include "../src/index_mvcc_rd.h"
 #include "../src/log_reader.h"
 #include "../src/log_writer.h"
+#include "../src/optional.h"
 
 void misc_test() {
     const std::string fname = "/tmp/misc_bdt";
@@ -92,11 +94,32 @@ void misc_test() {
         LeviDB::RandomAccessFile rf(fname);
         wf.write(0, "6");
         wf.write(50000, "6");
-        auto it = LeviDB::LogReader::makeTableRecoveryIterator(&rf, [](const LeviDB::Exception & e) noexcept {});
-        while (it->valid()) {
-            assert(it->item().first.size() == 32752 && it->item().first[0] == 'C');
-            it->next();
+        {
+            auto it = LeviDB::LogReader::makeTableRecoveryIterator(&rf, [](const LeviDB::Exception & e) noexcept {});
+            while (it->valid()) {
+                assert(it->item().first.size() == 32752 && it->item().first[0] == 'C');
+                it->next();
+            }
         }
+        wf.write(90000, "6");
+        {
+            auto it = LeviDB::LogReader::makeTableRecoveryIterator(&rf, [](const LeviDB::Exception & e) noexcept {});
+            assert(!it->valid());
+        }
+    }
+    {
+        std::unordered_set<LeviDB::Slice, LeviDB::SliceHasher> set;
+        std::string a = "HahaLoloOh";
+        std::string b = "LoloHahaOh";
+        set.emplace(a);
+        set.emplace(b);
+        assert(set.find(a)->operator==(a));
+        assert(set.find(b)->operator==(b));
+    }
+    {
+        LeviDB::Optional<int> opt_int;
+        opt_int.build(10);
+        assert(const_cast<const decltype(opt_int) &>(opt_int).get() == opt_int.get());
     }
 
     std::cout << __FUNCTION__ << std::endl;

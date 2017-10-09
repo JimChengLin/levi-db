@@ -52,7 +52,12 @@ namespace LeviDB {
                     }
                 } else if ((pos = child.find('_')) != std::string::npos) { // compact 1 to 2
                     prefixed_child.resize(prefixed_child.size() - (child.size() - pos));
-                    repairCompacting1To2DB(prefixed_child, [](const Exception & e) { throw e; });
+                    Optional<Exception> exception;
+                    repairCompacting1To2DB(prefixed_child,
+                                           [&exception](const Exception & e) noexcept { exception.build(e); });
+                    if (exception.valid()) {
+                        throw *exception.get();
+                    }
                 }
             }
 

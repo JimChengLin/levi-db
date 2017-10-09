@@ -512,6 +512,7 @@ namespace LeviDB {
             };
 
             Slice item() const override {
+                assert(valid());
                 return {(*_cache_cursor).data(), (*_cache_cursor).size()};
             };
 
@@ -589,7 +590,9 @@ namespace LeviDB {
             explicit TableIterator(std::unique_ptr<RawIteratorBatchChecked> && raw_iter_batch)
                     : _raw_iter_batch_ob(raw_iter_batch.get()),
                       _kv_iter(makeKVIter(std::move(raw_iter_batch))) { // transfer ownership
-                _kv_iter->seekToFirst();
+                if (_kv_iter != nullptr) {
+                    _kv_iter->seekToFirst();
+                }
             }
 
             DEFAULT_MOVE(TableIterator);
@@ -598,7 +601,7 @@ namespace LeviDB {
             ~TableIterator() noexcept override = default;
 
             bool valid() const override {
-                return _kv_iter->valid();
+                return _kv_iter != nullptr && _kv_iter->valid();
             };
 
             std::pair<Slice, std::string> item() const override {
@@ -635,6 +638,9 @@ namespace LeviDB {
 
         private:
             static std::unique_ptr<kv_iter_t> makeKVIter(std::unique_ptr<RawIteratorBatchChecked> && p) {
+                if (!p->valid()) {
+                    return nullptr;
+                }
                 if (isRecordCompress(p->item().back())) {
                     return std::make_unique<RecordIteratorCompress>(std::move(p));
                 }
