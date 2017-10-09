@@ -65,6 +65,51 @@ void regex_test() {
         assert(output.isSuccess() && output._ed == 2);
         LeviDB::Regex::cacheClear();
 
+        r = (R("AB") << R("UNKNOWN", 0, 0)) & (R("AB") << R(std::make_unique<R>(""), 0, 0));
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            it->next();
+        }
+        assert(output.isSuccess() && output._ed == 2);
+        LeviDB::Regex::cacheClear();
+
+        r = R("A") << R(std::make_unique<R>("B"), 0, 1, LeviDB::Regex::GREEDY);
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            if (!output.isContinue() && output.isSuccess()) {
+                assert(output._ed == 2);
+                break;
+            }
+            it->next();
+        }
+        LeviDB::Regex::cacheClear();
+
+        r = R("A") << R(std::make_unique<R>("B"), 0, 1, LeviDB::Regex::LAZY);
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            if (!output.isContinue() && output.isSuccess()) {
+                assert(output._ed == 1);
+                break;
+            }
+            it->next();
+        }
+        LeviDB::Regex::cacheClear();
+
+        r = R(std::make_unique<R>("AB"), 1, 3);
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            if (!output.isContinue() && output.isSuccess()) {
+                assert(output._ed == 6);
+                break;
+            }
+            it->next();
+        }
+        LeviDB::Regex::cacheClear();
+
         r = R("AB") & R("AC");
         it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
         while (it->valid()) {
@@ -106,6 +151,15 @@ void regex_test() {
             it->next();
         }
         assert(output.isSuccess() && output._ed == 2);
+        LeviDB::Regex::cacheClear();
+
+        r = (R("AB", 0, 3) | R("ABABAB")) << R("C");
+        it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
+        while (it->valid()) {
+            output = it->item();
+            it->next();
+        }
+        assert(output.isFail());
         LeviDB::Regex::cacheClear();
 
         usr = LeviDB::USR("FGH");
