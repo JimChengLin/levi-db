@@ -65,7 +65,7 @@ void regex_test() {
         assert(output.isSuccess() && output._ed == 2);
         LeviDB::Regex::cacheClear();
 
-        r = (R("AB") << R("UNKNOWN", 0, 0)) & (R("AB") << R(std::make_unique<R>(""), 0, 0));
+        r = (R("AB") << R("UNKNOWN", 0, 0)) & (R("AB") << R(std::make_unique<R>("UNKNOWN"), 0, 0));
         it = LeviDB::Regex::make_imatch_iter(&r, &usr, result);
         while (it->valid()) {
             output = it->item();

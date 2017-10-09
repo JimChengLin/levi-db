@@ -770,10 +770,9 @@ namespace LeviDB {
         makeTableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept {
             auto res = std::make_unique<TableRecoveryIterator>(data_file, std::move(reporter));
             if (res->initSuccess()) {
-                return res;
-            } else {
-                return nullptr;
+                return std::unique_ptr<SimpleIterator<std::pair<Slice, uint32_t>>>(std::move(res));
             }
+            return nullptr;
         };
 
         class TableRecoveryIteratorKV : public SimpleIterator<std::pair<Slice, std::string>> {
@@ -811,10 +810,9 @@ namespace LeviDB {
         makeTableRecoveryIteratorKV(RandomAccessFile * data_file, reporter_t reporter) noexcept {
             auto res = std::make_unique<TableRecoveryIteratorKV>(data_file, std::move(reporter));
             if (res->initSuccess()) {
-                return res;
-            } else {
-                return nullptr;
+                return std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>(std::move(res));
             }
+            return nullptr;
         }
     }
 }

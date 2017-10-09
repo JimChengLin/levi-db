@@ -67,8 +67,7 @@ namespace LeviDB {
                 uint32_t from_k_len = m.immut_value().from_k_len;
 
                 auto node = std::make_unique<AggregatorNode>();
-                node->lower_bound = std::string(m.immut_trailing().data(),
-                                                m.immut_trailing().data() + from_k_len);
+                node->lower_bound = std::string(trailing.data(), trailing.data() + from_k_len);
                 node->db_name = std::move(child);
                 insertNodeUnlocked(std::move(node));
             }
@@ -125,13 +124,13 @@ namespace LeviDB {
                                   static_cast<unsigned long long>(_meta->immut_value().counter));
                 try {
                     IOEnv::renameFile(cursor->db_name, std::to_string(_meta->immut_value().counter));
+                    _meta->update(offsetof(AggregatorStrongMeta, counter), _meta->immut_value().counter + 1);
                 } catch (const Exception & e) {
                     Logger::logForMan(_logger.get(), "rename %s to %llu failed, because %s",
                                       cursor->db_name.c_str(),
                                       static_cast<unsigned long long>(_meta->immut_value().counter),
                                       e.toString().c_str());
                 }
-                _meta->update(offsetof(AggregatorStrongMeta, counter), _meta->immut_value().counter + 1);
             }
         }
         Logger::logForMan(_logger.get(), "end OK");
