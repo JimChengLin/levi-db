@@ -2,6 +2,8 @@
 
 #include "../src/exception.h"
 #include "../src/index_mvcc_rd.h"
+#include "../src/log_reader.h"
+#include "../src/log_writer.h"
 
 void misc_test() {
     const std::string fname = "/tmp/misc_bdt";
@@ -68,6 +70,22 @@ void misc_test() {
         assert(*reinterpret_cast<const uint32_t *>(pending_it->key().data()) == 12);
         snapshots.clear();
         index.tryApplyPending();
+    }
+    { // log trailing
+        LeviDB::IOEnv::deleteFile(fname);
+        LeviDB::AppendableFile af(fname);
+        LeviDB::LogWriter writer(&af);
+        std::vector<uint8_t> bkv = LeviDB::LogWriter::makeRecord(std::string(32752, 'A'), "");
+        for (int i = 0; i < 2; ++i) {
+            writer.addRecord({bkv.data(), bkv.size()});
+        }
+
+        LeviDB::RandomAccessFile rf(fname);
+        auto iter = LeviDB::LogReader::makeRawIterator(&rf, 0);
+        while (iter->valid()) {
+            assert(iter->item().size() == 32752 + 3 + 1);
+            iter->next();
+        }
     }
 
     std::cout << __FUNCTION__ << std::endl;

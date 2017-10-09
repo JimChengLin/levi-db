@@ -22,7 +22,6 @@ void index_mvcc_test() {
                 if (e_group.find({reinterpret_cast<char *>(&val), sizeof(val)}, seq_num).val != val)
                     return false;
             } else {
-                auto x = e_group.find({reinterpret_cast<char *>(&val), sizeof(val)}, seq_num).val;
                 if (e_group.find({reinterpret_cast<char *>(&val), sizeof(val)}, seq_num).val == val)
                     return false;
             }
