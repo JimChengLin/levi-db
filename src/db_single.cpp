@@ -318,7 +318,7 @@ namespace LeviDB {
                 Options options{};
                 options.create_if_missing = true;
                 options.error_if_exists = true;
-                DBSingle db(db_single_name + "_tmp", options, &seq_gen);
+                DBSingle db(db_single_name + "tmp", options, &seq_gen);
 
                 WriteOptions write_opt{};
                 write_opt.compress = true;
@@ -355,7 +355,7 @@ namespace LeviDB {
                 }
                 IOEnv::deleteDir(db_single_name);
             }
-            IOEnv::renameFile(db_single_name + "_tmp", db_single_name);
+            IOEnv::renameFile(db_single_name + "tmp", db_single_name);
 
         } catch (const Exception & e) {
             reporter(e);

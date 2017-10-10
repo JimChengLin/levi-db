@@ -84,6 +84,7 @@ namespace LeviDB {
 
     bool repairDBSingle(const std::string & db_single_name, reporter_t reporter) noexcept;
 
+    // opening a DB that didn't get repaired successfully is UB
     bool repairDB(const std::string & db_name, reporter_t reporter) noexcept;
 }
 

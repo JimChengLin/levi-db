@@ -435,7 +435,7 @@ namespace LeviDB {
     }
 
     bool repairDB(const std::string & db_name, reporter_t reporter) noexcept {
-        static constexpr char postfix[] = "_tmp";
+        static constexpr char postfix[] = "tmp";
         try {
             uint64_t max_num = 0;
             for (const std::string & child:IOEnv::getChildren(db_name)) {
