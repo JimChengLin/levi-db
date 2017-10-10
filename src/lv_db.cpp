@@ -25,7 +25,14 @@ namespace LeviDB {
     void LvDB::write(const WriteOptions & options,
                      const std::vector<std::pair<Slice, Slice>> & kvs) {
         try {
-            _aggregator.write(options, kvs);
+            WriteOptions opt = options;
+            if (opt.compress) {
+                opt.uncompress_size = 0;
+                for (const auto & kv:kvs) {
+                    opt.uncompress_size += kv.first.size() + kv.second.size();
+                }
+            }
+            _aggregator.write(opt, kvs);
         } catch (const Exception & e) {
             Logger::logForMan(_aggregator.mut_logger().get(), "Write: %s", e.toString().c_str());
             throw e;

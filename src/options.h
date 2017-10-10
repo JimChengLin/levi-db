@@ -31,7 +31,7 @@ namespace LeviDB {
     };
 
     struct WriteOptions {
-        uint32_t uncompress_size = 0;
+        uint32_t uncompress_size = 0; // if you are using LvDB, then you can ignore this one completely
         bool sync = false;
         bool compress = false;
     };
