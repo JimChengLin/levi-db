@@ -13,6 +13,8 @@
  * 4. lock
  */
 
+#include <map>
+
 #include "../db.h"
 #include "../env_io.h"
 #include "../env_thread.h"
@@ -26,16 +28,15 @@ namespace LeviDB {
     }
 
     struct AggregatorNode {
-        std::unique_ptr<AggregatorNode> next;
-        std::unique_ptr<DB> db;
+        std::atomic<size_t> hit{0};
         std::string db_name;
-        std::string lower_bound;
+        std::unique_ptr<DB> db;
         ReadWriteLock lock;
-        mutable std::atomic<int> hit{0};
+        std::atomic<bool> dirty{false};
     };
 
     struct AggregatorStrongMeta {
-        uint64_t counter = 0;
+        uint64_t counter = 1; // there must be a DBSingle named '0', so starts from 1
 
         // 程序变动时 +1
         const uint64_t db_version = 1;
@@ -45,11 +46,19 @@ namespace LeviDB {
     class Aggregator : public DB {
     private:
         SeqGenerator _seq_gen;
-        AggregatorNode _head;
+
+        typedef std::map<std::string/* lower_bound */, std::shared_ptr<AggregatorNode>, SliceComparator> dispatcher_t;
+        dispatcher_t _dispatcher;
+        ReadWriteLock _dispatcher_lock;
+
+        // @formatter:off
         Optional<FileLock> _file_lock;
         Optional<StrongKeeper<AggregatorStrongMeta>> _meta;
         Optional<Logger> _logger;
-        mutable std::atomic<bool> _ready_gc{false};
+        // @formatter:on
+
+        std::atomic<unsigned> _operating_dbs{0};
+        std::atomic<bool> _gc{false};
 
         class ChainIterator;
 
@@ -96,10 +105,12 @@ namespace LeviDB {
                                   std::unique_ptr<Snapshot> && snapshot) const override;
         // @formatter:on
 
-        bool explicitRemove(const WriteOptions & options,
-                            const Slice & key) override;
+        // 大规模分片时, 以下方法耗费性能或没有实际意义
+        [[noreturn]] bool explicitRemove(const WriteOptions & options,
+                                         const Slice & key) override { // 已有 remove
+            throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
+        };
 
-        // 大规模分片时, 以下方法耗费性能且没有实际意义
         [[noreturn]] void tryApplyPending() override { // 析构时自动 apply
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };
@@ -116,7 +127,7 @@ namespace LeviDB {
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };
 
-        [[noreturn]] void updateKeyRange() override { // 没必要让外部手动调用
+        [[noreturn]] void updateKeyRange() override { // 无需让外部手动调用
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };
 
@@ -125,11 +136,34 @@ namespace LeviDB {
         };
 
     private:
-        void insertNodeUnlocked(std::unique_ptr<AggregatorNode> && node) noexcept;
+        std::shared_ptr<AggregatorNode>
+        findBestMatchForWrite(const Slice & target, RWLockWriteGuard * guard,
+                              std::string * lower_bound = nullptr);
 
-        AggregatorNode * findBestMatchForWrite(const Slice & target, RWLockWriteGuard * lock);
+        std::shared_ptr<AggregatorNode>
+        findPrevOfBestMatchForWrite(const Slice & target, RWLockWriteGuard * guard,
+                                    std::string * lower_bound = nullptr);
 
-        const AggregatorNode * findBestMatchForRead(const Slice & target, RWLockReadGuard * lock) const;
+        std::shared_ptr<AggregatorNode>
+        findNextOfBestMatchForWrite(const Slice & target, RWLockWriteGuard * guard,
+                                    std::string * lower_bound = nullptr);
+
+        const std::shared_ptr<AggregatorNode>
+        findBestMatchForRead(const Slice & target, RWLockReadGuard * guard,
+                             std::string * lower_bound = nullptr) const;
+
+        const std::shared_ptr<AggregatorNode>
+        findPrevOfBestMatchForRead(const Slice & target, RWLockReadGuard * guard,
+                                   std::string * lower_bound = nullptr) const;
+
+        const std::shared_ptr<AggregatorNode>
+        findNextOfBestMatchForRead(const Slice & target, RWLockReadGuard * guard,
+                                   std::string * lower_bound = nullptr) const;
+
+        void mayOpenDB(std::shared_ptr<AggregatorNode> match);
+
+        // 只有以下两个方法会获得 _dispatcher_lock 的写锁
+        void ifCompact1To2Done(std::shared_ptr<AggregatorNode> match);
 
         void gc();
     };
