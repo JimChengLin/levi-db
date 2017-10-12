@@ -47,8 +47,7 @@ namespace LeviDB {
     private:
         SeqGenerator _seq_gen;
 
-        typedef std::map<std::string/* lower_bound */, std::shared_ptr<AggregatorNode>, SliceComparator> dispatcher_t;
-        dispatcher_t _dispatcher;
+        std::map<std::string/* lower_bound */, std::shared_ptr<AggregatorNode>, SliceComparator> _dispatcher;
         ReadWriteLock _dispatcher_lock;
 
         // @formatter:off

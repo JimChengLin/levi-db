@@ -115,6 +115,9 @@ namespace LeviDB {
                 node->db->tryApplyPending();
                 assert(node->db->canRelease());
                 node->db = nullptr;
+#ifndef NDEBUG
+                --_operating_dbs;
+#endif
             }
 
             if (!node->db_name.empty() && // DBSingle
@@ -133,7 +136,9 @@ namespace LeviDB {
                 }
             }
         }
-        Logger::logForMan(_logger.get(), "end OK");
+        assert(_operating_dbs == 0);
+        Logger::logForMan(_logger.get(), "%llu dbs, end OK",
+                          static_cast<unsigned long long>(_dispatcher.size()));
     }
 
     bool Aggregator::put(const WriteOptions & options,
@@ -247,6 +252,7 @@ namespace LeviDB {
                 ++it;
             }
         }
+        ifCompact1To2Done(match);
         return true;
     };
 
@@ -280,6 +286,7 @@ namespace LeviDB {
         }
 
         std::shared_ptr<AggregatorNode> res;
+        std::string bound;
         load:
         {
             RWLockReadGuard dispatcher_guard(_dispatcher_lock);
@@ -287,12 +294,13 @@ namespace LeviDB {
             if (find_res == _dispatcher.begin()) {
             } else { --find_res; }
             res = find_res->second;
-            if (lower_bound != nullptr) { *lower_bound = find_res->first; }
+            if (lower_bound != nullptr) { bound = find_res->first; }
         }
 
         RWLockWriteGuard temp_guard(res->lock);
         if (res->dirty) { goto load; }
         *guard = std::move(temp_guard);
+        if (lower_bound != nullptr) { *lower_bound = std::move(bound); }
         ++res->hit;
         return res;
     };
@@ -301,6 +309,7 @@ namespace LeviDB {
     Aggregator::findPrevOfBestMatchForWrite(const Slice & target, RWLockWriteGuard * guard,
                                             std::string * lower_bound) {
         std::shared_ptr<AggregatorNode> res;
+        std::string bound;
         load:
         {
             RWLockReadGuard dispatcher_guard(_dispatcher_lock);
@@ -312,12 +321,13 @@ namespace LeviDB {
             --find_res;
             res = find_res->second;
 
-            if (lower_bound != nullptr) { *lower_bound = find_res->first; }
+            if (lower_bound != nullptr) { bound = find_res->first; }
         }
 
         RWLockWriteGuard temp_guard(res->lock);
         if (res->dirty) { goto load; }
         *guard = std::move(temp_guard);
+        if (lower_bound != nullptr) { *lower_bound = std::move(bound); }
         return res;
     };
 
@@ -325,6 +335,7 @@ namespace LeviDB {
     Aggregator::findNextOfBestMatchForWrite(const Slice & target, RWLockWriteGuard * guard,
                                             std::string * lower_bound) {
         std::shared_ptr<AggregatorNode> res;
+        std::string bound;
         load:
         {
             RWLockReadGuard dispatcher_guard(_dispatcher_lock);
@@ -336,12 +347,13 @@ namespace LeviDB {
             if (find_res == _dispatcher.end()) { return nullptr; }
             res = find_res->second;
 
-            if (lower_bound != nullptr) { *lower_bound = find_res->first; }
+            if (lower_bound != nullptr) { bound = find_res->first; }
         }
 
         RWLockWriteGuard temp_guard(res->lock);
         if (res->dirty) { goto load; }
         *guard = std::move(temp_guard);
+        if (lower_bound != nullptr) { *lower_bound = std::move(bound); }
         return res;
     };
 
@@ -349,6 +361,7 @@ namespace LeviDB {
     Aggregator::findBestMatchForRead(const Slice & target, RWLockReadGuard * guard,
                                      std::string * lower_bound) const {
         std::shared_ptr<AggregatorNode> res;
+        std::string bound;
         load:
         {
             RWLockReadGuard dispatcher_guard(_dispatcher_lock);
@@ -356,12 +369,13 @@ namespace LeviDB {
             if (find_res == _dispatcher.begin()) {
             } else { --find_res; }
             res = find_res->second;
-            if (lower_bound != nullptr) { *lower_bound = find_res->first; }
+            if (lower_bound != nullptr) { bound = find_res->first; }
         }
 
         RWLockReadGuard temp_guard(res->lock);
         if (res->dirty) { goto load; }
         *guard = std::move(temp_guard);
+        if (lower_bound != nullptr) { *lower_bound = std::move(bound); }
         ++res->hit;
         return res;
     };
@@ -370,6 +384,7 @@ namespace LeviDB {
     Aggregator::findPrevOfBestMatchForRead(const Slice & target, RWLockReadGuard * guard,
                                            std::string * lower_bound) const {
         std::shared_ptr<AggregatorNode> res;
+        std::string bound;
         load:
         {
             RWLockReadGuard dispatcher_guard(_dispatcher_lock);
@@ -381,12 +396,13 @@ namespace LeviDB {
             --find_res;
             res = find_res->second;
 
-            if (lower_bound != nullptr) { *lower_bound = find_res->first; }
+            if (lower_bound != nullptr) { bound = find_res->first; }
         }
 
         RWLockReadGuard temp_guard(res->lock);
         if (res->dirty) { goto load; }
         *guard = std::move(temp_guard);
+        if (lower_bound != nullptr) { *lower_bound = std::move(bound); }
         return res;
     };
 
@@ -394,6 +410,7 @@ namespace LeviDB {
     Aggregator::findNextOfBestMatchForRead(const Slice & target, RWLockReadGuard * guard,
                                            std::string * lower_bound) const {
         std::shared_ptr<AggregatorNode> res;
+        std::string bound;
         load:
         {
             RWLockReadGuard dispatcher_guard(_dispatcher_lock);
@@ -405,12 +422,13 @@ namespace LeviDB {
             if (find_res == _dispatcher.end()) { return nullptr; }
             res = find_res->second;
 
-            if (lower_bound != nullptr) { *lower_bound = find_res->first; }
+            if (lower_bound != nullptr) { bound = find_res->first; }
         }
 
         RWLockReadGuard temp_guard(res->lock);
         if (res->dirty) { goto load; }
         *guard = std::move(temp_guard);
+        if (lower_bound != nullptr) { *lower_bound = std::move(bound); }
         return res;
     };
 
@@ -531,12 +549,13 @@ namespace LeviDB {
 
             cursor = findBestMatchForWrite(Slice(), &cursor_guard, &cursor_bound);
             while (cursor != nullptr) {
-                if (cursor->db != nullptr && cursor->db->canRelease() && cursor->hit <= close_limit) {
+                if (cursor->db != nullptr && (cursor->db->tryApplyPending(), cursor->db->canRelease())
+                    && cursor->hit <= close_limit) {
                     cursor->db = nullptr;
                     --_operating_dbs;
                 }
                 cursor->hit = 0;
-                cursor = findBestMatchForWrite(cursor_bound, &cursor_guard, &cursor_bound);
+                cursor = findNextOfBestMatchForWrite(cursor_bound, &cursor_guard, &cursor_bound);
             }
         }
     }

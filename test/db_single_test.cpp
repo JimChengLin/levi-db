@@ -86,7 +86,9 @@ void db_single_test() {
                                {k2, k2}});
 
         // 迭代器
-        auto it = db.makeIterator(db.makeSnapshot());
+        auto s = db.makeSnapshot();
+        assert(db.canRelease());
+        auto it = db.makeIterator(std::move(s));
         it->seekToFirst();
         for (int i = 100; i < 102; ++i) {
             assert(it->key() == std::to_string(i));
