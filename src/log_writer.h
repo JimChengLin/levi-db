@@ -81,9 +81,9 @@ namespace LeviDB {
 
         uint32_t calcWritePos() const noexcept;
 
-        std::vector<uint32_t> addRecords(const std::vector<Slice> & bkvs) {
-            std::vector<uint32_t> addrs;
-            addrs.reserve(bkvs.size());
+        // dirty hack, addrs 被借用作为表示是否 del
+        std::vector<uint32_t> addRecords(const std::vector<Slice> & bkvs, std::vector<uint32_t> addrs = {}) {
+            addrs.resize(bkvs.size());
             addRecords(bkvs, false, false, &addrs);
             return addrs;
         };

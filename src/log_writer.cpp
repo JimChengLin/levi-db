@@ -13,9 +13,13 @@ namespace LeviDB {
 
     void LogWriter::addRecords(const std::vector<Slice> & bkvs, bool compress, bool del,
                                std::vector<uint32_t> * addrs) {
+        size_t i = 0;
         bool record_begin = true;
         for (const Slice & bkv:bkvs) {
-            if (addrs != nullptr) addrs->emplace_back(calcWritePos());
+            if (addrs != nullptr) {
+                del = static_cast<bool>((*addrs)[i]);
+                (*addrs)[i++] = calcWritePos();
+            }
             if ((_block_offset & 1) == 1) { // 不允许奇数地址
                 assert((_dst->immut_length() & 1) == 1);
                 _dst->append({"\x00", 1});
@@ -146,6 +150,7 @@ namespace LeviDB {
             src.insert(src.end(), reinterpret_cast<uint8_t *>(buf), reinterpret_cast<uint8_t *>(p));
         }
         for (const auto & kv:kvs) {
+            assert(kv.second.data() != nullptr); // nullptr means batch-style del, cannot compress
             bin_size += kv.second.size();
             char buf[5];
             char * p = encodeVarint32(buf, static_cast<uint32_t>(kv.second.size()));

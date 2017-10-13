@@ -60,6 +60,8 @@ namespace LeviDB {
         }
 
         bool operator!=(const Slice & another) const noexcept { return !operator==(another); }
+
+        static Slice nullSlice() noexcept { return Slice(nullptr, 0); }
     };
 
     struct SliceComparator {

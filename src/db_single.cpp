@@ -138,9 +138,12 @@ namespace LeviDB {
 
         uint32_t bin_size = 0;
         std::vector<std::vector<uint8_t>> group;
+        std::vector<uint32_t> cmd;
         group.reserve(kvs.size());
+        cmd.reserve(kvs.size());
         for (const auto & kv:kvs) {
             group.emplace_back(LogWriter::makeRecord(kv.first, kv.second));
+            cmd.emplace_back(kv.second.data() == nullptr); // true 表示 del
             bin_size += group.back().size();
         }
 
@@ -156,11 +159,15 @@ namespace LeviDB {
             bkvs.emplace_back(bkv.data(), bkv.size());
         }
 
-        std::vector<uint32_t> addrs = _writer->addRecords(bkvs);
+        std::vector<uint32_t> addrs = _writer->addRecords(bkvs, std::move(cmd));
         assert(kvs.size() == addrs.size());
         for (int i = 0; i < kvs.size(); ++i) {
             updateKeyRange(kvs[i].first);
-            _index->insert(kvs[i].first, OffsetToData{addrs[i]});
+            if (kvs[i].second.data() != nullptr) {
+                _index->insert(kvs[i].first, OffsetToData{addrs[i]});
+            } else {
+                _index->remove(kvs[i].first, OffsetToData{addrs[i]});
+            }
         }
 
         _index->tryApplyPending();
