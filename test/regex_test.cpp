@@ -108,6 +108,11 @@ void regex_test() {
             }
             it->next();
         }
+        while (it->valid()) {
+            output = it->item();
+            it->next();
+        }
+        assert(output._ed == 2);
         LeviDB::Regex::cacheClear();
 
         r = R("AB") & R("AC");
