@@ -148,11 +148,22 @@ void db_single_test() {
         // key range
         assert(db.smallestKey() == "0");
         assert(db.largestKey() == "99");
+
+        // batch 删除
+        db.write(opt, {{k,  LeviDB::Slice::nullSlice()},
+                       {k2, "X"}});
+        assert(!db.get(LeviDB::ReadOptions{}, k).second);
+        assert(db.get(LeviDB::ReadOptions{}, k2).first == "X");
     }
     // 再次打开数据库
     {
         LeviDB::SeqGenerator seq_gen;
         LeviDB::DBSingle db(db_name, LeviDB::Options{}, &seq_gen);
+
+        assert(!db.get(LeviDB::ReadOptions{}, "100").second);
+        assert(db.get(LeviDB::ReadOptions{}, "101").first == "X");
+        db.put(write_opt(), "100", "100");
+        db.put(write_opt(), "101", "101");
 
         // meta keeper
         assert(db.smallestKey() == "0");
