@@ -107,6 +107,19 @@ void index_iter_test() {
         mvcc_iter->seek("1");
         mvcc_iter->prev();
         assert(!mvcc_iter->valid());
+
+        pos = writer.calcWritePos();
+        std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord("C", "CD");
+        writer.addRecord({bin.data(), bin.size()});
+        index.insert("C", LeviDB::OffsetToData{pos});
+
+        auto it = index.makeIterator();
+        it->seek("C");
+        assert(it->value() == "CD");
+        it->prev();
+        assert(it->value() == "_");
+        it->next();
+        assert(it->value() == "CD");
     }
     index.tryApplyPending();
     {
