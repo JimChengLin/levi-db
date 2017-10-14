@@ -82,8 +82,10 @@ void db_single_test() {
         // batch 写入
         std::string k = "100";
         std::string k2 = "101";
-        db.write(write_opt(), {{k,  k},
-                               {k2, k2}});
+        LeviDB::WriteOptions opt{};
+        opt.sync = true;
+        db.write(opt, {{k,  k},
+                       {k2, k2}});
 
         // 迭代器
         auto s = db.makeSnapshot();
