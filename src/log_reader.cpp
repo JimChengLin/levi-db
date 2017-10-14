@@ -469,6 +469,7 @@ namespace LeviDB {
         // 确保 batch dependency 的 RawIterator
         class RawIteratorBatchChecked : public SimpleIterator<Slice> {
         private:
+            std::exception_ptr _delay_e;
             std::unique_ptr<RawIterator> _raw_iter;
 
             std::vector<uint32_t> _disk_offsets;
@@ -494,6 +495,7 @@ namespace LeviDB {
                 auto nth = rhs._cache_cursor == rhs._cache.cend() ? static_cast<long>(-1)
                                                                   : static_cast<long>(rhs._cache_cursor -
                                                                                       rhs._cache.cbegin());
+                std::swap(_delay_e, rhs._delay_e);
                 std::swap(_raw_iter, rhs._raw_iter);
                 std::swap(_disk_offsets, rhs._disk_offsets);
                 std::swap(_cache, rhs._cache);
@@ -518,6 +520,8 @@ namespace LeviDB {
 
             void next() override {
                 assert(_disk_offsets.size() == _cache.size());
+                if (_delay_e != nullptr) { std::rethrow_exception(_delay_e); }
+
                 if (_cache_cursor == _cache.cend() || ++_cache_cursor == _cache.cend()) {
                     _disk_offsets.clear();
                     _cache.clear();
@@ -542,7 +546,16 @@ namespace LeviDB {
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
                                 reinterpret_cast<const uint8_t *>(_raw_iter->item().data() + _raw_iter->item().size())
                         );
-                        _raw_iter->next(); // 多读一页
+
+                        try {
+                            _raw_iter->next(); // 多读一页
+                        } catch (const Exception & e) {
+                            if (_delay_e == nullptr) { // 下一页的异常不应该影响当前的输出
+                                _delay_e = std::current_exception();
+                            } else {
+                                throw e;
+                            }
+                        }
 
                         if (isBatchFull(_prev_type) || isBatchLast(_prev_type)) {
                             _cache_cursor = _cache.cbegin();

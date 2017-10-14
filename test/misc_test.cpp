@@ -92,8 +92,18 @@ void misc_test() {
     { // skip errors when recovery
         LeviDB::RandomWriteFile wf(fname);
         LeviDB::RandomAccessFile rf(fname);
+
+        wf.write(60000, "6");
+        {
+            auto it = LeviDB::LogReader::makeTableRecoveryIterator(&rf, [](const LeviDB::Exception & e) noexcept {});
+            for (int i = 0; i < 2; ++i) {
+                assert(it->item().first.size() == 32752);
+                it->next();
+            }
+            assert(!it->valid());
+        }
+
         wf.write(0, "6");
-        wf.write(50000, "6");
         {
             auto it = LeviDB::LogReader::makeTableRecoveryIterator(&rf, [](const LeviDB::Exception & e) noexcept {});
             while (it->valid()) {
@@ -101,6 +111,7 @@ void misc_test() {
                 it->next();
             }
         }
+
         wf.write(90000, "6");
         {
             auto it = LeviDB::LogReader::makeTableRecoveryIterator(&rf, [](const LeviDB::Exception & e) noexcept {});

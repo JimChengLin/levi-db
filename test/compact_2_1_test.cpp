@@ -14,7 +14,9 @@ void compact_2_1_test() {
 
     const std::string db_name = "/tmp/lv_db";
     LeviDB::SeqGenerator seq_gen;
-    LeviDB::Compacting2To1Worker worker(std::make_unique<LeviDB::DBSingle>(db_name + "_a", LeviDB::Options{}, &seq_gen),
+    LeviDB::Options opt{};
+    opt.compression = false;
+    LeviDB::Compacting2To1Worker worker(std::make_unique<LeviDB::DBSingle>(db_name + "_a", opt, &seq_gen),
                                         std::make_unique<LeviDB::DBSingle>(db_name + "_b", LeviDB::Options{}, &seq_gen),
                                         &seq_gen);
 
