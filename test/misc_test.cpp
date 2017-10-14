@@ -132,6 +132,12 @@ void misc_test() {
         opt_int.build(10);
         assert(const_cast<const decltype(opt_int) &>(opt_int).get() == opt_int.get());
     }
+    { // exception
+        auto e = LeviDB::Exception::notSupportedException("test");
+        assert(e.isNotSupportedError());
+        assert(!e.isCorruption());
+        assert(e.what() != nullptr);
+    }
 
     std::cout << __FUNCTION__ << std::endl;
 }
