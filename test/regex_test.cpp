@@ -17,7 +17,8 @@ void regex_test() {
     {
         LeviDB::Regex::R r("AB", 2, 3, LeviDB::Regex::LAZY);
         LeviDB::Regex::Result result(0, 0, false);
-        LeviDB::USR usr("ABABABAB");
+        auto clone = LeviDB::USR("ABABABAB");
+        LeviDB::USR usr(std::move(clone));
         auto stream4num_machine = LeviDB::Regex::make_stream4num_machine(&r, &usr, result);
         assert(stream4num_machine->item().isContinue());
         stream4num_machine->next();
