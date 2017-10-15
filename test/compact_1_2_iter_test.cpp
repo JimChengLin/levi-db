@@ -168,15 +168,56 @@ void compact_1_2_iter_test() {
     });
     task_2.detach();
 
+    {
+        auto it = compact_db.makeIterator(compact_db.makeSnapshot());
+        for (int i = 0; i < 100; i += 2) {
+            compact_db.put(LeviDB::WriteOptions{}, std::to_string(i), "%");
+        }
+
+        for (int i = 0; i < 100; ++i) {
+            auto s = std::to_string(i);
+
+            it->seek(s);
+            it->next();
+            while (it->valid()) {
+                const std::string k = it->key().toString();
+                const std::string v = it->value();
+                if (k == v) {
+                    assert((std::stoi(k) & 1) == 1);
+                } else {
+                    assert(v == "#");
+                }
+                it->prev();
+            }
+
+            it->seek(s);
+            it->prev();
+            while (it->valid()) {
+                const std::string k = it->key().toString();
+                const std::string v = it->value();
+                if (k == v) {
+                    assert((std::stoi(k) & 1) == 1);
+                } else {
+                    assert(v == "#");
+                }
+                it->next();
+            }
+        }
+
+        for (int i = 0; i < 100; i += 2) {
+            compact_db.put(LeviDB::WriteOptions{}, std::to_string(i), "#");
+        }
+    }
+
     while (!compact_db.canRelease()) {
         compact_db.tryApplyPending();
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     {
-        int i = 0;
         auto it = compact_db.makeIterator(compact_db.makeSnapshot());
         it->seekToFirst();
+        int i = 0;
         while (it->valid()) {
             ++i;
             const std::string k = it->key().toString();
@@ -189,6 +230,51 @@ void compact_1_2_iter_test() {
             it->next();
         }
         assert(i == 100);
+
+        it->seekToLast();
+        i = 0;
+        while (it->valid()) {
+            ++i;
+            const std::string k = it->key().toString();
+            const std::string v = it->value();
+            if (k == v) {
+                assert((std::stoi(k) & 1) == 1);
+            } else {
+                assert(v == "#");
+            }
+            it->prev();
+        }
+        assert(i == 100);
+
+        for (int j = 0; j < 100; ++j) {
+            auto s = std::to_string(j);
+
+            it->seek(s);
+            it->next();
+            while (it->valid()) {
+                const std::string k = it->key().toString();
+                const std::string v = it->value();
+                if (k == v) {
+                    assert((std::stoi(k) & 1) == 1);
+                } else {
+                    assert(v == "#");
+                }
+                it->prev();
+            }
+
+            it->seek(s);
+            it->prev();
+            while (it->valid()) {
+                const std::string k = it->key().toString();
+                const std::string v = it->value();
+                if (k == v) {
+                    assert((std::stoi(k) & 1) == 1);
+                } else {
+                    assert(v == "#");
+                }
+                it->next();
+            }
+        }
     }
 
     std::cout << __FUNCTION__ << std::endl;
