@@ -222,7 +222,8 @@ namespace LeviDB {
                     replace_idx = 0;
                     replace_direct = false;
                 } else { // right
-                    replace_idx = cursor_size - 1 - 1;
+                    // replace_idx = cursor_size == 1 ? 0 : cursor_size - 1 - 1;
+                    replace_idx = cursor_size + static_cast<size_t>(cursor_size == 1) - 1 - 1;
                     replace_direct = true;
                 }
             } else {
