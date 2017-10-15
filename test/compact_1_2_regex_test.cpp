@@ -27,47 +27,90 @@ void compact_1_2_regex_test() {
     LeviDB::Compacting1To2DB compact_db(std::move(db), &seq_gen);
     assert(compact_db.immut_product_a()->canRelease());
     assert(compact_db.immut_product_b()->canRelease());
-
-    std::thread task([it = compact_db.makeRegexIterator(r_obj, compact_db.makeSnapshot())]() noexcept {
-        try {
-            while (it->valid()) {
-                auto item = it->item();
-                assert(item.first == item.second && item.second[0] == '5');
-                it->next();
-            }
-        } catch (const LeviDB::Exception & e) {
-            std::cout << e.toString() << std::endl;
-        }
-    });
-    task.detach();
-
     {
-        auto it = compact_db.makeRegexReversedIterator(r_obj, compact_db.makeSnapshot());
-        while (it->valid()) {
-            auto item = it->item();
-            assert(item.first == item.second && item.second[0] == '5');
-            it->next();
-        }
-    }
+        auto snapshot = compact_db.makeSnapshot();
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    std::thread task_2([it = compact_db.makeRegexIterator(r_obj, compact_db.makeSnapshot())]() noexcept {
-        try {
+        std::thread task([it = compact_db.makeRegexIterator(r_obj, std::make_unique<LeviDB::Snapshot>(
+                snapshot->immut_seq_num()))]() noexcept {
+            try {
+                while (it->valid()) {
+                    auto item = it->item();
+                    assert(item.first == item.second && item.second[0] == '5');
+                    it->next();
+                }
+            } catch (const LeviDB::Exception & e) {
+                std::cout << e.toString() << std::endl;
+            }
+        });
+        task.detach();
+
+        for (int i = 40; i < 60; ++i) {
+            compact_db.put(LeviDB::WriteOptions{}, std::to_string(i), "X");
+        }
+
+        {
+            auto it = compact_db.makeRegexReversedIterator(r_obj,
+                                                           std::make_unique<LeviDB::Snapshot>(
+                                                                   snapshot->immut_seq_num()));
             while (it->valid()) {
                 auto item = it->item();
                 assert(item.first == item.second && item.second[0] == '5');
                 it->next();
             }
-        } catch (const LeviDB::Exception & e) {
-            std::cout << e.toString() << std::endl;
         }
-    });
-    task_2.detach();
+
+        {
+            auto it = compact_db.makeRegexIterator(r_obj, compact_db.makeSnapshot());
+            while (it->valid()) {
+                auto item = it->item();
+                if (item.first.size() == 1) {
+                    assert(item.second == "5");
+                } else {
+                    assert(item.second == "X");
+                }
+                it->next();
+            }
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::thread task_2([it = compact_db.makeRegexIterator(r_obj, std::make_unique<LeviDB::Snapshot>(
+                snapshot->immut_seq_num()))]() noexcept {
+            try {
+                while (it->valid()) {
+                    auto item = it->item();
+                    assert(item.first == item.second && item.second[0] == '5');
+                    it->next();
+                }
+            } catch (const LeviDB::Exception & e) {
+                std::cout << e.toString() << std::endl;
+            }
+        });
+        task_2.detach();
+    }
 
     while (!compact_db.canRelease()) {
         compact_db.tryApplyPending();
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
+
+    {
+        auto it = compact_db.makeRegexIterator(r_obj, compact_db.makeSnapshot());
+        while (it->valid()) {
+            auto item = it->item();
+            if (item.first.size() == 1) {
+                assert(item.second == "5");
+            } else {
+                assert(item.second == "X");
+            }
+            it->next();
+        }
+    }
+
+    for (int i = 40; i < 60; ++i) {
+        compact_db.put(LeviDB::WriteOptions{}, std::to_string(i), std::to_string(i));
+    }
+    compact_db.tryApplyPending();
+    assert(compact_db.canRelease());
 
     std::cout << __FUNCTION__ << std::endl;
 }

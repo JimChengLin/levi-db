@@ -99,6 +99,7 @@ namespace LeviDB {
     Compacting1To2DB::Compacting1To2DB(std::unique_ptr<DB> && resource, SeqGenerator * seq_gen)
             : _seq_gen(seq_gen),
               _action_num(seq_gen->uniqueSeqAtomic()),
+              _action_done_num(_action_num),
               _resource(std::move(resource)),
               _product_a(std::make_unique<DBSingle>(_resource->immut_name() + "_a",
                                                     _resource->immut_options()
@@ -128,6 +129,7 @@ namespace LeviDB {
             Task<true>(iter.get(), _product_a, _a_end, _e_a, _e_a_bool, _ignore, _rwlock, _seq_gen);
             _a_end_meet = true;
             if (_b_end_meet) {
+                _action_done_num = _seq_gen->uniqueSeqAtomic();
                 _compacting = false;
             }
         });
@@ -138,6 +140,7 @@ namespace LeviDB {
                     Task<false>(iter.get(), _product_b, _b_end, _e_b, _e_b_bool, _ignore, _rwlock, _seq_gen);
                     _b_end_meet = true;
                     if (_a_end_meet) {
+                        _action_done_num = _seq_gen->uniqueSeqAtomic();
                         _compacting = false;
                     }
                 });

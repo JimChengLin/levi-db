@@ -394,7 +394,7 @@ namespace LeviDB {
         }
 
         RWLockReadGuard read_guard(_rwlock);
-        if (_compacting) {
+        if (_compacting || seq_num < _action_done_num) {
             return std::make_unique<Compacting1To2IteratorMode1>(_resource->makeIterator(std::move(snapshot)),
                                                                  pendingPartUnlocked(seq_num),
                                                                  _product_a.get(),
@@ -492,7 +492,7 @@ namespace LeviDB {
             }
 
             if (_pending_cursor != _pending.cend() && _resource_iter->valid()
-                                                      && _resource_iter->item().first == *_pending_cursor) {
+                && _resource_iter->item().first == *_pending_cursor) {
                 _resource_iter->next();
                 _current_at = AT_PENDING;
             }
@@ -600,7 +600,7 @@ namespace LeviDB {
         }
 
         RWLockReadGuard read_guard(_rwlock);
-        if (_compacting) {
+        if (_compacting || seq_num < _action_done_num) {
             return std::make_unique<Compacting1To2RegexIteratorMode1<false>>(
                     _resource->makeRegexIterator(regex, std::move(snapshot)),
                     pendingPartUnlocked(seq_num),
@@ -627,7 +627,7 @@ namespace LeviDB {
         }
 
         RWLockReadGuard read_guard(_rwlock);
-        if (_compacting) {
+        if (_compacting || seq_num < _action_done_num) {
             std::vector<Slice> pending = pendingPartUnlocked(seq_num);
             std::reverse(pending.begin(), pending.end());
             return std::make_unique<Compacting1To2RegexIteratorMode1<true>>(

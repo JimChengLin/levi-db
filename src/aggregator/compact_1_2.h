@@ -17,6 +17,7 @@ namespace LeviDB {
     private:
         SeqGenerator * _seq_gen;
         uint64_t _action_num; // 如果 snapshot 早于此序列号, 可以直接查询 _resource
+        uint64_t _action_done_num;
 
         std::unique_ptr<DB> _resource;
         std::unique_ptr<DB> _product_a;
