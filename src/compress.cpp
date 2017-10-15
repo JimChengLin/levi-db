@@ -28,7 +28,6 @@ namespace LeviDB {
                     res = "zlib version mismatch";
                     break;
                 default:
-                    res = std::to_string(ret);
                     break;
             }
             return res;

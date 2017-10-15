@@ -137,6 +137,14 @@ void misc_test() {
         assert(e.isNotSupportedError());
         assert(!e.isCorruption());
         assert(e.what() != nullptr);
+        assert(!e.toString().empty());
+
+        e = LeviDB::Exception::notFoundException("test");
+        assert(!e.toString().empty());
+        e = LeviDB::Exception::invalidArgumentException("test");
+        assert(!e.toString().empty());
+        e = LeviDB::Exception::IOErrorException("test");
+        assert(!e.toString().empty());
     }
 
     std::cout << __FUNCTION__ << std::endl;

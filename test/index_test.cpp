@@ -79,5 +79,5 @@ void index_test() {
         assert(tree.size() == 0);
     }
 
-    std::cout << __FUNCTION__ << '-' << seed << std::endl;
+    std::cout << __FUNCTION__ << " - " << seed << std::endl;
 }

@@ -53,8 +53,7 @@ namespace LeviDB {
                 res = "IO error: ";
                 break;
             default:
-                res = "Unknown code(" + std::to_string(static_cast<int>(code())) + ')';
-                break;
+                assert(false);
         }
 
         uint32_t len;
