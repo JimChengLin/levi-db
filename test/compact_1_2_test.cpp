@@ -34,6 +34,7 @@ void compact_1_2_test() {
         for (int i = 0; i < 100; i += 2) {
             compact_db.put(LeviDB::WriteOptions{}, std::to_string(i), "#");
         }
+        compact_db.sync();
         compact_db.remove(LeviDB::WriteOptions{}, "0");
         compact_db.remove(LeviDB::WriteOptions{}, "99");
         compact_db.explicitRemove(LeviDB::WriteOptions{}, "1");
