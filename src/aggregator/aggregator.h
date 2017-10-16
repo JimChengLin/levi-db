@@ -164,6 +164,7 @@ namespace LeviDB {
         // 只有以下两个方法会获得 _dispatcher_lock 的写锁
         void ifCompact1To2Done(std::shared_ptr<AggregatorNode> match);
 
+    public: // for test
         void gc();
     };
 }

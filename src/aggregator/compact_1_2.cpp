@@ -31,10 +31,15 @@ namespace LeviDB {
                         if (ignore.find(it->key()) != ignore.end()) {
                         } else {
                             stashCurrSeqGen(); // 越过 MVCC 机制透传
-                            if (!target->put(options, it->key(), it->value())) { // full again
-                                target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);
-                                target->put(options, it->key(), it->value());
-                            };
+                            try {
+                                if (!target->put(options, it->key(), it->value())) { // full
+                                    target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);
+                                    target->put(options, it->key(), it->value());
+                                };
+                            } catch (const Exception & e) { // it has to be exception-free
+                                stashPopCurrSeqGen();
+                                throw e;
+                            }
                             stashPopCurrSeqGen();
                         }
                     }
@@ -71,10 +76,15 @@ namespace LeviDB {
                                                          }), slice_q.end());
                             if (!slice_q.empty()) {
                                 stashCurrSeqGen();
-                                if (!target->write(options, slice_q)) {
-                                    target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);
-                                    target->write(options, slice_q);
-                                };
+                                try {
+                                    if (!target->write(options, slice_q)) {
+                                        target = std::make_unique<Compacting1To2DB>(std::move(target), seq_gen);
+                                        target->write(options, slice_q);
+                                    };
+                                } catch (const Exception & e) {
+                                    stashPopCurrSeqGen();
+                                    throw e;
+                                }
                                 stashPopCurrSeqGen();
                             }
                         }
