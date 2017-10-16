@@ -62,9 +62,9 @@ set(SOURCE_FILES main.cpp
         test/index_regex_test.cpp
         test/index_test.cpp
         test/log_test.cpp
+        test/lv_db_test.cpp
         test/misc_test.cpp
-        test/regex_test.cpp
-        )
+        test/regex_test.cpp)
 
 add_executable(LeviDB ${SOURCE_FILES})
 
