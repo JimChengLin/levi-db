@@ -29,6 +29,11 @@ namespace LeviDB {
             if (opt.compress) {
                 opt.uncompress_size = 0;
                 for (const auto & kv:kvs) {
+                    if (kv.second.data() == nullptr) {
+                        opt.compress = false;
+                        opt.uncompress_size = 0;
+                        break;
+                    }
                     opt.uncompress_size += kv.first.size() + kv.second.size();
                 }
             }

@@ -262,6 +262,7 @@ namespace LeviDB {
             return _product_b->write(options, tail_part);
         }
         for (const auto & kv:tail_part) {
+            if (kv.second.data() == nullptr) { continue; }
             if (!_product_a->remove(options, kv.first)) {
                 _product_a = std::make_unique<Compacting1To2DB>(std::move(_product_a), _seq_gen);
                 _product_a->remove(options, kv.first);

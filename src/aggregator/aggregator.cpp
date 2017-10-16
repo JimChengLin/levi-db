@@ -210,26 +210,34 @@ namespace LeviDB {
                 std::string next_bound;
                 auto next = findNextOfBestMatchForRead(cursor_bound, &next_guard, &next_bound);
                 if (next != nullptr) {
+                    std::vector<std::pair<Slice, Slice>> part;
                     while (it != kvs.cend() && SliceComparator{}(it->first, next_bound)) {
-                        if (!next->db->put(opt, it->first, it->second)) {
-                            Logger::logForMan(_logger.get(), "split %s when put inside write",
-                                              next->db_name.c_str());
-                            next->db = std::make_unique<Compacting1To2DB>(std::move(next->db), &_seq_gen);
-                            next->db_name.clear();
-                            next->db->put(opt, it->first, it->second);
-                        }
+                        part.emplace_back(it->first, it->second);
                         ++it;
                     }
-                } else {
-                    while (it != kvs.cend()) {
-                        if (!next->db->put(opt, it->first, it->second)) {
-                            Logger::logForMan(_logger.get(), "split %s when put inside write",
+                    if (!part.empty()) {
+                        if (!next->db->write(opt, part)) {
+                            Logger::logForMan(_logger.get(), "split %s when part-write inside write",
                                               next->db_name.c_str());
                             next->db = std::make_unique<Compacting1To2DB>(std::move(next->db), &_seq_gen);
                             next->db_name.clear();
-                            next->db->put(opt, it->first, it->second);
+                            next->db->write(opt, part);
                         }
+                    }
+                } else {
+                    std::vector<std::pair<Slice, Slice>> part;
+                    while (it != kvs.cend()) {
+                        part.emplace_back(it->first, it->second);
                         ++it;
+                    }
+                    if (!part.empty()) {
+                        if (!next->db->write(opt, part)) {
+                            Logger::logForMan(_logger.get(), "split %s when part-write inside write",
+                                              next->db_name.c_str());
+                            next->db = std::make_unique<Compacting1To2DB>(std::move(next->db), &_seq_gen);
+                            next->db_name.clear();
+                            next->db->write(opt, part);
+                        }
                     }
                 }
             } else {
@@ -243,7 +251,8 @@ namespace LeviDB {
         if (next != nullptr) {
             auto it = std::lower_bound(kvs.cbegin(), kvs.cend(), std::make_pair(Slice(next_bound), Slice()), cmp);
             while (it != kvs.cend()) {
-                if (!match->db->remove(opt, it->first)) {
+                if (it->second.data() == nullptr) {
+                } else if (!match->db->remove(opt, it->first)) {
                     Logger::logForMan(_logger.get(), "split %s when remove inside write", match->db_name.c_str());
                     match->db = std::make_unique<Compacting1To2DB>(std::move(match->db), &_seq_gen);
                     match->db_name.clear();
