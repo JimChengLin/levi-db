@@ -49,17 +49,6 @@ void compact_1_2_regex_test() {
         }
 
         {
-            auto it = compact_db.makeRegexReversedIterator(r_obj,
-                                                           std::make_unique<LeviDB::Snapshot>(
-                                                                   snapshot->immut_seq_num()));
-            while (it->valid()) {
-                auto item = it->item();
-                assert(item.first == item.second && item.second[0] == '5');
-                it->next();
-            }
-        }
-
-        {
             auto it = compact_db.makeRegexIterator(r_obj, compact_db.makeSnapshot());
             while (it->valid()) {
                 auto item = it->item();
@@ -68,6 +57,17 @@ void compact_1_2_regex_test() {
                 } else {
                     assert(item.second == "X");
                 }
+                it->next();
+            }
+        }
+
+        {
+            auto it = compact_db.makeRegexReversedIterator(r_obj,
+                                                           std::make_unique<LeviDB::Snapshot>(
+                                                                   snapshot->immut_seq_num()));
+            while (it->valid()) {
+                auto item = it->item();
+                assert(item.first == item.second && item.second[0] == '5');
                 it->next();
             }
         }
