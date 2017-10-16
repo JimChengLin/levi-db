@@ -5,6 +5,7 @@
 #include "../src/index_mvcc_rd.h"
 #include "../src/log_reader.h"
 #include "../src/log_writer.h"
+#include "../src/meta_keeper.h"
 #include "../src/optional.h"
 
 void misc_test() {
@@ -145,6 +146,24 @@ void misc_test() {
         assert(!e.toString().empty());
         e = LeviDB::Exception::IOErrorException("test");
         assert(!e.toString().empty());
+    }
+    {
+        LeviDB::IOEnv::deleteFile(fname);
+        struct Tst {
+            int _{};
+            int val{};
+        };
+        {
+            LeviDB::StrongKeeper<Tst> meta(fname, Tst{}, std::string{});
+        }
+        {
+            LeviDB::StrongKeeper<Tst> meta(fname);
+            meta.update(offsetof(Tst, val), 10);
+        }
+        {
+            LeviDB::StrongKeeper<Tst> meta(fname);
+            assert(meta.immut_value().val == 10);
+        }
     }
 
     std::cout << __FUNCTION__ << std::endl;
