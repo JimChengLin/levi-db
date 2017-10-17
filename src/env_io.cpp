@@ -62,7 +62,10 @@ namespace LeviDB {
             }
             struct dirent * entry{};
             while ((entry = readdir(d)) != nullptr) {
-                if (entry->d_name[0] != '.') {
+                if (not(entry->d_name[0] == '.'
+                        && (entry->d_name[1] == '\0'
+                            || (entry->d_name[1] == '.'
+                                && entry->d_name[2] == '\0')))) {
                     res.emplace_back(entry->d_name);
                 }
             }
