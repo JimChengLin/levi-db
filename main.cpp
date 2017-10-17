@@ -44,6 +44,8 @@ void compact_2_1_test();
 
 void lv_db_test();
 
+void lv_db_test_();
+
 int main() {
     try {
         index_test();
@@ -62,6 +64,7 @@ int main() {
         compact_1_2_regex_test();
         compact_2_1_test();
         lv_db_test();
+        lv_db_test_();
 #ifdef LEVI_BENCH
         kv_write_bench();
         kv_read_bench();

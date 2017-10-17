@@ -63,6 +63,7 @@ set(SOURCE_FILES main.cpp
         test/index_test.cpp
         test/log_test.cpp
         test/lv_db_test.cpp
+        test/lv_db_test_.cpp
         test/misc_test.cpp
         test/regex_test.cpp)
 
