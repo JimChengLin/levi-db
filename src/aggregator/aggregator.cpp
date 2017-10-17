@@ -34,19 +34,19 @@ namespace LeviDB {
                 decltype(child.find(char{})) pos{};
                 if ((pos = child.find('+')) != std::string::npos) { // compact 2 to 1
                     if (child.back() != '-') { // fail, remove product
-                        for (const std::string & c:LeviDB::IOEnv::getChildren(prefixed_child)) {
-                            LeviDB::IOEnv::deleteFile((prefixed_child + '/') += c);
+                        for (const std::string & c:IOEnv::getChildren(prefixed_child)) {
+                            IOEnv::deleteFile((prefixed_child + '/') += c);
                         }
-                        LeviDB::IOEnv::deleteDir(prefixed_child);
+                        IOEnv::deleteDir(prefixed_child);
                     } else { // success, remove resources
                         for (const std::string & n:{std::string(prefix).append(child.cbegin(), child.cbegin() + pos),
                                                     std::string(prefix).append(
                                                             child.cbegin() + (pos + 1), --child.cend())}) {
                             if (IOEnv::fileExists(n)) {
-                                for (const std::string & c:LeviDB::IOEnv::getChildren(n)) {
-                                    LeviDB::IOEnv::deleteFile((n + '/') += c);
+                                for (const std::string & c:IOEnv::getChildren(n)) {
+                                    IOEnv::deleteFile((n + '/') += c);
                                 }
-                                LeviDB::IOEnv::deleteDir(n);
+                                IOEnv::deleteDir(n);
                             }
                         }
                     }
@@ -442,7 +442,7 @@ namespace LeviDB {
     void Aggregator::mayOpenDB(std::shared_ptr<AggregatorNode> match) {
         if (match->db == nullptr) {
             match->db = std::make_unique<DBSingle>(match->db_name, Options{}, &_seq_gen);
-            if (_operating_dbs.fetch_add(1) > AggregatorConst::max_dbs_) {
+            if (++_operating_dbs > AggregatorConst::max_dbs_) {
                 _gc = true;
             }
         }
@@ -534,12 +534,23 @@ namespace LeviDB {
                     && static_cast<DBSingle *>(cursor->db.get())->spaceUsage() +
                        static_cast<DBSingle *>(next->db.get())->spaceUsage() < AggregatorConst::merge_threshold_) {
 
-                    Compacting2To1Worker worker(std::move(cursor->db), std::move(next->db), &_seq_gen);
+                    std::unique_ptr<DB> product;
+                    {
+                        Compacting2To1Worker worker(std::move(cursor->db), std::move(next->db), &_seq_gen);
+                        product = std::move(worker.mut_product());
+                    }
                     cursor->dirty = true;
                     next->dirty = true;
 
+                    for (const std::string * del_name:{&cursor->db_name, &next->db_name}) {
+                        for (const std::string & c:IOEnv::getChildren(*del_name)) {
+                            IOEnv::deleteFile((*del_name + '/') += c);
+                        }
+                        IOEnv::deleteDir(*del_name);
+                    }
+
                     auto node = std::make_shared<AggregatorNode>();
-                    node->db = mayRenameDB(std::move(worker.mut_product()));
+                    node->db = mayRenameDB(std::move(product));
                     node->db_name = node->db->immut_name();
                     node->hit = cursor->hit + next->hit;
 
@@ -600,10 +611,10 @@ namespace LeviDB {
                     if (child.size() > sizeof(postfix) &&
                         std::equal(postfix, postfix + sizeof(postfix),
                                    child.cend() - sizeof(postfix), child.cend())) { // temp files
-                        for (const std::string & c:LeviDB::IOEnv::getChildren(prefixed_child)) {
-                            LeviDB::IOEnv::deleteFile((prefixed_child + '/') += c);
+                        for (const std::string & c:IOEnv::getChildren(prefixed_child)) {
+                            IOEnv::deleteFile((prefixed_child + '/') += c);
                         }
-                        LeviDB::IOEnv::deleteDir(prefixed_child);
+                        IOEnv::deleteDir(prefixed_child);
                     } else {
                         max_num = std::max<unsigned long long>(max_num, std::stoull(child));
                         if (!IOEnv::fileExists(prefixed_child + "/keeper") &&

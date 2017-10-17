@@ -424,10 +424,10 @@ namespace LeviDB {
         assert(!resource_name.empty());
         _resource = nullptr;
 
-        for (const std::string & child:LeviDB::IOEnv::getChildren(resource_name)) {
-            LeviDB::IOEnv::deleteFile((resource_name + '/') += child);
+        for (const std::string & child:IOEnv::getChildren(resource_name)) {
+            IOEnv::deleteFile((resource_name + '/') += child);
         }
-        LeviDB::IOEnv::deleteDir(resource_name);
+        IOEnv::deleteDir(resource_name);
     }
 
     std::vector<Slice>
@@ -517,10 +517,10 @@ namespace LeviDB {
             db.syncFiles();
             // delete temp dirs
             for (const std::string & name:sub_dbs) {
-                for (const std::string & child:LeviDB::IOEnv::getChildren(name)) {
-                    LeviDB::IOEnv::deleteFile((name + '/') += child);
+                for (const std::string & child:IOEnv::getChildren(name)) {
+                    IOEnv::deleteFile((name + '/') += child);
                 }
-                LeviDB::IOEnv::deleteDir(name);
+                IOEnv::deleteDir(name);
             }
         } catch (const Exception & e) {
             reporter(e);
