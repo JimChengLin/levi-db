@@ -14,6 +14,7 @@
  */
 
 #include <map>
+#include <mutex>
 
 #include "../db.h"
 #include "../env_io.h"
