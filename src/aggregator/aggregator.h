@@ -24,7 +24,15 @@
 
 namespace LeviDB {
     namespace AggregatorConst {
-        static constexpr int max_dbs_ = 100;
+
+        static constexpr int max_dbs_ // debug 模式下阈值为 2
+// @formatter:off
+#ifndef NDEBUG
+        = 2;
+#else
+        = 100;
+#endif
+// @formatter:on
         static constexpr int merge_threshold_ = 128 * 1024;
     }
 
@@ -169,7 +177,6 @@ namespace LeviDB {
         // 只有以下两个方法会获得 _dispatcher_lock 的写锁
         void ifCompact1To2Done(std::shared_ptr<AggregatorNode> match);
 
-    public: // for test
         void gc();
     };
 }
