@@ -56,6 +56,7 @@ namespace LeviDB {
         Optional<Logger> _logger;
         // @formatter:on
 
+        std::mutex _mutex;
         std::atomic<unsigned> _operating_dbs{0};
         std::atomic<bool> _gc{false};
 
@@ -160,6 +161,9 @@ namespace LeviDB {
                                    std::string * lower_bound = nullptr) const;
 
         void mayOpenDB(std::shared_ptr<AggregatorNode> match);
+
+        std::unique_ptr<DB>
+        mayRenameDB(std::unique_ptr<DB> && db);
 
         // 只有以下两个方法会获得 _dispatcher_lock 的写锁
         void ifCompact1To2Done(std::shared_ptr<AggregatorNode> match);

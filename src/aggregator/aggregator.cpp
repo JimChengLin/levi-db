@@ -61,8 +61,20 @@ namespace LeviDB {
             }
 
             std::vector<std::string> children = IOEnv::getChildren(_name);
-            children.erase(std::remove_if(children.begin(), children.end(), [&prefix](std::string & child) noexcept {
-                return not(child[0] >= '0' && child[0] <= '9') || (child = prefix + child, false);
+            children.erase(std::remove_if(children.begin(), children.end(), [&prefix, this]
+                    (std::string & child) noexcept {
+                if (child[0] >= '0' && child[0] <= '9') { // is db
+                    std::string prefixed_child = prefix + child;
+                    if (child.find('+') != std::string::npos || child.find('_') != std::string::npos) {
+                        IOEnv::renameFile(prefixed_child,
+                                          child = prefix + std::to_string(_meta->immut_value().counter));
+                        _meta->update(offsetof(AggregatorStrongMeta, counter), _meta->immut_value().counter + 1);
+                    } else {
+                        child = std::move(prefixed_child);
+                    }
+                    return false;
+                }
+                return true;
             }), children.end());
 
             // 写入 search_map
@@ -120,22 +132,6 @@ namespace LeviDB {
 #ifndef NDEBUG
                 --_operating_dbs;
 #endif
-            }
-
-            if (!node->db_name.empty() && // DBSingle
-                not(node->db_name.back() >= '0' && node->db_name.back() <= '9')) { // irregular name
-                Logger::logForMan(_logger.get(), "rename %s to %llu",
-                                  node->db_name.c_str(),
-                                  static_cast<unsigned long long>(_meta->immut_value().counter));
-                try {
-                    IOEnv::renameFile(node->db_name, (_name + '/') += std::to_string(_meta->immut_value().counter));
-                    _meta->update(offsetof(AggregatorStrongMeta, counter), _meta->immut_value().counter + 1);
-                } catch (const Exception & e) {
-                    Logger::logForMan(_logger.get(), "rename %s to %llu failed, because %s",
-                                      node->db_name.c_str(),
-                                      static_cast<unsigned long long>(_meta->immut_value().counter),
-                                      e.toString().c_str());
-                }
             }
         }
         assert(_operating_dbs == 0);
@@ -452,6 +448,29 @@ namespace LeviDB {
         }
     };
 
+    std::unique_ptr<DB>
+    Aggregator::mayRenameDB(std::unique_ptr<DB> && db) {
+        if (db->immut_name().empty() || // not DBSingle
+            (db->immut_name().find('+') == std::string::npos && // regular name
+             db->immut_name().find('_') == std::string::npos)) {
+            return std::move(db);
+        }
+        std::string name = std::move(db->mut_name());
+        std::string after_name;
+        db = nullptr;
+
+        uint64_t cnt;
+        {
+            std::lock_guard<std::mutex> guard(_mutex);
+            cnt = _meta->immut_value().counter;
+            _meta->update(offsetof(AggregatorStrongMeta, counter), _meta->immut_value().counter + 1);
+        }
+
+        Logger::logForMan(_logger.get(), "rename %s to %llu", name.c_str(), static_cast<unsigned long long>(cnt));
+        IOEnv::renameFile(name, after_name = ((_name + '/') += std::to_string(cnt)));
+        return std::make_unique<DBSingle>(std::move(after_name), Options{}, &_seq_gen);
+    };
+
     void Aggregator::ifCompact1To2Done(std::shared_ptr<AggregatorNode> match) {
         if (match->db->immut_name().empty() && match->db->canRelease()) {
             assert(match->db_name.empty());
@@ -462,12 +481,12 @@ namespace LeviDB {
             match->dirty = true;
 
             auto node = std::make_shared<AggregatorNode>();
-            node->db = std::move(product_a);
+            node->db = mayRenameDB(std::move(product_a));
             node->db_name = node->db->immut_name();
             node->hit = match->hit / 2;
 
             auto next_node = std::make_shared<AggregatorNode>();
-            next_node->db = std::move(product_b);
+            next_node->db = mayRenameDB(std::move(product_b));
             next_node->db_name = next_node->db->immut_name();
             next_node->hit.store(node->hit);
 
@@ -520,7 +539,7 @@ namespace LeviDB {
                     next->dirty = true;
 
                     auto node = std::make_shared<AggregatorNode>();
-                    node->db = std::move(worker.mut_product());
+                    node->db = mayRenameDB(std::move(worker.mut_product()));
                     node->db_name = node->db->immut_name();
                     node->hit = cursor->hit + next->hit;
 
