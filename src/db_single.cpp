@@ -39,14 +39,14 @@ namespace LeviDB {
                     _index->insert(item.first, OffsetToData{item.second});
                     it->next();
                 }
-                _writer.build(_af.get());
+                _writer.build(_af.get(), _af->immut_length());
                 return;
             }
             _meta.build(std::move(keeper_fname));
             _af.build(data_fname);
             _rf.build(std::move(data_fname));
             _index.build(std::move(index_fname), _meta->immut_value()._offset, _seq_gen, _rf.get());
-            _writer.build(_af.get());
+            _writer.build(_af.get(), _af->immut_length());
         } else {
             if (!_options.create_if_missing) {
                 throw Exception::notFoundException("DB not found");

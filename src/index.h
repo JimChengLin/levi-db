@@ -203,7 +203,10 @@ namespace LeviDB {
 
     public:
         explicit BitDegradeTree(const std::string & fname)
-                : _dst(fname) { (new(offToMemNodeUnchecked(_root)) BDNode)->updateChecksum(); };
+                : _dst(fname) {
+            assert(_dst.immut_length() == IOEnv::page_size_);
+            (new(offToMemNodeUnchecked(_root)) BDNode)->updateChecksum();
+        };
 
         BitDegradeTree(const std::string & fname, OffsetToEmpty empty) : _dst(fname), _empty(empty) {};
 

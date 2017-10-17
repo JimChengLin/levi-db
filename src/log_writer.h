@@ -56,7 +56,7 @@ namespace LeviDB {
         size_t _block_offset = 0;
 
     public:
-        explicit LogWriter(AppendableFile * dst) noexcept : _dst(dst) {};
+        explicit LogWriter(AppendableFile * dst) noexcept : _dst(dst) { assert(_dst->immut_length() == 0); };
 
         LogWriter(AppendableFile * dst, uint64_t dst_len) noexcept
                 : _dst(dst), _block_offset(dst_len % LogWriterConst::block_size_) {}
