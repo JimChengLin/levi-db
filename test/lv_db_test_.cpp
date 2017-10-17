@@ -65,9 +65,45 @@ void lv_db_test_() {
         LeviDB::LvDB db(db_path, LeviDB::Options{});
         auto it = db.makeIterator(db.makeSnapshot());
         it->seek("60");
+        it->prev();
+        it->next();
         for (int i = 60; i < 100; ++i) {
             assert(it->key().toString() == std::to_string(i));
             it->next();
+        }
+    }
+    { // gc
+        {
+            LeviDB::SeqGenerator seq_gen;
+            auto db = std::make_unique<LeviDB::DBSingle>(db_path + "/5", LeviDB::Options{}, &seq_gen);
+            LeviDB::Compacting1To2DB compact_db(std::move(db), &seq_gen);
+            while (compact_db.immut_compacting()) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }
+
+        LeviDB::LvDB db(db_path, LeviDB::Options{});
+        for (int i = 60; i < 100; ++i) {
+            assert(db.get(LeviDB::ReadOptions{}, std::to_string(i)).first == std::to_string(i));
+        }
+
+        std::string k = "0_Jim";
+        std::string v = "Birthday";
+        std::string k2 = "7_1995";
+        std::string v2 = "0207";
+        std::string k3 = "9_Happy";
+        std::string v3 = "Everyday";
+        db.write(LeviDB::WriteOptions{}, {{k,  v},
+                                          {k2, v2},
+                                          {k3, v3}});
+
+        auto it = db.makeIterator(db.makeSnapshot());
+        it->seekToLast();
+        it->prev();
+        it->next();
+        while (it->valid()) {
+            assert(!it->value().empty());
+            it->prev();
         }
     }
 

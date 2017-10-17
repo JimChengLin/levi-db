@@ -214,12 +214,12 @@ namespace LeviDB {
                         ++it;
                     }
                     if (!part.empty()) {
-                        if (!next->db->write(opt, part)) {
+                        if (!cursor->db->write(opt, part)) {
                             Logger::logForMan(_logger.get(), "split %s when part-write inside write",
-                                              next->db_name.c_str());
-                            next->db = std::make_unique<Compacting1To2DB>(std::move(next->db), &_seq_gen);
-                            next->db_name.clear();
-                            next->db->write(opt, part);
+                                              cursor->db_name.c_str());
+                            cursor->db = std::make_unique<Compacting1To2DB>(std::move(cursor->db), &_seq_gen);
+                            cursor->db_name.clear();
+                            cursor->db->write(opt, part);
                         }
                     }
                 } else {
@@ -229,12 +229,12 @@ namespace LeviDB {
                         ++it;
                     }
                     if (!part.empty()) {
-                        if (!next->db->write(opt, part)) {
+                        if (!cursor->db->write(opt, part)) {
                             Logger::logForMan(_logger.get(), "split %s when part-write inside write",
-                                              next->db_name.c_str());
-                            next->db = std::make_unique<Compacting1To2DB>(std::move(next->db), &_seq_gen);
-                            next->db_name.clear();
-                            next->db->write(opt, part);
+                                              cursor->db_name.c_str());
+                            cursor->db = std::make_unique<Compacting1To2DB>(std::move(cursor->db), &_seq_gen);
+                            cursor->db_name.clear();
+                            cursor->db->write(opt, part);
                         }
                     }
                 }
