@@ -62,7 +62,7 @@ namespace LeviDB {
 
             std::vector<std::string> children = IOEnv::getChildren(_name);
             children.erase(std::remove_if(children.begin(), children.end(), [&prefix, this]
-                    (std::string & child) noexcept {
+                    (std::string & child) {
                 if (child[0] >= '0' && child[0] <= '9') { // is db
                     std::string prefixed_child = prefix + child;
                     if (child.find('+') != std::string::npos || child.find('_') != std::string::npos) {

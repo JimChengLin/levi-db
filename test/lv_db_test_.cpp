@@ -87,6 +87,17 @@ void lv_db_test_() {
             assert(db.get(LeviDB::ReadOptions{}, std::to_string(i)).first == std::to_string(i));
         }
 
+        {
+            auto it = db.makeIterator(db.makeSnapshot());
+            it->seekToFirst();
+            it->next();
+            it->prev();
+            while (it->valid()) {
+                assert(!it->value().empty());
+                it->prev();
+            }
+        }
+
         std::string k = "0_Jim";
         std::string v = "Birthday";
         std::string k2 = "7_1995";
@@ -97,13 +108,15 @@ void lv_db_test_() {
                                           {k2, v2},
                                           {k3, v3}});
 
-        auto it = db.makeIterator(db.makeSnapshot());
-        it->seekToLast();
-        it->prev();
-        it->next();
-        while (it->valid()) {
-            assert(!it->value().empty());
+        {
+            auto it = db.makeIterator(db.makeSnapshot());
+            it->seekToLast();
             it->prev();
+            it->next();
+            while (it->valid()) {
+                assert(!it->value().empty());
+                it->prev();
+            }
         }
     }
 
