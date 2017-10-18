@@ -47,6 +47,8 @@ namespace LeviDB {
         std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
         makeRegexReversedIterator(std::shared_ptr<Regex::R> regex,
                                   std::unique_ptr<Snapshot> && snapshot) const;
+
+        std::string getProperty() const noexcept; // mainly for debug
     };
 }
 

@@ -94,4 +94,8 @@ namespace LeviDB {
             throw e;
         }
     };
+
+    std::string LvDB::getProperty() const noexcept {
+        return _aggregator.getProperty();
+    }
 }

@@ -144,6 +144,9 @@ namespace LeviDB {
             throw Exception::notSupportedException(__FILE__ "-" LEVI_STR(__LINE__));
         };
 
+    public:
+        std::string getProperty() const noexcept;
+
     private:
         std::shared_ptr<AggregatorNode>
         findBestMatchForWrite(const Slice & target, RWLockWriteGuard * guard,

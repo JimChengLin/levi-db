@@ -285,6 +285,22 @@ namespace LeviDB {
         return _seq_gen.makeSnapshot();
     };
 
+    std::string Aggregator::getProperty() const noexcept {
+        std::string res;
+        for (const auto & info:_dispatcher) {
+            res += "lower_bound: ";
+            res += info.first;
+            if (info.second->db != nullptr) {
+                res += " db_lower_bound: ";
+                res += info.second->db->smallestKey().toString();
+                res += " db_upper_bound: ";
+                res += info.second->db->largestKey().toString();
+            }
+            res += '\n';
+        }
+        return res;
+    }
+
     std::shared_ptr<AggregatorNode>
     Aggregator::findBestMatchForWrite(const Slice & target, RWLockWriteGuard * guard,
                                       std::string * lower_bound) {
