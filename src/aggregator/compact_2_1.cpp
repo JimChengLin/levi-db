@@ -12,7 +12,14 @@ namespace LeviDB {
                 for (it->seekToFirst();
                      it->valid();
                      it->next()) {
-                    target->put(options, it->key(), it->value());
+                    stashCurrSeqGen();
+                    try {
+                        target->put(options, it->key(), it->value());
+                    } catch (const Exception & e) {
+                        stashPopCurrSeqGen();
+                        throw e;
+                    }
+                    stashPopCurrSeqGen();
                 }
             } else {
                 options.compress = true;
@@ -28,7 +35,14 @@ namespace LeviDB {
                             slice_q.emplace_back(kv.first, kv.second);
                         }
                         if (!slice_q.empty()) {
-                            target->write(options, slice_q);
+                            stashCurrSeqGen();
+                            try {
+                                target->write(options, slice_q);
+                            } catch (const Exception & e) {
+                                stashPopCurrSeqGen();
+                                throw e;
+                            }
+                            stashPopCurrSeqGen();
                         }
                         q.clear();
                         slice_q.clear();
