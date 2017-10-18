@@ -60,8 +60,8 @@ namespace LeviDB {
                 cursor = offToMemNode(ptr.asNode());
             } else {
                 std::unique_ptr<Matcher> matcher = offToMatcher(ptr.asData());
-                std::string exist = matcher->toString(ptr.asData().val != v.val ? k // compress record case
-                                                                                : mostSimilarUsr(k).toSlice());
+                std::string exist = matcher->toString(matcher->size() != 0 ? k
+                                                                           : mostSimilarUsr(k).toSlice());
                 if (k == exist) {
                     ptr.setData(v);
                     cursor->updateChecksum();
