@@ -83,6 +83,34 @@ void lv_db_test_() {
         }
         LeviDB::LvDB db(db_path, LeviDB::Options{});
 
+        { // cross-db regex iter
+            // 正向
+            typedef LeviDB::Regex::R R;
+            auto snapshot = db.makeSnapshot();
+            auto snapshot_copy = std::make_unique<LeviDB::Snapshot>(snapshot->immut_seq_num());
+            auto regex_it = db.makeRegexIterator(std::make_shared<R>((R("7") | R("8")) << R("0", "9", 0, INT_MAX)),
+                                                 std::move(snapshot));
+
+            int i = 0;
+            while (regex_it->valid()) {
+                ++i;
+                regex_it->next();
+            }
+            assert(i == 20);
+
+            // 反向
+            auto reverse_regex_it = db.makeRegexReversedIterator(
+                    std::make_shared<R>((R("1") | R("7")) << R("0", "9", 0, INT_MAX)),
+                    std::move(snapshot_copy));
+
+            i = 0;
+            while (reverse_regex_it->valid()) {
+                ++i;
+                reverse_regex_it->next();
+            }
+            assert(i == 11);
+        }
+
         std::string k = "0_Jim";
         std::string v = "Birthday";
         std::string k2 = "7_1995";
@@ -98,10 +126,13 @@ void lv_db_test_() {
             it->seekToFirst();
             it->next();
             it->prev();
+            int i = 0;
             while (it->valid()) {
+                ++i;
                 assert(!it->value().empty());
                 it->next();
             }
+            assert(i == 45);
         }
 
         std::string k3 = "9_Happy";
@@ -115,10 +146,13 @@ void lv_db_test_() {
             it->seekToLast();
             it->prev();
             it->next();
+            int i = 0;
             while (it->valid()) {
+                ++i;
                 assert(!it->value().empty());
                 it->prev();
             }
+            assert(i == 46);
         }
         assert(!db.getProperty().empty());
     }
