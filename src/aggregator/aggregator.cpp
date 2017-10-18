@@ -61,6 +61,7 @@ namespace LeviDB {
             }
 
             std::vector<std::string> children = IOEnv::getChildren(_name);
+            std::sort(children.begin(), children.end());
             children.erase(std::remove_if(children.begin(), children.end(), [&prefix, this]
                     (std::string & child) {
                 if (child[0] >= '0' && child[0] <= '9') { // is db
@@ -292,9 +293,11 @@ namespace LeviDB {
             res += info.first;
             if (info.second->db != nullptr) {
                 res += " db_lower_bound: ";
-                res += info.second->db->smallestKey().toString();
+                res.append(info.second->db->smallestKey().data(),
+                           info.second->db->smallestKey().data() + info.second->db->smallestKey().size());
                 res += " db_upper_bound: ";
-                res += info.second->db->largestKey().toString();
+                res.append(info.second->db->largestKey().data(),
+                           info.second->db->largestKey().data() + info.second->db->largestKey().size());
             }
             res += '\n';
         }
