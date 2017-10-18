@@ -70,7 +70,9 @@ void misc_test() {
         for (int i = 0; i < 9; ++i) {
             pending_it->next();
         }
-        assert(*reinterpret_cast<const uint32_t *>(pending_it->key().data()) == 12);
+        uint32_t val;
+        memcpy(&val, pending_it->key().data(), sizeof(val));
+        assert(val == 12);
         snapshots.clear();
         index.tryApplyPending();
     }

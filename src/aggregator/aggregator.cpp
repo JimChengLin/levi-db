@@ -467,11 +467,11 @@ namespace LeviDB {
 
     std::unique_ptr<DB>
     Aggregator::mayRenameDB(std::unique_ptr<DB> && db) {
-        if (db->immut_name().empty() || // not DBSingle
-            (db->immut_name().find('+') == std::string::npos && // regular name
-             db->immut_name().find('_') == std::string::npos)) {
+        if (db->immut_name().empty()) {
             return std::move(db);
         }
+        assert(db->immut_name().find('+') != std::string::npos ||
+               db->immut_name().find('_') != std::string::npos);
         std::string name = std::move(db->mut_name());
         std::string after_name;
         db = nullptr;
