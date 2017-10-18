@@ -2,7 +2,7 @@
 #define LEVIDB_OPTIONAL_H
 
 /*
- * 最小 c++ std:optional 模拟
+ * 最小 c++ std::optional 模拟
  */
 
 #include <cassert>
@@ -14,7 +14,7 @@ namespace LeviDB {
     template<typename T>
     class Optional {
     private:
-        char _obj[sizeof(T)]{};
+        size_t _obj[(sizeof(T) + sizeof(size_t) - 1) / sizeof(size_t)]{};
         bool _valid = false;
 
     public:

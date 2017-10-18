@@ -21,6 +21,8 @@ namespace LeviDB {
 
         std::unique_ptr<SimpleIterator<Slice>>
         makeDecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter);
+
+        uint32_t decoderPosition(SimpleIterator<Slice> * decoder) noexcept;
     }
 }
 

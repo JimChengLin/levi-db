@@ -38,7 +38,7 @@ namespace LeviDB {
         // __builtin_ffs: returns one plus the index of the least significant 1-bit of x
         // if x is zero, returns zero.
         int n = __builtin_ffs(inverse_mask);
-        mask = (uint8ToChar(UINT8_MAX) >> (n - 1) << (n - 1));
+        mask = uint8ToChar(UINT8_MAX >> (n - 1) << (n - 1));
         (*_src)[idx] &= mask;
         _extra[idx] &= mask;
     };

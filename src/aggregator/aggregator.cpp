@@ -589,14 +589,18 @@ namespace LeviDB {
                                       node->db_name.c_str());
                 }
 
-                cursor = next; // could pass dirty node, it's fine for iter
+                { // release lock of cursor
+                    RWLockWriteGuard _(std::move(cursor_guard));
+                }
+                cursor = std::move(next); // could pass dirty node, it's fine for iter
                 cursor_guard = std::move(next_guard);
                 cursor_bound = std::move(next_bound);
             }
         }
 
         size_t curr_dbs = hit_q.size();
-        if (curr_dbs <= AggregatorConst::max_dbs_) {
+        static_assert(AggregatorConst::max_dbs_ > 1, "nonsense setting");
+        if (curr_dbs < AggregatorConst::max_dbs_) {
         } else {
             std::sort(hit_q.begin(), hit_q.end());
             size_t close_limit = hit_q[curr_dbs - AggregatorConst::max_dbs_] / 2 * 3;

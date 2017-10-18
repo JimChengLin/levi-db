@@ -54,6 +54,9 @@ namespace LeviDB {
             unsigned char out[CHUNK]{};
 
         public:
+            uint32_t _position = 0;
+
+        public:
             explicit DecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter)
                     : _src_iter(std::move(src_iter)) {
                 static_assert(Z_NULL == 0, "fail then strm is not initialized");
@@ -103,6 +106,7 @@ namespace LeviDB {
 
                         if (ret != Z_STREAM_END) {
                             _src_iter->next();
+                            ++_position;
                         } else {
                             break;
                         }
@@ -114,6 +118,10 @@ namespace LeviDB {
         std::unique_ptr<SimpleIterator<Slice>>
         makeDecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter) {
             return std::make_unique<DecodeIterator>(std::move(src_iter));
+        };
+
+        uint32_t decoderPosition(SimpleIterator<Slice> * decoder) noexcept {
+            return static_cast<DecodeIterator *>(decoder)->_position;
         };
     }
 }

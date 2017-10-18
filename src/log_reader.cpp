@@ -153,14 +153,14 @@ namespace LeviDB {
         // 将压缩的流解压
         class UncompressIterator : public SimpleIterator<Slice> {
         private:
-            RawIterator * _raw_iter_ob;
+            SimpleIterator<Slice> * _raw_iter_ob;
             std::unique_ptr<SimpleIterator<Slice>> _decode_iter;
             std::vector<uint8_t> _buffer;
             bool _valid = false;
 
         public:
             explicit UncompressIterator(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
-                    : _raw_iter_ob(static_cast<RawIterator *>(raw_iter.get())),
+                    : _raw_iter_ob(raw_iter.get()),
                       _decode_iter(Compressor::makeDecodeIterator(
                               std::make_unique<IteratorTrimLastChar>(std::move(raw_iter)))) { next(); }
 
@@ -182,8 +182,9 @@ namespace LeviDB {
                 _valid = _decode_iter->valid();
 
                 char type = _raw_iter_ob->item().back();
-                uint32_t cursor = _raw_iter_ob->immut_cursor();
-                while (_raw_iter_ob->immut_cursor() == cursor && _decode_iter->valid()) { // 必须解压完当前 block
+                uint32_t cursor = Compressor::decoderPosition(_decode_iter.get());
+                // 必须解压完当前 block
+                while (Compressor::decoderPosition(_decode_iter.get()) == cursor && _decode_iter->valid()) {
                     _buffer.insert(_buffer.end(),
                                    reinterpret_cast<const uint8_t *>(_decode_iter->item().data()),
                                    reinterpret_cast<const uint8_t *>(

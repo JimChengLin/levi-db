@@ -81,12 +81,18 @@ void lv_db_test_() {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
         }
-
         LeviDB::LvDB db(db_path, LeviDB::Options{});
+
+        std::string k = "0_Jim";
+        std::string v = "Birthday";
+        std::string k2 = "7_1995";
+        std::string v2 = "0207";
+        db.write(LeviDB::WriteOptions{}, {{k,  v},
+                                          {k2, v2}});
+
         for (int i = 60; i < 100; ++i) {
             assert(db.get(LeviDB::ReadOptions{}, std::to_string(i)).first == std::to_string(i));
         }
-
         {
             auto it = db.makeIterator(db.makeSnapshot());
             it->seekToFirst();
@@ -94,14 +100,10 @@ void lv_db_test_() {
             it->prev();
             while (it->valid()) {
                 assert(!it->value().empty());
-                it->prev();
+                it->next();
             }
         }
 
-        std::string k = "0_Jim";
-        std::string v = "Birthday";
-        std::string k2 = "7_1995";
-        std::string v2 = "0207";
         std::string k3 = "9_Happy";
         std::string v3 = "Everyday";
         db.write(LeviDB::WriteOptions{}, {{k,  v},
@@ -118,6 +120,7 @@ void lv_db_test_() {
                 it->prev();
             }
         }
+        assert(!db.getProperty().empty());
     }
 
     std::cout << __FUNCTION__ << std::endl;
