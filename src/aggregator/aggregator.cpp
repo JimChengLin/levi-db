@@ -307,9 +307,13 @@ namespace LeviDB {
     std::shared_ptr<AggregatorNode>
     Aggregator::findBestMatchForWrite(const Slice & target, RWLockWriteGuard * guard,
                                       std::string * lower_bound) {
-        bool expected = true;
-        if (_gc.compare_exchange_strong(expected, false)) {
-            gc();
+        if (_operating_dbs > AggregatorConst::max_dbs_) {
+            bool expected = false;
+            if (_gc.compare_exchange_strong(expected, true)) {
+                gc();
+                assert(_gc);
+                _gc = false;
+            }
         }
 
         std::shared_ptr<AggregatorNode> res;
@@ -462,9 +466,7 @@ namespace LeviDB {
     void Aggregator::mayOpenDB(std::shared_ptr<AggregatorNode> match) {
         if (match->db == nullptr) {
             match->db = std::make_unique<DBSingle>(match->db_name, Options{}, &_seq_gen);
-            if (++_operating_dbs > AggregatorConst::max_dbs_) {
-                _gc = true;
-            }
+            ++_operating_dbs;
         }
     };
 
