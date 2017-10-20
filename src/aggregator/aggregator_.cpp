@@ -169,6 +169,16 @@ namespace LeviDB {
         return std::make_unique<ChainIterator>(this, std::move(snapshot));
     };
 
+    static bool regexPossible(Regex::R * regex, DB * db) {
+        Slice smallest = db->smallestKey();
+        Slice largest = db->largestKey();
+
+        size_t i = 0;
+        size_t limit = std::min(smallest.size(), largest.size());
+        while (i < limit && smallest[i] == largest[i]) { ++i; }
+        return i == 0 || regex->possible(std::string(smallest.data(), smallest.data() + i));
+    }
+
     class Aggregator::ChainRegexIterator : public SimpleIterator<std::pair<Slice, std::string>> {
     private:
         Aggregator * _aggregator;
@@ -239,9 +249,11 @@ namespace LeviDB {
                     res->db = std::make_unique<DBSingle>(res->db_name, Options{}, &_aggregator->_seq_gen);
                     ++_aggregator->_operating_dbs;
                 }
-                _iter = res->db->makeRegexIterator(_regex, std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
+                if (regexPossible(_regex.get(), res->db.get()))
+                    _iter = res->db->makeRegexIterator(_regex, std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
             } else {
-                _iter = res->db->makeRegexIterator(_regex, std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
+                if (regexPossible(_regex.get(), res->db.get()))
+                    _iter = res->db->makeRegexIterator(_regex, std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
             }
         }
 
@@ -265,11 +277,15 @@ namespace LeviDB {
                             match->db = std::make_unique<DBSingle>(match->db_name, Options{}, &_aggregator->_seq_gen);
                             ++_aggregator->_operating_dbs;
                         }
-                        _iter = match->db->makeRegexIterator(_regex,
-                                                             std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
+                        if (regexPossible(_regex.get(), match->db.get()))
+                            _iter = match->db->makeRegexIterator(_regex,
+                                                                 std::make_unique<Snapshot>(
+                                                                         _snapshot->immut_seq_num()));
                     } else {
-                        _iter = match->db->makeRegexIterator(_regex,
-                                                             std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
+                        if (regexPossible(_regex.get(), match->db.get()))
+                            _iter = match->db->makeRegexIterator(_regex,
+                                                                 std::make_unique<Snapshot>(
+                                                                         _snapshot->immut_seq_num()));
                     }
                 }
                 _bound = std::move(bound);
@@ -353,11 +369,13 @@ namespace LeviDB {
                     res->db = std::make_unique<DBSingle>(res->db_name, Options{}, &_aggregator->_seq_gen);
                     ++_aggregator->_operating_dbs;
                 }
-                _iter = res->db->makeRegexReversedIterator(_regex,
-                                                           std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
+                if (regexPossible(_regex.get(), res->db.get()))
+                    _iter = res->db->makeRegexReversedIterator(_regex,
+                                                               std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
             } else {
-                _iter = res->db->makeRegexReversedIterator(_regex,
-                                                           std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
+                if (regexPossible(_regex.get(), res->db.get()))
+                    _iter = res->db->makeRegexReversedIterator(_regex,
+                                                               std::make_unique<Snapshot>(_snapshot->immut_seq_num()));
             }
         }
 
@@ -379,13 +397,15 @@ namespace LeviDB {
                     if (match->db == nullptr) {
                         match->db = std::make_unique<DBSingle>(match->db_name, Options{}, &_aggregator->_seq_gen);
                     }
-                    _iter = match->db->makeRegexReversedIterator(_regex,
-                                                                 std::make_unique<Snapshot>(
-                                                                         _snapshot->immut_seq_num()));
+                    if (regexPossible(_regex.get(), match->db.get()))
+                        _iter = match->db->makeRegexReversedIterator(_regex,
+                                                                     std::make_unique<Snapshot>(
+                                                                             _snapshot->immut_seq_num()));
                 } else {
-                    _iter = match->db->makeRegexReversedIterator(_regex,
-                                                                 std::make_unique<Snapshot>(
-                                                                         _snapshot->immut_seq_num()));
+                    if (regexPossible(_regex.get(), match->db.get()))
+                        _iter = match->db->makeRegexReversedIterator(_regex,
+                                                                     std::make_unique<Snapshot>(
+                                                                             _snapshot->immut_seq_num()));
                 }
                 _bound = std::move(bound);
             }
