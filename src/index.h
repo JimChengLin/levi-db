@@ -12,8 +12,10 @@
 #include <random>
 
 #ifndef __clang__
+
 #include <memory>
 #include <tuple>
+
 #endif
 
 #include "env_io.h"
@@ -143,13 +145,9 @@ namespace LeviDB {
 
         auto functor() const noexcept {
             return [&](const uint32_t & a, const uint32_t & b) noexcept {
-                if (a < b) {
-                    return true;
-                }
-                if (a == b) {
-                    return normalMask(_masks[&a - _diffs.cbegin()]) < normalMask(_masks[&b - _diffs.cbegin()]);
-                }
-                return false;
+                return a < b ||
+                       (a == b &&
+                        normalMask(_masks[&a - _diffs.cbegin()]) < normalMask(_masks[&b - _diffs.cbegin()]));
             };
         };
 

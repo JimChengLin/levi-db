@@ -7,8 +7,8 @@ add_compile_options(-msse4.2)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
-    #    add_compile_options(-DLEVI_BENCH) # profile
 endif ()
+#add_compile_options(-DLEVI_BENCH) # profile
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
@@ -70,11 +70,11 @@ set(SOURCE_FILES main.cpp
 add_executable(LeviDB ${SOURCE_FILES})
 
 find_package(ZLIB REQUIRED)
-if (ZLIB_FOUND)
-    include_directories(${ZLIB_INCLUDE_DIRS})
-    target_link_libraries(LeviDB ${ZLIB_LIBRARIES})
-endif ()
+include_directories(${ZLIB_INCLUDE_DIRS})
+target_link_libraries(LeviDB ${ZLIB_LIBRARIES})
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(LeviDB Threads::Threads)
+
+#target_link_libraries(LeviDB leveldb) # benchmark

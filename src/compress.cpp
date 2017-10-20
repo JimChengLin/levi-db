@@ -36,9 +36,7 @@ namespace LeviDB {
         std::vector<uint8_t> encode(const Slice & src) noexcept {
             std::vector<uint8_t> dst(compressBound(src.size()));
             size_t dst_len = dst.size();
-            if (compress(dst.data(), &dst_len, reinterpret_cast<const Bytef *>(src.data()), src.size()) != Z_OK) {
-                std::terminate();
-            };
+            compress(dst.data(), &dst_len, reinterpret_cast<const Bytef *>(src.data()), src.size());
             dst.resize(dst_len);
             return dst;
         };
