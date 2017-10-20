@@ -3,6 +3,8 @@
 #include "exception.h"
 
 namespace LeviDB {
+    static constexpr uint32_t page_size_ = 4096;
+
     size_t BDNode::size() const noexcept {
         if (full()) {
             return _ptrs.size();
@@ -38,9 +40,12 @@ namespace LeviDB {
     }
 
     BDNode * BitDegradeTree::offToMemNode(OffsetToNode node) const {
+        assert(sysconf(_SC_PAGESIZE) == page_size_);
         auto * mem_node = reinterpret_cast<BDNode *>(reinterpret_cast<uintptr_t>(_dst.immut_mmaped_region())
                                                      + node.val);
-        if (!mem_node->verify()) {
+        char vec[1]{};
+        if (mincore(mem_node, page_size_, vec) != 0) { throw Exception::corruptionException("mincore fail"); };
+        if ((vec[0] & 1) != 1 && !mem_node->verify()) {
             throw Exception::corruptionException("i-node checksum mismatch");
         };
         return mem_node;
