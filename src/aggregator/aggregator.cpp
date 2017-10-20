@@ -240,9 +240,11 @@ namespace LeviDB {
                     }
                 }
             } else {
-                RWLockWriteGuard _(std::move(cursor_guard));
                 break;
             }
+        }
+        {
+            RWLockWriteGuard _(std::move(cursor_guard));
         }
 
         RWLockReadGuard next_guard;
