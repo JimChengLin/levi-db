@@ -128,6 +128,11 @@ namespace LeviDB {
             auto node = it.second;
             if (node->db != nullptr) {
                 node->db->tryApplyPending();
+                if (node->db->immut_name().empty()) {
+                    while (static_cast<Compacting1To2DB *>(node->db.get())->immut_compacting()) {
+                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                    }
+                }
                 assert(node->db->canRelease());
                 node->db = nullptr;
 #ifndef NDEBUG
