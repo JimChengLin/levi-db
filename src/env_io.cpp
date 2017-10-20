@@ -173,18 +173,19 @@ namespace LeviDB {
     }
 
     void MmapFile::grow() {
-        _length += IOEnv::page_size_;
+        uint64_t length = _length;
+        _length *= 2;
         if (ftruncate(_file._fd, static_cast<off_t>(_length)) != 0) {
             throw Exception::IOErrorException(_filename, error_info);
         }
         // 主要运行在 linux 上, 每次扩容都要 munmap/mmap 的问题可以用 mremap 规避
 #ifndef __linux__
-        if (munmap(_mmaped_region, _length - IOEnv::page_size_) != 0) {
+        if (munmap(_mmaped_region, length) != 0) {
             throw Exception::IOErrorException(_filename, error_info);
         }
         _mmaped_region = mmap(nullptr, _length, PROT_READ | PROT_WRITE, MAP_SHARED, _file._fd, 0);
 #else
-        _mmaped_region = mremap(_mmaped_region, _length - IOEnv::page_size_, _length, MREMAP_MAYMOVE);
+        _mmaped_region = mremap(_mmaped_region, length, _length, MREMAP_MAYMOVE);
 #endif
         if (_mmaped_region == MAP_FAILED) {
             throw Exception::IOErrorException(_filename, error_info);

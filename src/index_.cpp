@@ -144,6 +144,9 @@ namespace LeviDB {
         if (_empty.val == IndexConst::disk_null_) {
             OffsetToNode res{static_cast<uint32_t>(_dst.immut_length())};
             _dst.grow();
+            for (uint32_t cursor = res.val + page_size_; cursor < _dst.immut_length(); cursor += page_size_) {
+                freeNode(OffsetToNode{cursor});
+            }
             return res;
         }
         OffsetToNode res{_empty.val};
