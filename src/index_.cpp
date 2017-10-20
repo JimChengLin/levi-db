@@ -9,15 +9,17 @@ namespace LeviDB {
         if (full()) {
             return _ptrs.size();
         }
-        size_t cnt = 0;
-        for (CritPtr ptr:_ptrs) {
-            if (!ptr.isNull()) {
-                ++cnt;
+        size_t lo = 0;
+        size_t hi = IndexConst::rank_;
+        while (lo < hi) {
+            size_t mid = (lo + hi) / 2;
+            if (_ptrs[mid].isNull()) {
+                hi = mid;
             } else {
-                break;
+                lo = mid + 1;
             }
         }
-        return cnt;
+        return lo;
     }
 
     bool BDEmpty::verify() const noexcept {
