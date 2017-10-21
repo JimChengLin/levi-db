@@ -45,6 +45,11 @@ namespace LeviDB {
         assert(sysconf(_SC_PAGESIZE) == page_size_);
         auto * mem_node = reinterpret_cast<BDNode *>(reinterpret_cast<uintptr_t>(_dst.immut_mmaped_region())
                                                      + node.val);
+#ifdef __linux__
+        unsigned
+#else
+        static_assert(MINCORE_INCORE == 1, "Unix/Linux conflict");
+#endif
         char vec[1]{};
         if (mincore(mem_node, page_size_, vec) != 0) { throw Exception::corruptionException("mincore fail"); };
         if ((vec[0] & 1) != 1 && !mem_node->verify()) {
