@@ -15,10 +15,17 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
 endif ()
 
 set(SOURCE_FILES main.cpp
-        bench/db_read_bench.cpp
-        bench/db_write_bench.cpp
+        bench/compact_1_2_bench.cpp
+        bench/compact_2_1_bench.cpp
+        bench/db_bench.cpp
+        bench/kv_del_bench.cpp
+        bench/kv_iter_bench.cpp
         bench/kv_read_bench.cpp
         bench/kv_write_bench.cpp
+        bench/lv_db_iter_bench.cpp
+        bench/lv_db_read_bench.cpp
+        bench/lv_db_write_bench.cpp
+        bench/source_fetcher.cpp bench/source_fetcher.h
         src/aggregator/aggregator.cpp src/aggregator/aggregator.h src/aggregator/aggregator_.cpp
         src/aggregator/compact.h
         src/aggregator/compact_1_2.cpp src/aggregator/compact_1_2.h
@@ -65,7 +72,8 @@ set(SOURCE_FILES main.cpp
         test/lv_db_test.cpp
         test/lv_db_test_.cpp
         test/misc_test.cpp
-        test/regex_test.cpp)
+        test/regex_test.cpp
+        )
 
 add_executable(LeviDB ${SOURCE_FILES})
 

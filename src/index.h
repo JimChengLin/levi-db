@@ -230,6 +230,7 @@ namespace LeviDB {
         void sync() { _dst.sync(); };
 
     private:
+        // TODO: 作者设计了O(n)算法, 但还没实现. 目前是O(n^2).
         std::tuple<size_t/* idx */, bool/* direct */, size_t/* size */>
         findBestMatch(const BDNode * node, const Slice & k) const noexcept;
 

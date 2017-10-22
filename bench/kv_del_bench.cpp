@@ -3,9 +3,10 @@
 #include <iostream>
 
 #include "../src/index_mvcc_rd.h"
+#include "../src/log_writer.h"
 #include "source_fetcher.h"
 
-void kv_read_bench() {
+void kv_del_bench() {
     if (LeviDB::IOEnv::fileExists(src_fname_)) {
         const std::string index_fname = "/tmp/levi_bench_index";
         const std::string data_fname = "/tmp/levi_bench_data";
@@ -13,15 +14,20 @@ void kv_read_bench() {
             return;
         }
 
-        LeviDB::SeqGenerator seq_g;
+        LeviDB::AppendableFile af(data_fname);
         LeviDB::RandomAccessFile rf(data_fname);
-        const LeviDB::IndexRead bdt(index_fname, LeviDB::OffsetToEmpty{LeviDB::IndexConst::disk_null_}, &seq_g, &rf);
+
+        LeviDB::SeqGenerator seq_g;
+        LeviDB::IndexRead bdt(index_fname, &seq_g, &rf);
+        LeviDB::LogWriter writer(&af);
 
         SourceFetcher src;
         for (int i = 0; i < test_times_; ++i) {
             auto item = src.readItem();
-            auto r = bdt.find(item.first);
-            assert(r.first.size() == item.second.size());
+            uint32_t pos = writer.calcWritePos();
+            std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(item.first, item.second);
+            writer.addRecord({bin.data(), bin.size()});
+            bdt.remove(item.first, LeviDB::OffsetToData{pos});
         }
 
         std::cout << __FUNCTION__ << std::endl;

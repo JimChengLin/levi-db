@@ -40,6 +40,7 @@ namespace LeviDB {
         std::unique_ptr<Iterator<Slice, std::string>>
         makeIterator(std::unique_ptr<Snapshot> && snapshot) const;
 
+        // TODO: 作者对于 Regex 采用朴素 NFA 实现, 有严重性能问题, 禁止使用!!!
         std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
         makeRegexIterator(std::shared_ptr<Regex::R> regex,
                           std::unique_ptr<Snapshot> && snapshot) const;

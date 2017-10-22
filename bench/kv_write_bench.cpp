@@ -1,15 +1,13 @@
 #ifdef LEVI_BENCH
 
-#include <array>
 #include <iostream>
 
 #include "../src/index_mvcc_rd.h"
 #include "../src/log_writer.h"
-
-#define src_fname "/Users/yuanjinlin/Desktop/curr_proj/LeviDB/cmake-build-debug/movies.txt"
+#include "source_fetcher.h"
 
 void kv_write_bench() {
-    if (LeviDB::IOEnv::fileExists(src_fname)) {
+    if (LeviDB::IOEnv::fileExists(src_fname_)) {
         const std::string index_fname = "/tmp/levi_bench_index";
         const std::string data_fname = "/tmp/levi_bench_data";
         if (LeviDB::IOEnv::fileExists(index_fname)) {
@@ -26,28 +24,13 @@ void kv_write_bench() {
         LeviDB::IndexRead bdt(index_fname, &seq_g, &rf);
         LeviDB::LogWriter writer(&af);
 
-        static constexpr int test_time_ = 100000;
-        LeviDB::SequentialFile src(src_fname);
-
-        int nth = 0;
-        std::array<std::string, 9> que{};
-        while (nth++ != test_time_) {
-            std::string line = src.readLine();
-            if (line.empty()) {
-                break;
-            }
-
-            size_t idx = (nth - 1) % que.size();
-            que[idx] = std::move(line);
-            if (idx == que.size() - 1) {
-                const std::string key = que[0] + que[1] + std::to_string(nth);
-                const std::string val = que[2] + que[3] + que[4] + que[5] + que[6] + que[7];
-
-                uint32_t pos = writer.calcWritePos();
-                std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(key, val);
-                writer.addRecord({bin.data(), bin.size()});
-                bdt.insert(key, LeviDB::OffsetToData{pos});
-            }
+        SourceFetcher src;
+        for (int i = 0; i < test_times_; ++i) {
+            auto item = src.readItem();
+            uint32_t pos = writer.calcWritePos();
+            std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(item.first, item.second);
+            writer.addRecord({bin.data(), bin.size()});
+            bdt.insert(item.first, LeviDB::OffsetToData{pos});
         }
 
         std::cout << __FUNCTION__ << std::endl;

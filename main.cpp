@@ -46,6 +46,22 @@ void lv_db_test();
 
 void lv_db_test_();
 
+void kv_del_bench();
+
+void kv_iter_bench();
+
+void db_bench();
+
+void lv_db_write_bench();
+
+void lv_db_read_bench();
+
+void lv_db_iter_bench();
+
+void compact_1_2_bench();
+
+void compact_2_1_bench();
+
 int main() {
     try {
         index_test();
@@ -68,6 +84,14 @@ int main() {
 #ifdef LEVI_BENCH
         kv_write_bench();
         kv_read_bench();
+        kv_iter_bench();
+        kv_del_bench();
+        db_bench();
+        compact_1_2_bench();
+        compact_2_1_bench();
+        lv_db_write_bench();
+        lv_db_read_bench();
+        lv_db_iter_bench();
 #endif
     } catch (const LeviDB::Exception & e) {
         std::cout << e.toString() << std::endl;
