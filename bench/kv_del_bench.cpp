@@ -18,8 +18,8 @@ void kv_del_bench() {
         LeviDB::RandomAccessFile rf(data_fname);
 
         LeviDB::SeqGenerator seq_g;
-        LeviDB::IndexRead bdt(index_fname, &seq_g, &rf);
-        LeviDB::LogWriter writer(&af);
+        LeviDB::IndexRead bdt(index_fname, LeviDB::OffsetToEmpty{LeviDB::IndexConst::disk_null_}, &seq_g, &rf);
+        LeviDB::LogWriter writer(&af, af.immut_length());
 
         SourceFetcher src;
         for (int i = 0; i < test_times_; ++i) {

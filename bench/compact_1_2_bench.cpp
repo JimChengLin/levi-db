@@ -28,32 +28,31 @@ void compact_1_2_bench() {
 
         SourceFetcher src2;
         for (int i = 0; i < test_times_; ++i) {
-            auto item = src.readItem();
-            db.get(LeviDB::ReadOptions{}, item.first);
+            auto item = src2.readItem();
+            auto r = db.get(LeviDB::ReadOptions{}, item.first);
+            assert(r.first.size() == item.second.size());
         }
 
-        auto it = db.makeIterator(db.makeSnapshot());
-        it->seekToFirst();
-        while (it->valid()) {
-            assert(it->key().size() != 0 && !it->value().empty());
-            it->next();
-        }
+        {
+            auto it = db.makeIterator(db.makeSnapshot());
+            it->seekToFirst();
+            while (it->valid()) {
+                assert(it->key().size() != 0 && !it->value().empty());
+                it->next();
+            }
 
-        it->seekToLast();
-        std::string target = it->key().toString();
-        while (it->valid()) {
-            assert(it->key().size() != 0 && !it->value().empty());
-            it->prev();
-        }
+            it->seekToLast();
+            std::string target = it->key().toString();
+            while (it->valid()) {
+                assert(it->key().size() != 0 && !it->value().empty());
+                it->prev();
+            }
 
-        it->seek(target);
-        while (it->valid()) {
-            assert(it->key().size() != 0 && !it->value().empty());
-            it->prev();
-        }
-
-        while (db.immut_compacting()) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            it->seek(target);
+            while (it->valid()) {
+                assert(it->key().size() != 0 && !it->value().empty());
+                it->prev();
+            }
         }
 
         std::cout << __FUNCTION__ << std::endl;
