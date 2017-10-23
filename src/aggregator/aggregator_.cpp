@@ -103,6 +103,7 @@ namespace LeviDB {
                         _bound = find_res->first;
                         res = find_res->second;
                     }
+                    RWLockWriteGuard write_guard(res->lock);
                     if (res->dirty) { goto load2; }
 
                     if (res->db == nullptr) {

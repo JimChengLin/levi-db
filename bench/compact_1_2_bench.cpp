@@ -27,32 +27,42 @@ void compact_1_2_bench() {
         }
 
         SourceFetcher src2;
-        for (int i = 0; i < test_times_; ++i) {
+        for (int i = 0; i < test_times_ * 2; ++i) {
             auto item = src2.readItem();
             auto r = db.get(LeviDB::ReadOptions{}, item.first);
             assert(r.first.size() == item.second.size());
         }
 
         {
+            int i = 0;
             auto it = db.makeIterator(db.makeSnapshot());
             it->seekToFirst();
             while (it->valid()) {
+                ++i;
                 assert(it->key().size() != 0 && !it->value().empty());
                 it->next();
             }
+            assert(i == test_times_ * 2);
 
+            i = 0;
             it->seekToLast();
             std::string target = it->key().toString();
             while (it->valid()) {
+                ++i;
                 assert(it->key().size() != 0 && !it->value().empty());
                 it->prev();
             }
+            assert(i == test_times_ * 2);
 
             it->seek(target);
             while (it->valid()) {
                 assert(it->key().size() != 0 && !it->value().empty());
                 it->prev();
             }
+        }
+
+        while (db.immut_compacting()) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
         std::cout << __FUNCTION__ << std::endl;

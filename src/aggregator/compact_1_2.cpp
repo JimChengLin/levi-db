@@ -304,11 +304,9 @@ namespace LeviDB {
          * 可能目前看来位于 product_a 的 key 若干个 snapshot 之前在 product_b
          */
         assert(_product_a->largestKey().size() != 0);
-        if (!SliceComparator{}(_product_a->largestKey(), key)) {
-            auto res = _product_a->get(options, key);
-            if (res.second) {
-                return res;
-            }
+        auto res = _product_a->get(options, key);
+        if (res.second) {
+            return res;
         }
         return _product_b->get(options, key);
     }
