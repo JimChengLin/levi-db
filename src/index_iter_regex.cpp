@@ -100,7 +100,9 @@ namespace LeviDB {
                             } else {
                                 log_iter = LogReader::makeIterator(_index->_data_file, ptr.asData().val);
                                 log_iter->seek(_reveal_info->toSlice());
-                                _item = {log_iter->key(), log_iter->value()};
+                                // log_iter has an internal buffer, have to call value() first
+                                _item = {{}, log_iter->value()};
+                                _item.first = log_iter->key();
                                 if (_judge == nullptr
                                     || (_reveal_info->reveal(_item.first), _judge->match(*_reveal_info))) {
                                     YIELD();
