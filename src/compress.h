@@ -1,29 +1,20 @@
-#ifndef LEVIDB_COMPRESS_H
-#define LEVIDB_COMPRESS_H
+#pragma once
+#ifndef LEVIDB8_COMPRESS_H
+#define LEVIDB8_COMPRESS_H
 
-/*
- * 对 zlib 的简单封装
- * 可更换为其它压缩库
- */
-
-#include <vector>
-
-#ifndef __clang__
 #include <memory>
-#endif
+#include <vector>
 
 #include "iterator.h"
 #include "slice.h"
 
-namespace LeviDB {
-    namespace Compressor {
-        std::vector<uint8_t> encode(const Slice & src) noexcept;
+namespace levidb8 {
+    namespace compressor {
+        std::vector<uint8_t> encode(const Slice & src);
 
         std::unique_ptr<SimpleIterator<Slice>>
-        makeDecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter);
-
-        uint32_t decoderPosition(SimpleIterator<Slice> * decoder) noexcept;
+        makeDecodeIterator(std::unique_ptr<SimpleIterator<Slice>> && src_iter) noexcept;
     }
 }
 
-#endif //LEVIDB_COMPRESS_H
+#endif //LEVIDB8_COMPRESS_H

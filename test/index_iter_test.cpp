@@ -1,131 +1,46 @@
 #include <iostream>
 
-#ifndef __clang__
-#include <algorithm>
-#endif
-
-#include "../src/index_iter_regex.h"
-#include "../src/log_writer.h"
+#include "../src/index.h"
 
 void index_iter_test() {
-    const std::string index_fname = "/tmp/bdt_iter_index";
-    const std::string data_fname = "/tmp/bdt_iter_data";
-    static constexpr int test_times_ = 500;
+    const std::string fname = "/tmp/bdt";
+    static constexpr int test_times = 1000;
 
-    if (LeviDB::IOEnv::fileExists(index_fname)) {
-        LeviDB::IOEnv::deleteFile(index_fname);
+    if (levidb8::env_io::fileExists(fname)) {
+        levidb8::env_io::deleteFile(fname);
     }
-    if (LeviDB::IOEnv::fileExists(data_fname)) {
-        LeviDB::IOEnv::deleteFile(data_fname);
-    }
-
-    LeviDB::AppendableFile af(data_fname);
-    LeviDB::RandomAccessFile rf(data_fname);
-
-    LeviDB::SeqGenerator seq_g;
-    LeviDB::IndexIter index(index_fname, &seq_g, &rf);
-    LeviDB::LogWriter writer(&af);
-
-    std::vector<std::string> expect_keys;
-    expect_keys.reserve(test_times_);
-    for (int i = 0; i < test_times_; ++i) {
-        expect_keys.emplace_back(std::to_string(i));
-        uint32_t pos = writer.calcWritePos();
-        std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(expect_keys.back(), std::to_string(i + test_times_));
-        writer.addRecord({bin.data(), bin.size()});
-        index.insert(expect_keys.back(), LeviDB::OffsetToData{pos});
-    }
-    std::sort(expect_keys.begin(), expect_keys.end());
-
-    auto verify = [&]() {
-        auto iter = index.makeIterator();
-        iter->seekToFirst();
-        for (const std::string & k:expect_keys) {
-            assert(iter->key() == k);
-            iter->next();
-        }
-        assert(!iter->valid());
-    };
-    verify();
-
-    std::vector<uint8_t> compress_bkvs = LeviDB::LogWriter::makeCompressRecord({{"A", "B"},
-                                                                                {"C", "D"},
-                                                                                {"E", "F"}});
-    uint32_t pos = writer.calcWritePos();
-    writer.addCompressRecord({compress_bkvs.data(), compress_bkvs.size()});
-    index.insert("A", LeviDB::OffsetToData{pos});
-    index.insert("C", LeviDB::OffsetToData{pos});
-    index.insert("E", LeviDB::OffsetToData{pos});
-    expect_keys.insert(expect_keys.end(), {"A", "C", "E"});
-    verify();
 
     {
-        auto iter = index.makeIterator();
-        iter->seek("C");
-        assert(iter->key() == "C");
-        iter->next();
-        assert(iter->key() == "E");
-
-        iter->seek("C");
-        assert(iter->value() == "D");
-        iter->prev();
-        assert(iter->value() == "B");
-        iter->next();
-        assert(iter->value() == "D");
-
-        iter->seekToLast();
-        assert(iter->value() == "F");
-        iter->prev();
-        assert(iter->value() == "D");
-        iter->prev();
-        assert(iter->value() == "B");
-
-        index.remove("0", {});
-        index.remove("E", {});
-        for (const std::string & k:{"A", "6"}) {
-            pos = writer.calcWritePos();
-            std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord(k, "_");
-            writer.addRecord({bin.data(), bin.size()});
-            index.insert(k, LeviDB::OffsetToData{pos});
+        levidb8::BitDegradeTree tree(fname);
+        for (int i = 2; i < test_times; i += 2) {
+            auto val = static_cast<uint32_t>(i);
+            tree.insert({reinterpret_cast<const char *>(&val), sizeof(val)}, {val});
         }
 
-        auto mvcc_iter = index.makeIterator();
-        mvcc_iter->seekToFirst();
-        assert(mvcc_iter->key() == "1");
-        mvcc_iter->seekToLast();
-        assert(mvcc_iter->key() == "C");
-        mvcc_iter->seek("A");
-        assert(mvcc_iter->value() == "_");
+        auto iter = tree.scan();
+        uint32_t prev_val = 0;
+        uint32_t cnt = 0;
+        for (iter->seekToFirst();
+             iter->valid();
+             iter->next()) {
+            uint32_t val = iter->value().val;
+            assert(memcmp(&prev_val, &val, sizeof(val)) < 0);
+            prev_val = val;
+            ++cnt;
+        }
+        assert(cnt == test_times / 2 - 1);
 
-        mvcc_iter->seek("0");
-        assert(mvcc_iter->key() == "1");
-        assert(mvcc_iter->value() == "501");
-
-        mvcc_iter->seek("C");
-        mvcc_iter->next();
-        assert(!mvcc_iter->valid());
-        mvcc_iter->seek("1");
-        mvcc_iter->prev();
-        assert(!mvcc_iter->valid());
-
-        pos = writer.calcWritePos();
-        std::vector<uint8_t> bin = LeviDB::LogWriter::makeRecord("C", "CD");
-        writer.addRecord({bin.data(), bin.size()});
-        index.insert("C", LeviDB::OffsetToData{pos});
-
-        auto it = index.makeIterator();
-        it->seek("C");
-        assert(it->value() == "CD");
-        it->prev();
-        assert(it->value() == "_");
-        it->next();
-        assert(it->value() == "CD");
-    }
-    index.tryApplyPending();
-    {
-        auto iter = index.makeIterator();
-        iter->seekToFirst();
-        assert(iter->key() == "1");
+        prev_val = UINT32_MAX;
+        cnt = 0;
+        for (iter->seekToLast();
+             iter->valid();
+             iter->prev()) {
+            uint32_t val = iter->value().val;
+            assert(memcmp(&prev_val, &val, sizeof(val)) > 0);
+            prev_val = val;
+            ++cnt;
+        }
+        assert(cnt == test_times / 2 - 1);
     }
 
     std::cout << __FUNCTION__ << std::endl;

@@ -1,83 +1,94 @@
-#ifndef LEVIDB_ENV_THREAD_H
-#define LEVIDB_ENV_THREAD_H
+#pragma once
+#ifndef LEVIDB8_ENV_THREAD_H
+#define LEVIDB8_ENV_THREAD_H
 
 /*
  * 线程 API 封装
  */
 
-#include <cstdint>
-#include <pthread.h>
 #include <thread>
-#include <type_traits>
 
-#include "util.h"
+#ifndef __clang__
 
-namespace LeviDB {
+#include <atomic>
+
+#endif
+
+namespace levidb8 {
     static_assert(std::is_same<std::thread::native_handle_type, pthread_t>::value,
                   "cannot mix std::thread with pthread");
 
-    namespace ThreadEnv {
+    namespace env_thread {
         uint64_t gettid() noexcept;
     }
 
     class ReadWriteLock {
     private:
-        pthread_rwlock_t _rwlock = PTHREAD_RWLOCK_INITIALIZER;
+        std::atomic<unsigned> _cnt{0};
+        std::atomic<bool> _need_write{false};
 
         friend class RWLockReadGuard;
 
         friend class RWLockWriteGuard;
-
-    public:
-        ReadWriteLock() noexcept = default;
-
-        DELETE_MOVE(ReadWriteLock);
-        DELETE_COPY(ReadWriteLock);
-
-        ~ReadWriteLock() noexcept { pthread_rwlock_destroy(&_rwlock); }
     };
+
+    class RWLockWriteGuard;
 
     class RWLockReadGuard {
     private:
-        pthread_rwlock_t * _lock = nullptr;
+        ReadWriteLock * _lock{};
+
+        friend class RWLockWriteGuard;
 
     public:
         RWLockReadGuard() noexcept = default;
 
-        explicit RWLockReadGuard(pthread_rwlock_t * lock);
+        explicit RWLockReadGuard(ReadWriteLock * lock) noexcept;
 
-        explicit RWLockReadGuard(const ReadWriteLock & lock)
-                : RWLockReadGuard(&const_cast<ReadWriteLock &>(lock)._rwlock) {};
-
-        RWLockReadGuard(RWLockReadGuard && another) noexcept { operator=(std::move(another)); };
+        RWLockReadGuard(RWLockReadGuard && another) noexcept;
 
         RWLockReadGuard & operator=(RWLockReadGuard && another) noexcept;
 
-        DELETE_COPY(RWLockReadGuard);
-
         ~RWLockReadGuard() noexcept;
+
+    public:
+        void release() noexcept;
+
+        static bool tryUpgrade(RWLockReadGuard * read_guard, RWLockWriteGuard * write_guard) noexcept;
+
+    public:
+        RWLockReadGuard(const RWLockReadGuard &) noexcept = delete;
+
+        void operator=(const RWLockReadGuard &) noexcept = delete;
     };
 
     class RWLockWriteGuard {
     private:
-        pthread_rwlock_t * _lock = nullptr;
+        ReadWriteLock * _lock{};
+
+        friend class RWLockReadGuard;
 
     public:
         RWLockWriteGuard() noexcept = default;
 
-        explicit RWLockWriteGuard(pthread_rwlock_t * lock);
+        explicit RWLockWriteGuard(ReadWriteLock * lock) noexcept;
 
-        explicit RWLockWriteGuard(ReadWriteLock & lock)
-                : RWLockWriteGuard(&lock._rwlock) {};
-
-        RWLockWriteGuard(RWLockWriteGuard && another) noexcept { operator=(std::move(another)); };
+        RWLockWriteGuard(RWLockWriteGuard && another) noexcept;
 
         RWLockWriteGuard & operator=(RWLockWriteGuard && another) noexcept;
 
-        DELETE_COPY(RWLockWriteGuard);
-
         ~RWLockWriteGuard() noexcept;
+
+    public:
+        void release() noexcept;
+
+        static void degrade(RWLockWriteGuard * write_guard, RWLockReadGuard * read_guard) noexcept;
+
+    public:
+        RWLockWriteGuard(const RWLockWriteGuard &) noexcept = delete;
+
+        void operator=(const RWLockWriteGuard &) noexcept = delete;
     };
 }
 
-#endif //LEVIDB_ENV_THREAD_H
+#endif //LEVIDB8_ENV_THREAD_H

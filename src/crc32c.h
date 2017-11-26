@@ -1,17 +1,16 @@
-#ifndef LEVIDB_CRC32C_H
-#define LEVIDB_CRC32C_H
+#pragma once
+#ifndef LEVIDB8_CRC32C_H
+#define LEVIDB8_CRC32C_H
 
 /*
  * CRC32C 计算
- *
- * steal from leveldb
  */
 
 #include <cstdint>
 #include <cstddef>
 
-namespace LeviDB {
-    namespace CRC32C {
+namespace levidb8 {
+    namespace crc32c {
         uint32_t extend(uint32_t init_crc, const char * data, size_t n) noexcept;
 
         inline uint32_t value(const char * data, size_t n) noexcept { return extend(0, data, n); }
@@ -20,4 +19,4 @@ namespace LeviDB {
     }
 }
 
-#endif //LEVIDB_CRC32C_H
+#endif //LEVIDB8_CRC32C_H

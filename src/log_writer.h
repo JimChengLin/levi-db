@@ -1,5 +1,6 @@
-#ifndef LEVIDB_LOG_WRITER_H
-#define LEVIDB_LOG_WRITER_H
+#pragma once
+#ifndef LEVIDB8_LOG_WRITER_H
+#define LEVIDB8_LOG_WRITER_H
 
 /*
  * 将 KV 以机读 log 格式写入硬盘
@@ -21,7 +22,7 @@
  * [3][4]与[1][2]基本相同, 但表示 KV 的完整性
  * [5]表示是否压缩
  * [6]表示是否删除
- * [7][8]暂不使用, 置空
+ * [7][8]暂不使用
  *
  * normal content 格式:
  * content = k_len + k + v
@@ -34,66 +35,57 @@
  */
 
 #include <bitset>
+#include <mutex>
 #include <vector>
 
-#include "env_io.h"
+#include "slice.h"
 
-namespace LeviDB {
-    namespace LogWriterConst {
+namespace levidb8 {
+    class LogFullControlledException : public std::exception {
+    };
+
+    class AppendableFile;
+
+    class LogWriter {
+    private:
         enum ConcatType {
             FULL = 0,
             FIRST = 1,
             MIDDLE = 2,
             LAST = 3,
         };
-        static constexpr size_t block_size_ = 32768; // 2^15
-        static constexpr size_t header_size_ = 4/* checksum */+ 1/* type */+ 2/* length */;
-    }
 
-    class LogWriter {
-    private:
         AppendableFile * _dst;
         size_t _block_offset = 0;
+        std::mutex _emit_lock;
 
     public:
-        explicit LogWriter(AppendableFile * dst) noexcept : _dst(dst) { assert(_dst->immut_length() == 0); };
+        explicit LogWriter(AppendableFile * dst) noexcept;
 
-        LogWriter(AppendableFile * dst, uint64_t dst_len) noexcept
-                : _dst(dst), _block_offset(dst_len % LogWriterConst::block_size_) {}
-
-        ~LogWriter() noexcept = default;
-
-        DEFAULT_MOVE(LogWriter);
-        DELETE_COPY(LogWriter);
+        LogWriter(AppendableFile * dst, uint64_t dst_len) noexcept;
 
     public:
-        void addRecord(const Slice & bkv) {
-            addRecords({bkv}, false, false);
-        };
+        uint32_t addRecord(const Slice & bkv);
 
-        void addCompressRecord(const Slice & bkv) {
-            addRecords({bkv}, true, false);
-        };
+        uint32_t addRecordForDel(const Slice & bkv);
 
-        void addDelRecord(const Slice & bkv) {
-            addRecords({bkv}, false, true);
-        };
+        uint32_t addCompressedRecords(const Slice & bkvs);
 
-        uint32_t calcWritePos() const noexcept;
-
-        // dirty hack, addrs 被借用作为表示是否 del
-        std::vector<uint32_t> addRecords(const std::vector<Slice> & bkvs, std::vector<uint32_t> addrs = {}) {
-            addrs.resize(bkvs.size());
-            addRecords(bkvs, false, false, &addrs);
-            return addrs;
-        };
+        // addrs 作为参数时表示是否 del
+        std::vector<uint32_t>
+        addRecordsMayDel(const std::vector<Slice> & bkvs, std::vector<uint32_t> addrs = {});
 
     private:
-        void addRecords(const std::vector<Slice> & bkvs, bool compress, bool del,
-                        std::vector<uint32_t> * addrs = nullptr);
+        enum Type {
+            ADD_RECORD,
+            ADD_RECORD_FOR_DEL,
+            ADD_COMPRESSED_RECORDS,
+        };
 
-        std::bitset<8> getCombinedType(LogWriterConst::ConcatType record_type,
-                                       LogWriterConst::ConcatType kv_type,
+        template<Type TYPE, bool LOCK = true>
+        uint32_t addRecordTpl(const Slice & bkv, ConcatType record_type = FULL);
+
+        std::bitset<8> getCombinedType(ConcatType record_type, ConcatType kv_type,
                                        bool compress, bool del) const noexcept;
 
         void emitPhysicalRecord(std::bitset<8> type, const char * ptr, size_t length);
@@ -101,8 +93,8 @@ namespace LeviDB {
     public:
         static std::vector<uint8_t> makeRecord(const Slice & k, const Slice & v) noexcept;
 
-        static std::vector<uint8_t> makeCompressRecord(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept;
+        static std::vector<uint8_t> makeCompressedRecords(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept;
     };
 }
 
-#endif //LEVIDB_LOG_WRITER_H
+#endif //LEVIDB8_LOG_WRITER_H

@@ -1,6 +1,6 @@
 #include "varint.h"
 
-namespace LeviDB {
+namespace levidb8 {
     char * encodeVarint32(char * dst, uint32_t value) noexcept {
         auto * p = reinterpret_cast<uint8_t *>(dst);
         static constexpr int B = 128;

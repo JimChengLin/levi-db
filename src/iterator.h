@@ -1,19 +1,18 @@
-#ifndef LEVIDB_ITERATOR_H
-#define LEVIDB_ITERATOR_H
+#pragma once
+#ifndef LEVIDB8_ITERATOR_H
+#define LEVIDB8_ITERATOR_H
 
 /*
  * 迭代器接口
  */
 
-#include "util.h"
+#include "slice.h"
 
-namespace LeviDB {
+namespace levidb8 {
     template<typename K, typename V>
     class Iterator {
     public:
         Iterator() noexcept = default;
-        DEFAULT_MOVE(Iterator);
-        DEFAULT_COPY(Iterator);
 
     public:
         virtual ~Iterator() noexcept = default;
@@ -24,7 +23,9 @@ namespace LeviDB {
 
         virtual void seekToLast() = 0;
 
-        virtual void seek(const K & target) = 0;
+        virtual void seek(const Slice & target) = 0;
+
+        virtual void seekForPrev(const Slice & target) = 0;
 
         virtual void next() = 0;
 
@@ -39,18 +40,18 @@ namespace LeviDB {
     class SimpleIterator {
     public:
         SimpleIterator() noexcept = default;
-        DEFAULT_MOVE(SimpleIterator);
-        DEFAULT_COPY(SimpleIterator);
 
     public:
         virtual ~SimpleIterator() noexcept = default;
 
-        virtual bool valid() const = 0;
+        virtual void prepare() = 0;
 
         virtual void next() = 0;
+
+        virtual bool valid() const = 0;
 
         virtual T item() const = 0;
     };
 }
 
-#endif //LEVIDB_ITERATOR_H
+#endif //LEVIDB8_ITERATOR_H

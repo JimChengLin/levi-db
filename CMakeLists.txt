@@ -1,88 +1,61 @@
-cmake_minimum_required(VERSION 3.7)
-project(LeviDB)
+cmake_minimum_required(VERSION 3.8)
+project(levidb8)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 
 set(CMAKE_CXX_STANDARD 14)
 
 add_compile_options(-msse4.2)
+#add_compile_options(-DLEVI_BENCH) # profile
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
 endif ()
-#add_compile_options(-DLEVI_BENCH) # profile
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif ()
 
 set(SOURCE_FILES main.cpp
-        bench/compact_1_2_bench.cpp
-        bench/compact_2_1_bench.cpp
-        bench/db_bench.cpp
-        bench/kv_del_bench.cpp
-        bench/kv_iter_bench.cpp
-        bench/kv_read_bench.cpp
-        bench/kv_write_bench.cpp
-        bench/lv_db_iter_bench.cpp
-        bench/lv_db_read_bench.cpp
-        bench/lv_db_write_bench.cpp
-        bench/source_fetcher.cpp bench/source_fetcher.h
-        src/aggregator/aggregator.cpp src/aggregator/aggregator.h src/aggregator/aggregator_.cpp
-        src/aggregator/compact.h
-        src/aggregator/compact_1_2.cpp src/aggregator/compact_1_2.h
-        src/aggregator/compact_2_1.cpp src/aggregator/compact_2_1.h src/aggregator/compact_1_2_.cpp
-        src/compress.h src/compress.cpp
+        src/compress.cpp src/compress.h
+        src/config.h
         src/crc32c.cpp src/crc32c.h
-        src/db.h
-        src/db_single.cpp src/db_single.h
+        src/db.cpp src/db.h
         src/env_io.cpp src/env_io.h
         src/env_thread.cpp src/env_thread.h
         src/exception.cpp src/exception.h
         src/index.cpp src/index.h src/index_.cpp
-        src/index_iter_regex.cpp src/index_iter_regex.h
-        src/index_mvcc_rd.cpp src/index_mvcc_rd.h
+        src/index_internal.cpp src/index_internal.h
+        src/index_read.cpp src/index_read.h
+        src/index_scan.cpp
         src/iterator.h
-        src/levi_regex/r.cpp src/levi_regex/r.h src/levi_regex/r_.cpp
-        src/levi_regex/result.h
-        src/levi_regex/state_machine.cpp src/levi_regex/state_machine.h
+        src/keeper.h
         src/log_reader.cpp src/log_reader.h
         src/log_writer.cpp src/log_writer.h
-        src/lv_db.cpp src/lv_db.h
-        src/merger.h
-        src/meta_keeper.h
         src/optional.h
         src/options.h
-        src/seq_gen.cpp src/seq_gen.h
         src/slice.h
         src/usr.cpp src/usr.h
         src/util.h
         src/varint.cpp src/varint.h
-        test/compact_1_2_iter_test.cpp
-        test/compact_1_2_regex_test.cpp
-        test/compact_1_2_test.cpp
-        test/compact_2_1_test.cpp
         test/compress_test.cpp
-        test/db_single_test.cpp
-        test/env_io_test.cpp
+        test/db_test.cpp
         test/index_iter_test.cpp
-        test/index_mvcc_test.cpp
-        test/index_rd_test.cpp
-        test/index_regex_test.cpp
+        test/index_iter_thread_test.cpp
+        test/index_read_test.cpp
         test/index_test.cpp
+        test/index_thread_test.cpp
         test/log_test.cpp
-        test/lv_db_test.cpp
-        test/lv_db_test_.cpp
-        test/misc_test.cpp
-        test/regex_test.cpp
         )
 
-add_executable(LeviDB ${SOURCE_FILES})
+add_executable(levidb8 ${SOURCE_FILES})
 
-find_package(ZLIB REQUIRED)
-include_directories(${ZLIB_INCLUDE_DIRS})
-target_link_libraries(LeviDB ${ZLIB_LIBRARIES})
+find_package(zstd REQUIRED)
+include_directories(${ZSTD_INCLUDE_DIR})
+target_link_libraries(levidb8 ${ZSTD_LIBRARIES})
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-target_link_libraries(LeviDB Threads::Threads)
-
-#target_link_libraries(LeviDB leveldb) # benchmark
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+    target_link_libraries(levidb8 Threads::Threads)
+endif ()

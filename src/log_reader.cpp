@@ -1,16 +1,12 @@
 #include "compress.h"
+#include "config.h"
 #include "crc32c.h"
+#include "env_io.h"
 #include "log_reader.h"
-#include "log_writer.h"
-#include "optional.h"
 #include "varint.h"
 
-namespace LeviDB {
-    namespace LogReader {
-        void defaultReporter(const Exception & e) {
-            throw e;
-        };
-
+namespace levidb8 {
+    namespace log_reader {
         static inline bool isRecordFull(char t) noexcept {
             return (t & (0b11 << 2)) == (0b00 << 2);
         }
@@ -35,215 +31,150 @@ namespace LeviDB {
             return (t & (1 << 5)) == (1 << 5);
         }
 
-        class RawIterator : public SimpleIterator<Slice> {
+        static inline bool isBatchFull(char t) noexcept {
+            return (t & 0b11) == 0b00;
+        }
+
+        static inline bool isBatchFirst(char t) noexcept {
+            return (t & 0b11) == 0b01;
+        }
+
+        static inline bool isBatchMiddle(char t) noexcept {
+            return (t & 0b11) == 0b10;
+        }
+
+        static inline bool isBatchLast(char t) noexcept {
+            return (t & 0b11) == 0b11;
+        }
+
+        using RawIterator = SimpleIterator<std::pair<Slice/* page */, std::pair<uint32_t/* offset */, char/* type */>>>;
+
+        class Connector;
+
+        class KeyValueIterator : public Iterator<Slice, std::pair<Slice, Meta>> {
+        public:
+            virtual Connector yieldConnector() = 0;
+        };
+
+        using KeyOffsetSimpleIterator = SimpleIterator<std::pair<Slice, std::pair<uint32_t, Meta>>>;
+        using KeyValueSimpleIterator = SimpleIterator<std::pair<Slice, std::pair<Slice, Meta>>>;
+
+        class RawIteratorNoTypeCheck : public RawIterator {
         private:
             RandomAccessFile * _dst;
-            Slice _item;
             uint32_t _cursor;
+            Slice _page;
+            char _backing_store[kLogBlockSize]{};
+            char _type = 0;
             bool _eof = false;
-            char _backing_store[LogWriterConst::block_size_]{};
 
         public:
-            RawIterator(RandomAccessFile * dst, uint32_t offset)
-                    : _dst(dst), _cursor(offset) { next(); }
+            RawIteratorNoTypeCheck(RandomAccessFile * dst, uint32_t offset) noexcept
+                    : _dst(dst), _cursor(offset) {}
 
-            DELETE_MOVE(RawIterator);
-            DELETE_COPY(RawIterator);
-
-            ~RawIterator() noexcept override = default;
-
-            EXPOSE(_cursor);
+            ~RawIteratorNoTypeCheck() noexcept override = default;
 
             bool valid() const override {
                 return !_eof;
-            };
+            }
 
-            Slice item() const override {
-                return _item;
-            };
+            void prepare() override {}
 
             void next() override {
-                size_t block_offset = _cursor % LogWriterConst::block_size_;
-                bool pad = (_item.size() != 0
-                            && (isRecordFull(_item.back()) || isRecordLast(_item.back()))
-                            && (block_offset & 1) == 1);
+                restart:
+                bool pad = (_cursor % kPageSize == 0 && (isRecordLast(_type) || isRecordFull(_type))
+                            && _page.size() != 0);
                 _cursor += static_cast<uint32_t>(pad);
-                block_offset += static_cast<size_t>(pad);
-                size_t remaining_bytes = LogWriterConst::block_size_ - block_offset;
+                size_t block_offset = _cursor % kLogBlockSize;
+                size_t remaining_bytes = kLogBlockSize - block_offset;
 
-                // skip trailer
-                if (block_offset != 0 && remaining_bytes < LogWriterConst::header_size_) {
+                if (remaining_bytes < kLogHeaderSize) {
                     _cursor += remaining_bytes;
-                    return next();
+                    goto restart;
                 }
 
-                try {
-                    char buf[LogWriterConst::header_size_]{};
-                    if (_dst->read(_cursor, LogWriterConst::header_size_, buf).size() < LogWriterConst::header_size_) {
-                        _eof = true;
-                        return;
-                    };
-                    _cursor += LogWriterConst::header_size_;
-                    remaining_bytes -= LogWriterConst::header_size_;
-
-                    uint16_t length;
-                    memcpy(&length, buf + 4/* checksum */+ 1/* type */, sizeof(length));
-                    if (length > remaining_bytes) {
-                        throw Exception::corruptionException("bad record length");
-                    }
-
-                    if (_dst->read(_cursor, length, _backing_store).size() < length) {
-                        _eof = true;
-                        return;
-                    };
-                    _cursor += length;
-
-                    uint32_t calc_checksum = CRC32C::extend(CRC32C::value(buf + 4, 1 + sizeof(length)),
-                                                            _backing_store, length);
-                    uint32_t store_checksum;
-                    memcpy(&store_checksum, buf, sizeof(store_checksum));
-                    if (calc_checksum != store_checksum) {
-                        throw Exception::corruptionException("checksum mismatch");
-                    }
-
-                    // add meta char
-                    _backing_store[length] = buf[4];
-                    _item = Slice(_backing_store, length + 1);
-                } catch (const Exception & e) {
-                    if (e.isIOError()) {
-                        _eof = true;
-                    }
-                    throw e;
+                char buf[kLogHeaderSize]{};
+                if (_dst->read(_cursor, kLogHeaderSize, buf).size() != kLogHeaderSize) {
+                    _eof = true;
+                    return;
                 }
+                _cursor += kLogHeaderSize;
+                remaining_bytes -= kLogHeaderSize;
+
+                uint16_t length;
+                memcpy(&length, buf/* start */ + 4/* checksum */+ 1/* type */, sizeof(length));
+                if (length > remaining_bytes) {
+                    throw Exception::corruptionException("bad record length");
+                }
+
+                if (_dst->read(_cursor, length, _backing_store).size() != length) {
+                    _eof = true;
+                    return;
+                };
+                _cursor += length;
+
+                uint32_t calc_checksum = crc32c::extend(crc32c::value(buf + 4, 1 + sizeof(length)),
+                                                        _backing_store, length);
+                uint32_t store_checksum;
+                memcpy(&store_checksum, buf, sizeof(store_checksum));
+                if (calc_checksum != store_checksum) {
+                    throw Exception::corruptionException("checksum mismatch");
+                }
+
+                _type = buf[4];
+                _page = Slice(_backing_store, length);
+            }
+
+            std::pair<Slice, std::pair<uint32_t, char>>
+            item() const override {
+                assert(valid());
+                return {_page, std::make_pair(_cursor - _page.size() - kLogHeaderSize, _type)};
             };
         };
 
-        std::unique_ptr<SimpleIterator<Slice>>
-        makeRawIterator(RandomAccessFile * data_file, uint32_t offset) {
-            return std::make_unique<RawIterator>(data_file, offset);
-        }
-
-        // RawIterator 的结尾是 meta char, 掩盖掉然后传给解压器
-        class IteratorTrimLastChar : public SimpleIterator<Slice> {
+        class RawIteratorCheckOnFly : public RawIterator {
         private:
-            std::unique_ptr<SimpleIterator<Slice>> _raw_iter;
+            RawIteratorNoTypeCheck _iter;
+            char _prev_type = 0; // FULL
 
         public:
-            explicit IteratorTrimLastChar(std::unique_ptr<SimpleIterator<Slice>> && raw_iter) noexcept
-                    : _raw_iter(std::move(raw_iter)) {}
+            RawIteratorCheckOnFly(RandomAccessFile * dst, uint32_t offset) noexcept
+                    : _iter(dst, offset) {}
 
-            DEFAULT_MOVE(IteratorTrimLastChar);
-            DELETE_COPY(IteratorTrimLastChar);
-
-            ~IteratorTrimLastChar() noexcept override = default;
+            ~RawIteratorCheckOnFly() noexcept override = default;
 
             bool valid() const override {
-                return _raw_iter->valid();
-            };
+                return _iter.valid();
+            }
 
-            Slice item() const override {
-                return {_raw_iter->item().data(), _raw_iter->item().size() - 1};
-            };
+            void prepare() override {
+                _iter.prepare();
+            }
 
             void next() override {
-                _raw_iter->next();
+                _iter.next();
+                checkedOrThrow();
             }
-        };
 
-        // 将压缩的流解压
-        class UncompressIterator : public SimpleIterator<Slice> {
-        private:
-            SimpleIterator<Slice> * _raw_iter_ob;
-            std::unique_ptr<SimpleIterator<Slice>> _decode_iter;
-            std::vector<uint8_t> _buffer;
-            bool _valid = false;
-
-        public:
-            explicit UncompressIterator(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
-                    : _raw_iter_ob(raw_iter.get()),
-                      _decode_iter(Compressor::makeDecodeIterator(
-                              std::make_unique<IteratorTrimLastChar>(std::move(raw_iter)))) { next(); }
-
-            DEFAULT_MOVE(UncompressIterator);
-            DELETE_COPY(UncompressIterator);
-
-            ~UncompressIterator() noexcept override = default;
-
-            bool valid() const override {
-                return _valid;
-            };
-
-            Slice item() const override {
-                return {_buffer.data(), _buffer.size()};
-            };
-
-            void next() override {
-                _buffer.clear();
-                _valid = _decode_iter->valid();
-
-                char type = _raw_iter_ob->item().back();
-                uint32_t cursor = Compressor::decoderPosition(_decode_iter.get());
-                // 必须解压完当前 block
-                while (Compressor::decoderPosition(_decode_iter.get()) == cursor && _decode_iter->valid()) {
-                    _buffer.insert(_buffer.end(),
-                                   reinterpret_cast<const uint8_t *>(_decode_iter->item().data()),
-                                   reinterpret_cast<const uint8_t *>(
-                                           _decode_iter->item().data() + _decode_iter->item().size()));
-                    _decode_iter->next();
-                }
-                _buffer.emplace_back(charToUint8(type));
-            }
-        };
-
-        class RecordIteratorBase {
-        private:
-            mutable std::unique_ptr<SimpleIterator<Slice>> _raw_iter;
-            mutable std::vector<uint8_t> _buffer;
-            mutable char _prev_type = 0; // dummy FULL
-            mutable bool _meet_all = false;
-
-        protected:
-            explicit RecordIteratorBase(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
-                    : _raw_iter(std::move(raw_iter)) {}
-
-            EXPOSE(_raw_iter);
-
-            EXPOSE(_buffer);
-
-            EXPOSE(_meet_all);
-
-            void ensureDataLoad(uint32_t length) const {
-                while (length > _buffer.size() && !_meet_all && _raw_iter->valid()) {
-                    fetchData();
-                }
-                if (_buffer.size() < length) {
-                    throw Exception::IOErrorException("EOF");
-                }
+            std::pair<Slice, std::pair<uint32_t, char>> item() const override {
+                return _iter.item();
             }
 
         private:
-            void fetchData() const {
-                dependencyCheck(_prev_type, _raw_iter->item().back());
-                _prev_type = _raw_iter->item().back();
-
-                _buffer.insert(_buffer.end(),
-                               reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
-                               reinterpret_cast<const uint8_t *>(
-                                       _raw_iter->item().data() + _raw_iter->item().size() - 1));
-                if (!_meet_all) {
-                    _raw_iter->next();
+            void checkedOrThrow() {
+                if (valid()) {
+                    char type = item().second.second;
+                    dependencyCheck(_prev_type, type);
+                    _prev_type = type;
                 }
             }
 
-            void dependencyCheck(char type_a, char type_b) const {
-                _meet_all = (isRecordFull(type_b) || isRecordLast(type_b));
-
+            static void dependencyCheck(char type_a, char type_b) {
                 if (isRecordFull(type_a) || isRecordLast(type_a)) { // prev is completed
                     if (isRecordFull(type_b) || isRecordFirst(type_b)) {
                         return;
                     }
                 }
-
                 if (isRecordFirst(type_a) || isRecordMiddle(type_a)) { // prev is starting
                     if (isRecordMiddle(type_b) || isRecordLast(type_b)) {
                         // same compress, same del
@@ -252,26 +183,210 @@ namespace LeviDB {
                         }
                     }
                 }
-
                 throw Exception::corruptionException("fragmented record");
             }
         };
 
-        class RecordIterator : public RecordIteratorBase, public Iterator<Slice, std::string> {
+        class RawIteratorCheckBatch : public RawIterator {
         private:
+            RawIteratorCheckOnFly _iter;
+            std::vector<std::pair<std::vector<uint8_t>, std::pair<uint32_t, char>>> _buffer;
+            std::vector<std::pair<std::vector<uint8_t>, std::pair<uint32_t, char>>>::const_iterator _buffer_cursor;
+            char _prev_type = 0;
+
+        public:
+            RawIteratorCheckBatch(RandomAccessFile * dst, uint32_t offset) noexcept
+                    : _iter(dst, offset), _buffer_cursor(_buffer.cend()) {}
+
+            ~RawIteratorCheckBatch() noexcept override = default;
+
+            bool valid() const override {
+                return _buffer_cursor != _buffer.cend();
+            }
+
+            void prepare() override {
+                _iter.prepare();
+            }
+
+            void next() override {
+                if (_buffer_cursor == _buffer.cend() || ++_buffer_cursor == _buffer.cend()) {
+                    _buffer.clear();
+
+                    while (true) {
+                        _iter.next();
+                        if (!_iter.valid()) {
+                            _buffer_cursor = _buffer.cend();
+                            break; // invalid
+                        }
+
+                        auto item = _iter.item();
+                        const Slice & page = item.first;
+                        char type = item.second.second;
+
+                        dependencyCheck(_prev_type, type);
+                        _prev_type = type;
+
+                        _buffer.emplace_back(std::vector<uint8_t>(
+                                reinterpret_cast<const uint8_t *>(page.data()),
+                                reinterpret_cast<const uint8_t *>(page.data() + page.size())),
+                                             item.second);
+
+                        if (isBatchFull(type) || isBatchLast(type)) {
+                            _buffer_cursor = _buffer.cbegin();
+                            break;
+                        }
+                    }
+                }
+            }
+
+            std::pair<Slice, std::pair<uint32_t, char>> item() const override {
+                assert(valid());
+                return {{_buffer_cursor->first.data(), _buffer_cursor->first.size()}, _buffer_cursor->second};
+            }
+
+        private:
+            static void dependencyCheck(char type_a, char type_b) {
+                if (isBatchFull(type_a) || isBatchLast(type_a)) {
+                    if (isBatchFull(type_b) || isBatchFirst(type_b)) {
+                        return;
+                    }
+                }
+                if (isBatchFirst(type_a) || isBatchMiddle(type_a)) {
+                    if (isBatchMiddle(type_b) || isBatchLast(type_b)) {
+                        return;
+                    }
+                }
+                throw Exception::corruptionException("fragmented batch");
+            }
+        };
+
+        class DecompressHelper : public SimpleIterator<Slice> {
+        private:
+            Slice * _src;
+
+        public:
+            explicit DecompressHelper(Slice * src) noexcept : _src(src) {}
+
+            ~DecompressHelper() noexcept override = default;
+
+            bool valid() const override { return _src != nullptr; }
+
+            void prepare() override {}
+
+            void next() override {}
+
+            Slice item() const override {
+                assert(valid());
+                return *_src;
+            }
+        };
+
+        class Decompressor {
+        private:
+            Slice _src;
+            std::unique_ptr<SimpleIterator<Slice>> _decode_iter;
+
+        public:
+            Decompressor() : _decode_iter(
+                    compressor::makeDecodeIterator(std::make_unique<DecompressHelper>(&_src))) {
+                _decode_iter->prepare();
+            }
+
+            Slice submit(const Slice & code) {
+                _src = code;
+                _decode_iter->next();
+                assert(_decode_iter->valid());
+                return _decode_iter->item();
+            }
+
+            void reset() {
+                _decode_iter = compressor::makeDecodeIterator(std::make_unique<DecompressHelper>(&_src));
+                _decode_iter->prepare();
+            }
+        };
+
+        class Connector {
+        private:
+            std::unique_ptr<RawIterator> _raw_iter;
+            std::vector<uint8_t> _buffer;
+            Decompressor _decompressor;
+
+            uint32_t _offset{};
+            char _type{}; // 只需要 compress 和 del
+            bool _met_all = false;
+
+            friend class NormalRecordIterator;
+
+            friend class CompressedRecordsIterator;
+
+            friend class TableIterator;
+
+        public:
+            explicit Connector(std::unique_ptr<RawIterator> && raw_iter)
+                    : _raw_iter(std::move(raw_iter)) {
+                _raw_iter->prepare();
+            }
+
+            EXPOSE(_type);
+
+            void ensureLoad(uint32_t length) {
+                load(length);
+                if (_buffer.size() < length) {
+                    throw Exception::IOErrorException("EOF early");
+                }
+            }
+
+            void load(uint32_t length) {
+                while (length > _buffer.size() && !_met_all) {
+                    _raw_iter->next();
+                    if (!_raw_iter->valid()) {
+                        break;
+                    }
+
+                    auto item = _raw_iter->item();
+                    const Slice & page = item.first;
+                    std::tie(_offset, _type) = item.second;
+
+                    Slice content = isRecordCompress(_type) ? _decompressor.submit(page) : page;
+                    _buffer.insert(_buffer.end(),
+                                   reinterpret_cast<const uint8_t *>(content.data()),
+                                   reinterpret_cast<const uint8_t *>(content.data() + content.size()));
+
+                    if (isRecordFull(_type) || isRecordLast(_type)) {
+                        _met_all = true;
+                    }
+                }
+            }
+
+            void reset() {
+                assert(_met_all);
+                _buffer.clear();
+                _decompressor.reset();
+                _met_all = false;
+            }
+
+        public:
+            Connector(const Connector &) noexcept = delete;
+
+            void operator=(const Connector &) noexcept = delete;
+
+            Connector(Connector &&) noexcept = default;
+
+            Connector & operator=(Connector &&) noexcept = default;
+        };
+
+        class NormalRecordIterator : public KeyValueIterator {
+        private:
+            mutable Connector _connector;
             uint32_t _k_len = 0;
             uint8_t _k_from = 0;
             bool _done = true;
-            bool _del;
 
         public:
-            explicit RecordIterator(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
-                    : RecordIteratorBase(std::move(raw_iter)), _del(isRecordDel(immut_raw_iter()->item().back())) {}
+            explicit NormalRecordIterator(Connector && connector) noexcept
+                    : _connector(std::move(connector)) {}
 
-            DEFAULT_MOVE(RecordIterator);
-            DELETE_COPY(RecordIterator);
-
-            ~RecordIterator() noexcept override = default;
+            ~NormalRecordIterator() noexcept override = default;
 
         public:
             bool valid() const override { return !_done; };
@@ -280,9 +395,9 @@ namespace LeviDB {
                 if (_k_len == 0) {
                     assert(_k_from == 0);
                     while (true) {
-                        ensureDataLoad(++_k_from);
-                        if (decodeVarint32(reinterpret_cast<const char *>(immut_buffer().data()),
-                                           reinterpret_cast<const char *>(immut_buffer().data() + _k_from),
+                        _connector.ensureLoad(++_k_from);
+                        if (decodeVarint32(reinterpret_cast<const char *>(_connector._buffer.data()),
+                                           reinterpret_cast<const char *>(_connector._buffer.data() + _k_from),
                                            &_k_len) != nullptr) {
                             break;
                         }
@@ -300,6 +415,8 @@ namespace LeviDB {
                 _done = SliceComparator{}(key(), target);
             };
 
+            void seekForPrev(const Slice & target) override { seek(target); }
+
             void next() override {
                 _done = true;
             };
@@ -309,66 +426,65 @@ namespace LeviDB {
             };
 
             Slice key() const override {
-                ensureDataLoad(_k_from + _k_len);
-                return {&immut_buffer()[_k_from], _k_len};
+                _connector.ensureLoad(_k_from + _k_len);
+                return {&_connector._buffer[_k_from], _k_len};
             };
 
-            std::string value() const override {
-                while (!immut_meet_all()) {
-                    ensureDataLoad(static_cast<uint32_t>(immut_buffer().size() + 1));
+            std::pair<Slice, Meta> value() const override {
+                while (!_connector._met_all) {
+                    _connector.ensureLoad(static_cast<uint32_t>(_connector._buffer.size() + 1));
                 }
-                return std::string(reinterpret_cast<const char *>(&immut_buffer()[_k_from + _k_len]),
-                                   reinterpret_cast<const char *>(&immut_buffer().back() + 1))
-                       + static_cast<char>(_del);
+                uint32_t start = _k_from + _k_len;
+                return {{&_connector._buffer[start], _connector._buffer.size() - start},
+                        Meta{false, isRecordDel(_connector._type)}};
             };
+
+            Connector yieldConnector() override {
+                return std::move(_connector);
+            }
         };
 
-        class RecordIteratorCompress : public RecordIteratorBase, public Iterator<Slice, std::string> {
-        protected:
-            typedef std::pair<uint32_t, uint32_t> from_to;
-            typedef std::pair<from_to, from_to> kv_pair;
+        class CompressedRecordsIterator : public KeyValueIterator {
+        private:
+            using from_to = std::pair<uint32_t, uint32_t>;
+            using kv_pair = std::pair<from_to, from_to>;
 
+            mutable Connector _connector;
             std::vector<kv_pair> _rep;
             std::vector<kv_pair>::const_iterator _cursor;
 
         public:
-            explicit RecordIteratorCompress(std::unique_ptr<SimpleIterator<Slice>> && raw_iter)
-                    : RecordIteratorBase(std::make_unique<UncompressIterator>(std::move(raw_iter))),
-                      _cursor(_rep.cend()) {}
+            explicit CompressedRecordsIterator(Connector && connector) noexcept
+                    : _connector(std::move(connector)), _cursor(_rep.cend()) {}
 
-            DELETE_MOVE(RecordIteratorCompress);
-            DELETE_COPY(RecordIteratorCompress);
-
-            ~RecordIteratorCompress() noexcept override = default;
+            ~CompressedRecordsIterator() noexcept override = default;
 
         public:
             bool valid() const override { return _cursor != _rep.cend(); };
 
             void seekToFirst() override {
                 if (_rep.empty()) {
-                    assert(immut_buffer().empty());
-
                     uint16_t meta_len;
-                    ensureDataLoad(sizeof(meta_len));
-                    memcpy(&meta_len, &immut_buffer()[0], sizeof(meta_len));
-
-                    ensureDataLoad(sizeof(meta_len) + meta_len);
-                    std::vector<from_to> ranges;
-                    const auto * p = reinterpret_cast<const char *>(&immut_buffer()[sizeof(meta_len)]);
-                    const auto * limit = reinterpret_cast<const char *>(&immut_buffer()[sizeof(meta_len) + meta_len]);
+                    _connector.ensureLoad(sizeof(meta_len));
+                    memcpy(&meta_len, &_connector._buffer[0], sizeof(meta_len));
 
                     uint32_t offset = sizeof(meta_len) + meta_len;
+                    _connector.ensureLoad(offset);
+                    std::vector<from_to> ranges;
+                    const auto * p = reinterpret_cast<const char *>(&_connector._buffer[sizeof(meta_len)]);
+                    const auto * limit = p + meta_len;
+
                     while (p != limit) {
                         uint32_t val;
                         p = decodeVarint32(p, limit, &val);
                         if (p == nullptr) {
-                            throw Exception::corruptionException("meta area of CompressRecord broken");
+                            throw Exception::corruptionException("meta area of CompressedRecords broken");
                         }
                         ranges.emplace_back(offset, offset + val);
                         offset += val;
                     }
                     size_t half = ranges.size() / 2;
-                    for (int i = 0; i < half; ++i) {
+                    for (size_t i = 0; i < half; ++i) {
                         _rep.emplace_back(ranges[i], ranges[i + half]);
                     }
                 }
@@ -382,36 +498,21 @@ namespace LeviDB {
             };
 
             void seek(const Slice & target) override {
-                auto compatible = [](const Slice & key, const Slice & tar) noexcept {
-                    for (size_t i = 0; i < tar.size(); ++i) {
-                        char k = 0;
-                        char t = tar[i];
-                        if (i < key.size()) {
-                            k = key[i];
-                        } else if (i - key.size() < sizeof(uint32_t)) {
-                            auto length = static_cast<uint32_t>(key.size());
-                            k = reinterpret_cast<const char *>(&length)[i - key.size()];
-                        }
-
-                        if ((k & t) == t) {
-                        } else {
-                            return false;
-                        }
-                    }
-                    return true;
-                };
-
                 seekToFirst();
-                while (valid() && !compatible(key(), target)) {
+                while (valid() && SliceComparator()(key(), target)) {
                     next();
                 }
             };
 
+            void seekForPrev(const Slice & target) override { seek(target); }
+
             void next() override {
+                assert(valid());
                 ++_cursor;
             };
 
             void prev() override {
+                assert(valid());
                 if (_cursor == _rep.cbegin()) {
                     _cursor = _rep.cend();
                 } else {
@@ -423,424 +524,193 @@ namespace LeviDB {
                 assert(valid());
                 const auto kv = *_cursor;
                 const auto k_from_to = kv.first;
-                ensureDataLoad(k_from_to.second);
-                return {&immut_buffer()[k_from_to.first], k_from_to.second - k_from_to.first};
+                _connector.ensureLoad(k_from_to.second);
+                return {&_connector._buffer[k_from_to.first], k_from_to.second - k_from_to.first};
             };
 
-            std::string value() const override {
+            std::pair<Slice, Meta> value() const override {
                 assert(valid());
                 const auto kv = *_cursor;
                 const auto v_from_to = kv.second;
-                ensureDataLoad(v_from_to.second);
-                return std::string(reinterpret_cast<const char *>(&immut_buffer()[v_from_to.first]),
-                                   v_from_to.second - v_from_to.first)
-                       + static_cast<char>(false);
+                _connector.ensureLoad(v_from_to.second);
+                return {{&_connector._buffer[v_from_to.first], v_from_to.second - v_from_to.first},
+                        Meta{true, false}};
             };
-        };
 
-        std::unique_ptr<kv_iter_t>
-        makeIterator(RandomAccessFile * data_file, uint32_t offset) {
-            auto raw_iter = makeRawIterator(data_file, offset);
-            if (isRecordCompress(raw_iter->item().back())) {
-                return std::make_unique<RecordIteratorCompress>(std::move(raw_iter));
+            Connector yieldConnector() override {
+                return std::move(_connector);
             }
-            return std::make_unique<RecordIterator>(std::move(raw_iter));
-        }
-
-        bool isRecordIteratorCompress(kv_iter_t * it) noexcept {
-            return dynamic_cast<RecordIteratorCompress *>(it) != nullptr;
         };
 
-        static inline bool isBatchFull(char t) noexcept {
-            return (t & 0b11) == 0b00;
-        }
-
-        static inline bool isBatchFirst(char t) noexcept {
-            return (t & 0b11) == 0b01;
-        }
-
-        static inline bool isBatchMiddle(char t) noexcept {
-            return (t & 0b11) == 0b10;
-        }
-
-        static inline bool isBatchLast(char t) noexcept {
-            return (t & 0b11) == 0b11;
-        }
-
-        // 确保 batch dependency 的 RawIterator
-        class RawIteratorBatchChecked : public SimpleIterator<Slice> {
+        class TableIterator : public KeyOffsetSimpleIterator {
         private:
-            std::exception_ptr _delay_e;
-            std::unique_ptr<RawIterator> _raw_iter;
+            RandomAccessFile * _data_file;
+            std::unique_ptr<KeyValueIterator> _kv_iter;
+            uint32_t _cursor = 1;
+            uint32_t _offset{};
+            bool _did_seek = false;
 
-            std::vector<uint32_t> _disk_offsets;
-            std::vector<std::vector<uint8_t>> _cache;
-            std::vector<std::vector<uint8_t>>::const_iterator _cache_cursor;
-            char _prev_type = 0; // dummy FULL
-
-            friend class TableIterator;
+            friend class RecoveryIterator;
 
         public:
-            explicit RawIteratorBatchChecked(std::unique_ptr<RawIterator> && raw_iter)
-                    : _raw_iter(std::move(raw_iter)), _cache_cursor(_cache.cend()) {
-                if (_raw_iter != nullptr) { // safe swapping
-                    next();
+            explicit TableIterator(RandomAccessFile * data_file) noexcept
+                    : _data_file(data_file) {}
+
+            ~TableIterator() noexcept override = default;
+
+        public:
+            bool valid() const override {
+                return _kv_iter->valid();
+            }
+
+            void prepare() override {
+                if (!_did_seek) {
+                    Connector connector(std::make_unique<RawIteratorCheckBatch>(_data_file, _cursor));
+                    connector.ensureLoad(1);
+                    _offset = connector._offset;
+                    if (isRecordCompress(connector._type)) {
+                        _kv_iter = std::make_unique<CompressedRecordsIterator>(std::move(connector));
+                    } else {
+                        _kv_iter = std::make_unique<NormalRecordIterator>(std::move(connector));
+                    }
                 }
             }
-
-            RawIteratorBatchChecked(RawIteratorBatchChecked && rhs) noexcept {
-                operator=(std::move(rhs));
-            }
-
-            RawIteratorBatchChecked & operator=(RawIteratorBatchChecked && rhs) noexcept {
-                auto nth = rhs._cache_cursor == rhs._cache.cend() ? static_cast<long>(-1)
-                                                                  : static_cast<long>(rhs._cache_cursor -
-                                                                                      rhs._cache.cbegin());
-                std::swap(_delay_e, rhs._delay_e);
-                std::swap(_raw_iter, rhs._raw_iter);
-                std::swap(_disk_offsets, rhs._disk_offsets);
-                std::swap(_cache, rhs._cache);
-                std::swap(_cache_cursor, rhs._cache_cursor);
-                std::swap(_prev_type, rhs._prev_type);
-                _cache_cursor = nth != -1 ? _cache.cbegin() + nth : _cache.cend();
-                return *this;
-            }
-
-            DELETE_COPY(RawIteratorBatchChecked);
-
-            ~RawIteratorBatchChecked() noexcept override = default;
-
-            bool valid() const override {
-                return _cache_cursor != _cache.cend();
-            };
-
-            Slice item() const override {
-                assert(valid());
-                return {(*_cache_cursor).data(), (*_cache_cursor).size()};
-            };
 
             void next() override {
-                assert(_disk_offsets.size() == _cache.size());
-                if (_delay_e != nullptr) { std::rethrow_exception(_delay_e); }
+                if (_did_seek) {
+                    _kv_iter->next();
+                } else {
+                    _kv_iter->seekToFirst();
+                    _did_seek = true;
+                }
 
-                if (_cache_cursor == _cache.cend() || ++_cache_cursor == _cache.cend()) {
-                    _disk_offsets.clear();
-                    _cache.clear();
-                    _cache_cursor = _cache.cend();
-                    if (!_raw_iter->valid()) {
+                if (!_kv_iter->valid()) {
+                    Connector connector(_kv_iter->yieldConnector());
+                    connector.reset();
+                    connector.load(1);
+                    if (connector._buffer.empty()) {
                         return;
                     }
 
-                    do {
-                        dependencyCheck(_prev_type, _raw_iter->item().back());
-                        _prev_type = _raw_iter->item().back();
-
-                        if (isRecordFull(_prev_type) || isRecordFirst(_prev_type)) {
-                            _disk_offsets.emplace_back(_raw_iter->immut_cursor()
-                                                       - (_raw_iter->item().size() - 1/* meta char */)
-                                                       - LogWriterConst::header_size_);
-                        } else {
-                            _disk_offsets.emplace_back(_disk_offsets.back());
-                        }
-
-                        _cache.emplace_back(
-                                reinterpret_cast<const uint8_t *>(_raw_iter->item().data()),
-                                reinterpret_cast<const uint8_t *>(_raw_iter->item().data() + _raw_iter->item().size())
-                        );
-
-                        try {
-                            _raw_iter->next(); // 多读一页
-                        } catch (const Exception & e) {
-                            if (_delay_e == nullptr) { // 下一页的异常不应该影响当前的输出
-                                _delay_e = std::current_exception();
-                            } else {
-                                throw e;
-                            }
-                        }
-
-                        if (isBatchFull(_prev_type) || isBatchLast(_prev_type)) {
-                            _cache_cursor = _cache.cbegin();
-                            return;
-                        }
-                    } while (_raw_iter->valid());
-                    // exit as EOF(not valid)
-                }
-            }
-
-            uint32_t diskOffset() const noexcept {
-                return _disk_offsets[_cache_cursor - _cache.cbegin()];
-            }
-
-        private:
-            void dependencyCheck(char type_a, char type_b) const {
-                if (isBatchFull(type_a) || isBatchLast(type_a)) { // prev is completed
-                    if (isBatchFull(type_b) || isBatchFirst(type_b)) {
-                        return;
+                    _offset = connector._offset;
+                    if (isRecordCompress(connector._type)) {
+                        _kv_iter = std::make_unique<CompressedRecordsIterator>(std::move(connector));
+                    } else {
+                        _kv_iter = std::make_unique<NormalRecordIterator>(std::move(connector));
                     }
-                }
-
-                if (isBatchFirst(type_a) || isBatchMiddle(type_a)) { // prev is starting
-                    if (isBatchMiddle(type_b) || isBatchLast(type_b)) {
-                        return;
-                    }
-                }
-
-                throw Exception::corruptionException("fragmented batch");
-            }
-        };
-
-        class TableIterator : public SimpleIterator<std::pair<Slice, std::string>> {
-        private:
-            RawIteratorBatchChecked * _raw_iter_batch_ob;
-            std::unique_ptr<kv_iter_t> _kv_iter;
-
-            friend class TableIteratorOffset;
-
-            friend class TableRecoveryIterator;
-
-            friend class TableRecoveryIteratorKV;
-
-        public:
-            explicit TableIterator(std::unique_ptr<RawIteratorBatchChecked> && raw_iter_batch)
-                    : _raw_iter_batch_ob(raw_iter_batch.get()),
-                      _kv_iter(makeKVIter(std::move(raw_iter_batch))) { // transfer ownership
-                if (_kv_iter != nullptr) {
                     _kv_iter->seekToFirst();
                 }
             }
 
-            DEFAULT_MOVE(TableIterator);
-            DELETE_COPY(TableIterator);
+            std::pair<Slice, std::pair<uint32_t, Meta>>
+            item() const override {
+                assert(valid());
+                return {_kv_iter->key(), std::make_pair(_offset, _kv_iter->value().second)};
+            }
+        };
 
-            ~TableIterator() noexcept override = default;
+        class RecoveryIterator : public KeyValueSimpleIterator {
+        private:
+            TableIterator _table_iter;
+            std::function<void(const Exception &, uint32_t)> _reporter;
+            std::pair<Slice, std::pair<Slice, Meta>> _item;
 
+        public:
+            explicit RecoveryIterator(RandomAccessFile * data_file,
+                                      std::function<void(const Exception &, uint32_t)> reporter) noexcept
+                    : _table_iter(data_file), _reporter(std::move(reporter)) {}
+
+            ~RecoveryIterator() noexcept override = default;
+
+        public:
             bool valid() const override {
-                return _kv_iter != nullptr && _kv_iter->valid();
-            };
+                return _item.first.size() != 0;
+            }
 
-            std::pair<Slice, std::string> item() const override {
-                return {_kv_iter->key(), _kv_iter->value()};
-            };
+            void prepare() override {}
 
             void next() override {
-                _kv_iter->next();
-                if (!_kv_iter->valid() && _raw_iter_batch_ob->valid()) { // 切换到下个 kv_iter
-                    auto it = std::make_unique<RawIteratorBatchChecked>(nullptr);
-                    std::swap(*it, *_raw_iter_batch_ob);
-                    uint32_t backup_offset = it->diskOffset();
+                try {
+                    _table_iter.prepare();
+                    _table_iter.next();
+                    if (_table_iter.valid()) {
+                        _item = {_table_iter._kv_iter->key(), _table_iter._kv_iter->value()};
+                    } else {
+                        _item = {};
+                    }
+                } catch (const Exception & e) {
+                    _reporter(e, _table_iter._offset);
+
+                    uint32_t cursor = _table_iter._offset;
+                    restart:
+                    cursor += (kLogBlockSize - cursor % kLogBlockSize);
                     try {
-                        do { // 再次 next 以保持 invariant, 因为 record iterator 在 meet all 之后不会有副作用
-                            it->next();
-                            if (it->valid()) { // 确保 seek 到 next record
-                                if (isRecordFull(it->item().back()) || isRecordFirst(it->item().back())) {
-                                    _raw_iter_batch_ob = it.get();
-                                    _kv_iter = makeKVIter(std::move(it));
-                                    _kv_iter->seekToFirst();
-                                    return;
-                                }
-                            } else {
+                        // resync
+                        RawIteratorNoTypeCheck raw(_table_iter._data_file, cursor);
+                        raw.prepare();
+                        while (true) {
+                            raw.next();
+                            if (!raw.valid()) {
+                                _item = {};
                                 break;
                             }
-                        } while (true);
-                        // exit as EOF(not valid)
-                    } catch (const Exception & e) { // exception free
-                        _raw_iter_batch_ob->_disk_offsets.emplace_back(backup_offset);
-                        throw e;
-                    }
-                }
-            }
 
-        private:
-            static std::unique_ptr<kv_iter_t> makeKVIter(std::unique_ptr<RawIteratorBatchChecked> && p) {
-                if (!p->valid()) {
-                    return nullptr;
-                }
-                if (isRecordCompress(p->item().back())) {
-                    return std::make_unique<RecordIteratorCompress>(std::move(p));
-                }
-                return std::make_unique<RecordIterator>(std::move(p));
-            }
-        };
-
-        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
-        makeTableIterator(RandomAccessFile * data_file) {
-            return std::make_unique<TableIterator>(
-                    std::make_unique<RawIteratorBatchChecked>(
-                            std::make_unique<RawIterator>(data_file, 0)));
-        };
-
-        class TableIteratorOffset : public SimpleIterator<std::pair<Slice, uint32_t>> {
-        private:
-            TableIterator _table;
-
-            friend class TableRecoveryIterator;
-
-            friend class TableRecoveryIteratorKV;
-
-        public:
-            explicit TableIteratorOffset(std::unique_ptr<RawIteratorBatchChecked> && raw_iter_batch)
-                    : _table(std::move(raw_iter_batch)) {}
-
-            DEFAULT_MOVE(TableIteratorOffset);
-            DELETE_COPY(TableIteratorOffset);
-
-            ~TableIteratorOffset() noexcept override = default;
-
-            bool valid() const override {
-                return _table.valid();
-            };
-
-            std::pair<Slice, uint32_t> item() const override {
-                return {_table._kv_iter->key(), _table._raw_iter_batch_ob->diskOffset()};
-            };
-
-            void next() override {
-                _table.next();
-            }
-        };
-
-        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
-        makeTableIteratorOffset(RandomAccessFile * data_file) {
-            return std::make_unique<TableIteratorOffset>(
-                    std::make_unique<RawIteratorBatchChecked>(
-                            std::make_unique<RawIterator>(data_file, 0)));
-        };
-
-        class TableRecoveryIterator : public SimpleIterator<std::pair<Slice, uint32_t>> {
-        private:
-            RandomAccessFile * _data_file;
-            reporter_t _reporter;
-            mutable Optional<TableIteratorOffset> _t;
-
-            friend class TableRecoveryIteratorKV;
-
-        public:
-            TableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept
-                    : _data_file(data_file), _reporter(std::move(reporter)) {
-                uint32_t offset = 0;
-                while (!_t.valid()) {
-                    try {
-                        _t.build(std::make_unique<RawIteratorBatchChecked>
-                                         (std::make_unique<RawIterator>(data_file, offset)));
-                    } catch (const Exception & e) {
-                        _reporter(e);
-                        if (e.isIOError()) {
-                            break;
-                        }
-                        offset += LogWriterConst::block_size_;
-                    }
-                }
-            }
-
-            DELETE_MOVE(TableRecoveryIterator);
-            DELETE_COPY(TableRecoveryIterator);
-
-            ~TableRecoveryIterator() noexcept override = default;
-
-            bool valid() const override {
-                return _t.valid() && _t->valid();
-            };
-
-            std::pair<Slice, uint32_t> item() const override {
-                try {
-                    return _t->item();
-                } catch (const Exception & e) {
-                    handle(e);
-                    return {};
-                }
-            };
-
-            void next() override {
-                try {
-                    _t->next();
-                } catch (const Exception & e) {
-                    handle(e);
-                }
-            }
-
-        public:
-            bool initSuccess() const noexcept {
-                return _t.valid();
-            }
-
-        private:
-            void handle(const Exception & e) const noexcept {
-                uint32_t curr_disk_offset = _t->_table._raw_iter_batch_ob->diskOffset();
-                _reporter(Exception::invalidArgumentException(e.toString(), std::to_string(curr_disk_offset)));
-
-                while (true) {
-                    // skip to next block
-                    curr_disk_offset += (LogWriterConst::block_size_ - curr_disk_offset % LogWriterConst::block_size_);
-
-                    try { // resync
-                        auto raw_it = std::make_unique<RawIterator>(_data_file, curr_disk_offset);
-                        while (raw_it->valid()) {
-                            if (isBatchFull(raw_it->item().back()) || isBatchFirst(raw_it->item().back())) {
-                                _t.reset();
-                                _t.build(std::make_unique<RawIteratorBatchChecked>(std::move(raw_it)));
-                                return;
+                            char type = raw.item().second.second;
+                            if (isRecordFull(type) || isRecordFirst(type)) {
+                                if (isBatchFull(type) || isBatchFirst(type)) {
+                                    // success
+                                    _table_iter._cursor = raw.item().second.first;
+                                    _table_iter._did_seek = false;
+                                    _table_iter.prepare();
+                                    _table_iter.next();
+                                    assert(_table_iter.valid());
+                                    _item = {_table_iter._kv_iter->key(), _table_iter._kv_iter->value()};
+                                    break;
+                                }
                             }
-                            raw_it->next();
                         }
-                        break;
-                    } catch (const Exception & exception) {
-                        _reporter(exception);
-                        if (exception.isIOError()) {
-                            break;
+                    } catch (const Exception & ex) {
+                        _reporter(ex, cursor);
+
+                        if (!ex.isIOError()) {
+                            goto restart;
                         }
+                        _item = {};
                     }
                 }
-                _t.reset();
             }
-        };
 
-        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, uint32_t/* offset */>>>
-        makeTableRecoveryIterator(RandomAccessFile * data_file, reporter_t reporter) noexcept {
-            auto res = std::make_unique<TableRecoveryIterator>(data_file, std::move(reporter));
-            if (res->initSuccess()) {
-                return std::unique_ptr<SimpleIterator<std::pair<Slice, uint32_t>>>(std::move(res));
-            }
-            return nullptr;
-        };
-
-        class TableRecoveryIteratorKV : public SimpleIterator<std::pair<Slice, std::string>> {
-        private:
-            TableRecoveryIterator _tb;
-
-        public:
-            TableRecoveryIteratorKV(RandomAccessFile * data_file, reporter_t reporter) noexcept
-                    : _tb(data_file, std::move(reporter)) {}
-
-            DELETE_MOVE(TableRecoveryIteratorKV);
-            DELETE_COPY(TableRecoveryIteratorKV);
-
-            ~TableRecoveryIteratorKV() noexcept override = default;
-
-            bool valid() const override {
-                return _tb.valid();
+            std::pair<Slice, std::pair<Slice, Meta>>
+            item() const override {
+                return _item;
             };
-
-            std::pair<Slice, std::string> item() const override {
-                return {_tb._t->_table._kv_iter->key(), _tb._t->_table._kv_iter->value()};
-            };
-
-            void next() override {
-                _tb.next();
-            }
-
-        public:
-            bool initSuccess() const noexcept {
-                return _tb.initSuccess();
-            }
         };
 
-        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::string/* V */>>>
-        makeTableRecoveryIteratorKV(RandomAccessFile * data_file, reporter_t reporter) noexcept {
-            auto res = std::make_unique<TableRecoveryIteratorKV>(data_file, std::move(reporter));
-            if (res->initSuccess()) {
-                return std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>(std::move(res));
+        std::unique_ptr<Iterator<Slice/* K */, std::pair<Slice/* V */, Meta>>>
+        makeRecordIterator(RandomAccessFile * data_file, uint32_t offset) noexcept {
+            Connector connector(std::make_unique<RawIteratorCheckOnFly>(data_file, offset));
+            connector.ensureLoad(1);
+            if (isRecordCompress(connector.immut_type())) {
+                return std::make_unique<CompressedRecordsIterator>(std::move(connector));
             }
-            return nullptr;
+            return std::make_unique<NormalRecordIterator>(std::move(connector));
+        }
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::pair<uint32_t/* offset */, Meta>>>>
+        makeTableIterator(RandomAccessFile * data_file) noexcept {
+            return std::make_unique<TableIterator>(data_file);
+        }
+
+        std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::pair<Slice/* V */, Meta>>>>
+        makeRecoveryIterator(RandomAccessFile * data_file,
+                             std::function<void(const Exception &, uint32_t)> reporter) noexcept {
+            return std::make_unique<RecoveryIterator>(data_file, std::move(reporter));
+        }
+
+        bool isRecordDeleted(RandomAccessFile * data_file, uint32_t offset) {
+            char type;
+            data_file->read(offset + 4/* checksum */, 1, &type);
+            return isRecordDel(type);
         }
     }
 }

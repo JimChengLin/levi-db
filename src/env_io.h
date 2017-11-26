@@ -1,22 +1,18 @@
-#ifndef LEVIDB_ENV_IO_H
-#define LEVIDB_ENV_IO_H
+#pragma once
+#ifndef LEVIDB8_ENV_IO_H
+#define LEVIDB8_ENV_IO_H
 
 /*
  * 封装 POSIX C IO API
- * 出于性能方面的考量, 放弃 C++ 的 IO 标准库
- *
- * steal from leveldb
  */
 
-#include <sys/mman.h>
-#include <unistd.h>
 #include <vector>
 
 #include "slice.h"
 #include "util.h"
 
-namespace LeviDB {
-    namespace IOEnv {
+namespace levidb8 {
+    namespace env_io {
         enum OpenMode {
             R_M,
             W_M,
@@ -25,7 +21,6 @@ namespace LeviDB {
             WP_M,
             AP_M,
         };
-        static constexpr int page_size_ = 4 * 1024; // 4KB
 
         uint64_t getFileSize(const std::string & fname);
 
@@ -49,24 +44,18 @@ namespace LeviDB {
     public:
         int _fd;
 
-        FileOpen(const std::string & fname, IOEnv::OpenMode mode);
+        FileOpen(const std::string & fname, env_io::OpenMode mode);
 
-        ~FileOpen() noexcept { if (_fd > 0) close(_fd); };
-
-        DEFAULT_MOVE(FileOpen);
-        DELETE_COPY(FileOpen);
+        ~FileOpen() noexcept;
     };
 
     class FileFopen {
     public:
         FILE * _f;
 
-        FileFopen(const std::string & fname, IOEnv::OpenMode mode);
+        FileFopen(const std::string & fname, env_io::OpenMode mode);
 
-        ~FileFopen() noexcept { if (_f != nullptr) fclose(_f); }
-
-        DEFAULT_MOVE(FileFopen);
-        DELETE_COPY(FileFopen);
+        ~FileFopen() noexcept;
     };
 
     class MmapFile {
@@ -79,18 +68,16 @@ namespace LeviDB {
     public:
         explicit MmapFile(std::string fname);
 
-        ~MmapFile() noexcept { munmap(_mmaped_region, _length); }
+        ~MmapFile() noexcept;
 
-        void grow();
-
-        void sync();
-
+    public:
         EXPOSE(_mmaped_region);
 
         EXPOSE(_length);
 
-        DEFAULT_MOVE(MmapFile);
-        DELETE_COPY(MmapFile);
+        void grow();
+
+        void sync();
     };
 
     class AppendableFile {
@@ -100,20 +87,15 @@ namespace LeviDB {
         uint64_t _length;
 
     public:
-        explicit AppendableFile(std::string fname);
+        EXPOSE(_length);
 
-        ~AppendableFile() noexcept = default;
+        explicit AppendableFile(std::string fname);
 
         void append(const Slice & data);
 
         void flush();
 
         void sync();
-
-        EXPOSE(_length);
-
-        DEFAULT_MOVE(AppendableFile);
-        DELETE_COPY(AppendableFile);
     };
 
     class RandomAccessFile {
@@ -124,12 +106,7 @@ namespace LeviDB {
     public:
         explicit RandomAccessFile(std::string fname);
 
-        ~RandomAccessFile() noexcept = default;
-
         Slice read(uint64_t offset, size_t n, char * scratch) const;
-
-        DEFAULT_MOVE(RandomAccessFile);
-        DELETE_COPY(RandomAccessFile);
     };
 
     class RandomWriteFile {
@@ -140,14 +117,7 @@ namespace LeviDB {
     public:
         explicit RandomWriteFile(std::string fname);
 
-        ~RandomWriteFile() noexcept = default;
-
         void write(uint64_t offset, const Slice & data);
-
-        void sync();
-
-        DEFAULT_MOVE(RandomWriteFile);
-        DELETE_COPY(RandomWriteFile);
     };
 
     class SequentialFile {
@@ -158,52 +128,10 @@ namespace LeviDB {
     public:
         explicit SequentialFile(std::string fname);
 
-        ~SequentialFile() noexcept = default;
+        Slice read(size_t n, char * scratch) const;
 
-        Slice read(size_t n, char * scratch);
-
-        void skip(uint64_t offset);
-
-        std::string readLine();
-
-        EXPOSE(_filename);
-
-        DEFAULT_MOVE(SequentialFile);
-        DELETE_COPY(SequentialFile);
-    };
-
-    // 记录人类可读的日志
-    class Logger {
-    private:
-        FileFopen _ffile;
-
-    public:
-        explicit Logger(const std::string & fname);
-
-        ~Logger() noexcept = default;
-
-        void logv(const char * format, va_list ap) noexcept;
-
-        DEFAULT_MOVE(Logger);
-        DELETE_COPY(Logger);
-
-    public:
-        static void logForMan(Logger * info_log, const char * format, ...) noexcept
-        __attribute__((__format__ (__printf__, 2, 3)));
-    };
-
-    class FileLock {
-    private:
-        FileOpen _file;
-
-    public:
-        explicit FileLock(const std::string & fname);
-
-        ~FileLock() noexcept;
-
-        DEFAULT_MOVE(FileLock);
-        DELETE_COPY(FileLock);
+        Slice readLine() const;
     };
 }
 
-#endif //LEVIDB_ENV_IO_H
+#endif //LEVIDB8_ENV_IO_H

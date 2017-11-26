@@ -1,5 +1,6 @@
-#ifndef LEVIDB_OPTIONAL_H
-#define LEVIDB_OPTIONAL_H
+#pragma once
+#ifndef LEVIDB8_OPTIONAL_H
+#define LEVIDB8_OPTIONAL_H
 
 /*
  * 最小 c++ std::optional 模拟
@@ -8,9 +9,7 @@
 #include <cassert>
 #include <utility>
 
-#include "util.h"
-
-namespace LeviDB {
+namespace levidb8 {
     template<typename T>
     class Optional {
     private:
@@ -18,13 +17,10 @@ namespace LeviDB {
         bool _valid = false;
 
     public:
-        Optional() noexcept = default;
-
-        DELETE_MOVE(Optional);
-        DELETE_COPY(Optional);
-
         ~Optional() noexcept {
-            if (_valid) (*get()).T::~T();
+            if (_valid) {
+                (*get()).T::~T();
+            }
         }
 
     public:
@@ -65,4 +61,4 @@ namespace LeviDB {
     };
 }
 
-#endif //LEVIDB_OPTIONAL_H
+#endif //LEVIDB8_OPTIONAL_H

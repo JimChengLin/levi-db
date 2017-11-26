@@ -1,91 +1,63 @@
-#ifndef LEVIDB_DB_H
-#define LEVIDB_DB_H
+#pragma once
+#ifndef LEVIDB8_DB_H
+#define LEVIDB8_DB_H
 
 /*
- * DB 接口
- * 要求:
- * 1. 实现增删改, 随机迭代器, (正向|反向)正则匹配迭代器
- * 2. 线程安全
- * 3. 妥善处理异常, 崩溃后不需要额外操作进行数据恢复
- * 4. 文件级自省, 提供数据库路径即可打开
+ * 对外 DB 接口
  */
 
 #include <functional>
-#include <string>
+#include <memory>
+
+#ifndef __clang__
+
 #include <vector>
+
+#endif
 
 #include "exception.h"
 #include "iterator.h"
-#include "levi_regex/r.h"
 #include "options.h"
-#include "slice.h"
 
-namespace LeviDB {
+namespace levidb8 {
     class DB {
-    protected:
-        std::string _name;
-        Options _options;
-
     public:
-        DB(std::string name, Options options) noexcept : _name(std::move(name)), _options(options) {};
-        DELETE_MOVE(DB);
-        DELETE_COPY(DB);
-
-        EXPOSE(_name);
-
-        EXPOSE(_options);
+        DB() noexcept = default;
 
     public:
         virtual ~DB() noexcept = default;
 
-        // returning false means the DB is too full to insert data
-        virtual bool put(const WriteOptions & options,
-                         const Slice & key,
-                         const Slice & value) = 0;
+        virtual bool put(const Slice & key,
+                         const Slice & value,
+                         const PutOptions & options) = 0;
 
-        virtual bool remove(const WriteOptions & options,
-                            const Slice & key) = 0;
+        virtual bool remove(const Slice & key,
+                            const RemoveOptions & options) = 0;
 
-        // kvs must be ordered
-        virtual bool write(const WriteOptions & options,
-                           const std::vector<std::pair<Slice, Slice>> & kvs) = 0;
+        // kvs 必须有序
+        // nullSlice as value = del
+        virtual bool write(const std::vector<std::pair<Slice, Slice>> & kvs,
+                           const WriteOptions & options) = 0;
 
         virtual std::pair<std::string, bool>
-        get(const ReadOptions & options, const Slice & key) const = 0;
+        get(const Slice & key,
+            const ReadOptions & options/* 预留 */) const = 0;
 
-        virtual std::unique_ptr<Snapshot> makeSnapshot() = 0;
-
-        virtual std::unique_ptr<Iterator<Slice, std::string>>
-        makeIterator(std::unique_ptr<Snapshot> && snapshot) const = 0;
-
-        virtual std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
-        makeRegexIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const = 0;
-
-        virtual std::unique_ptr<SimpleIterator<std::pair<Slice, std::string>>>
-        makeRegexReversedIterator(std::shared_ptr<Regex::R> regex, std::unique_ptr<Snapshot> && snapshot) const = 0;
-
-        virtual void tryApplyPending() = 0;
-
-        virtual bool canRelease() const = 0;
-
-        virtual Slice largestKey() const = 0;
-
-        virtual Slice smallestKey() const = 0;
-
-        virtual void updateKeyRange() = 0;
-
-        virtual bool explicitRemove(const WriteOptions & options,
-                                    const Slice & key) = 0;
+        virtual std::unique_ptr<Iterator<Slice/* K */, Slice/* V */>>
+        scan(const ScanOptions & options/* 预留 */) const = 0;
 
         virtual void sync() = 0;
+
+    public:
+        static std::unique_ptr<DB>
+        open(const std::string & name,
+             const OpenOptions & options);
     };
 
-    typedef std::function<void(const Exception &)> reporter_t;
+    bool repairDB(const std::string & name,
+                  std::function<void(const Exception &, uint32_t)> reporter) noexcept;
 
-    bool repairDBSingle(const std::string & db_single_name, reporter_t reporter) noexcept;
-
-    // opening a DB that didn't get repaired successfully is UB
-    bool repairDB(const std::string & db_name, reporter_t reporter) noexcept;
+    void destroyDB(const std::string & name);
 }
 
-#endif //LEVIDB_DB_H
+#endif //LEVIDB8_DB_H

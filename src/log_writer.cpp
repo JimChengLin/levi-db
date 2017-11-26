@@ -1,98 +1,130 @@
 #include "compress.h"
+#include "config.h"
 #include "crc32c.h"
+#include "env_io.h"
 #include "log_writer.h"
 #include "varint.h"
 
-namespace LeviDB {
-    uint32_t LogWriter::calcWritePos() const noexcept {
-        const size_t leftover = LogWriterConst::block_size_ - _block_offset - (_dst->immut_length() & 1);
-        return static_cast<uint32_t>(_dst->immut_length()
-                                     + (_dst->immut_length() & 1)
-                                     + (leftover < LogWriterConst::header_size_ ? leftover : 0));
+namespace levidb8 {
+    LogWriter::LogWriter(AppendableFile * dst) noexcept : _dst(dst) {
+        assert(_dst->immut_length() == 0);
     }
 
-    void LogWriter::addRecords(const std::vector<Slice> & bkvs, bool compress, bool del,
-                               std::vector<uint32_t> * addrs) {
-        size_t i = 0;
+    LogWriter::LogWriter(AppendableFile * dst, uint64_t dst_len) noexcept
+            : _dst(dst), _block_offset(dst_len % kLogBlockSize) {}
+
+    uint32_t LogWriter::addRecord(const Slice & bkv) {
+        return addRecordTpl<ADD_RECORD>(bkv);
+    }
+
+    uint32_t LogWriter::addRecordForDel(const Slice & bkv) {
+        return addRecordTpl<ADD_RECORD_FOR_DEL>(bkv);
+    }
+
+    uint32_t LogWriter::addCompressedRecords(const Slice & bkvs) {
+        return addRecordTpl<ADD_COMPRESSED_RECORDS>(bkvs);
+    }
+
+    std::vector<uint32_t>
+    LogWriter::addRecordsMayDel(const std::vector<Slice> & bkvs, std::vector<uint32_t> addrs) {
+        std::lock_guard<std::mutex> guard(_emit_lock);
+        addrs.resize(bkvs.size());
+
         bool record_begin = true;
-        for (const Slice & bkv:bkvs) {
-            if (addrs != nullptr) {
-                del = static_cast<bool>((*addrs)[i]);
-                (*addrs)[i++] = calcWritePos();
+        for (size_t i = 0; i < bkvs.size(); ++i) {
+            const Slice & bkv = bkvs[i];
+
+            ConcatType record_type = FULL;
+            const bool record_end = (&bkv == &bkvs.back());
+            if (record_begin && record_end) {
+            } else if (record_begin) {
+                record_type = FIRST;
+            } else if (record_end) {
+                record_type = LAST;
+            } else {
+                record_type = MIDDLE;
             }
-            if ((_block_offset & 1) == 1) { // 不允许奇数地址
-                assert((_dst->immut_length() & 1) == 1);
-                _dst->append({"\x00", 1});
-                ++_block_offset;
-            }
+            record_begin = false;
 
-            const char * ptr = bkv.data();
-            size_t left = bkv.size();
-
-            bool kv_begin = true;
-            do {
-                const size_t leftover = LogWriterConst::block_size_ - _block_offset;
-                if (leftover < LogWriterConst::header_size_) {
-                    if (leftover > 0) {
-                        static_assert(LogWriterConst::header_size_ == 7, "trailing bytes are not enough");
-                        _dst->append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
-                    }
-                    _block_offset = 0;
-                }
-
-                const size_t avail = LogWriterConst::block_size_ - _block_offset - LogWriterConst::header_size_;
-                const size_t fragment_length = std::min(left, avail);
-
-                LogWriterConst::ConcatType kv_type = LogWriterConst::FULL;
-                const bool kv_end = (fragment_length == left);
-                LogWriterConst::ConcatType record_type = LogWriterConst::FULL;
-                const bool record_end = (&bkv == &bkvs.back()) && kv_end;
-
-                if (record_begin && record_end) {
-                } else if (record_begin) {
-                    record_type = LogWriterConst::FIRST;
-                } else if (record_end) {
-                    record_type = LogWriterConst::LAST;
-                } else {
-                    record_type = LogWriterConst::MIDDLE;
-                }
-
-                if (kv_begin && kv_end) {
-                } else if (kv_begin) {
-                    kv_type = LogWriterConst::FIRST;
-                } else if (kv_end) {
-                    kv_type = LogWriterConst::LAST;
-                } else {
-                    kv_type = LogWriterConst::MIDDLE;
-                }
-
-                emitPhysicalRecord(getCombinedType(record_type, kv_type, compress, del), ptr, fragment_length);
-                ptr += fragment_length;
-                left -= fragment_length;
-
-                kv_begin = false;
-                record_begin = false;
-            } while (left > 0);
+            addrs[i] = static_cast<bool>(addrs[i]) ? addRecordTpl<ADD_RECORD_FOR_DEL, false>(bkv, record_type)
+                                                   : addRecordTpl<ADD_RECORD, false>(bkv, record_type);
         }
+        return addrs;
     }
 
-    std::bitset<8> LogWriter::getCombinedType(LogWriterConst::ConcatType record_type,
-                                              LogWriterConst::ConcatType kv_type,
+    struct PlaceHolder {
+        template<typename ...PARAMS>
+        explicit PlaceHolder(PARAMS && ...) noexcept {};
+    };
+
+    template<LogWriter::Type TYPE, bool LOCK>
+    uint32_t LogWriter::addRecordTpl(const Slice & bkv, ConcatType record_type) {
+        using guard_t = typename std::conditional<LOCK, std::lock_guard<std::mutex>, PlaceHolder>::type;
+        guard_t guard(_emit_lock);
+
+        if (_block_offset % kPageSize == 0) {
+            _dst->append({"\x00", 1});
+            ++_block_offset;
+        }
+        if (_dst->immut_length() > kFileAddressLimit) {
+            throw LogFullControlledException();
+        }
+        const auto pos = static_cast<uint32_t>(_dst->immut_length());
+
+        const char * ptr = bkv.data();
+        size_t left = bkv.size();
+
+        bool kv_begin = true;
+        do {
+            const size_t leftover = kLogBlockSize - _block_offset;
+            if (leftover < kLogHeaderSize) {
+                if (leftover > 0) {
+                    static_assert(kLogHeaderSize == 7, "trailing bytes are not enough");
+                    _dst->append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
+                }
+                _block_offset = 0;
+            }
+
+            const size_t avail = kLogBlockSize - _block_offset - kLogHeaderSize;
+            const size_t fragment_length = std::min(left, avail);
+
+            ConcatType kv_type = FULL;
+            const bool kv_end = (fragment_length == left);
+            if (kv_begin && kv_end) {
+            } else if (kv_begin) {
+                kv_type = FIRST;
+            } else if (kv_end) {
+                kv_type = LAST;
+            } else {
+                kv_type = MIDDLE;
+            }
+            kv_begin = false;
+
+            emitPhysicalRecord(getCombinedType(record_type, kv_type,
+                                               TYPE == ADD_COMPRESSED_RECORDS,
+                                               TYPE == ADD_RECORD_FOR_DEL), ptr, fragment_length);
+            ptr += fragment_length;
+            left -= fragment_length;
+        } while (left > 0);
+        return pos;
+    }
+
+    std::bitset<8> LogWriter::getCombinedType(ConcatType record_type, ConcatType kv_type,
                                               bool compress, bool del) const noexcept {
         std::bitset<8> res;
 
         int base = 0;
-        for (LogWriterConst::ConcatType type:{record_type, kv_type}) {
+        for (ConcatType type:{record_type, kv_type}) {
             switch (type) {
-                case LogWriterConst::FULL: // 0b00
+                case FULL: // 0b00
                     break;
-                case LogWriterConst::FIRST: // 0b01
+                case FIRST: // 0b01
                     res[base] = true;
                     break;
-                case LogWriterConst::MIDDLE: // 0b10
+                case MIDDLE: // 0b10
                     res[base + 1] = true;
                     break;
-                case LogWriterConst::LAST: // 0b11
+                case LAST: // 0b11
                     res[base] = true;
                     res[base + 1] = true;
                     break;
@@ -106,21 +138,20 @@ namespace LeviDB {
     }
 
     void LogWriter::emitPhysicalRecord(std::bitset<8> type, const char * ptr, size_t length) {
-        assert(length <= 32768); // 2^15
-        assert(LogWriterConst::header_size_ + _block_offset + length <= LogWriterConst::block_size_);
+        assert(kLogHeaderSize + _block_offset + length <= kLogBlockSize);
 
-        char buf[LogWriterConst::header_size_];
+        char buf[kLogHeaderSize];
         buf[4] = uint8ToChar(static_cast<uint8_t>(type.to_ulong()));
         buf[5] = static_cast<char>(length & 0xff);
         buf[6] = static_cast<char>(length >> 8);
 
-        uint32_t crc = CRC32C::extend(CRC32C::value(&buf[4], 3), ptr, length);
+        uint32_t crc = crc32c::extend(crc32c::value(&buf[4], 3), ptr, length);
         memcpy(buf, &crc, sizeof(crc));
 
-        _dst->append(Slice(buf, LogWriterConst::header_size_));
+        _dst->append(Slice(buf, kLogHeaderSize));
         _dst->append(Slice(ptr, length));
         _dst->flush();
-        _block_offset += LogWriterConst::header_size_ + length;
+        _block_offset += kLogHeaderSize + length;
     }
 
     std::vector<uint8_t> LogWriter::makeRecord(const Slice & k, const Slice & v) noexcept {
@@ -140,7 +171,7 @@ namespace LeviDB {
         return res;
     }
 
-    std::vector<uint8_t> LogWriter::makeCompressRecord(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept {
+    std::vector<uint8_t> LogWriter::makeCompressedRecords(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept {
         size_t bin_size = 0;
         std::vector<uint8_t> src(sizeof(uint16_t));
         for (const auto & kv:kvs) {
@@ -171,6 +202,6 @@ namespace LeviDB {
                        reinterpret_cast<const uint8_t *>(kv.second.data()),
                        reinterpret_cast<const uint8_t *>(kv.second.data() + kv.second.size()));
         }
-        return Compressor::encode({src.data(), src.size()});
+        return compressor::encode({src.data(), src.size()});
     }
 }
