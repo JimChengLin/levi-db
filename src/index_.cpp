@@ -91,7 +91,7 @@ namespace levidb8 {
         };
     };
 
-    std::unique_ptr<Matcher> BitDegradeTree::offToMatcher(OffsetToData data) const noexcept {
+    std::unique_ptr<Matcher> BitDegradeTree::offToMatcher(OffsetToData data) const {
         return std::make_unique<MatcherDebugOffset>(data);
     }
 

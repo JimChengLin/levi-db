@@ -37,6 +37,8 @@ int main() {
     } catch (const levidb8::Exception & e) {
         std::cout << e.toString() << std::endl;
         return 1;
+    } catch (const std::exception &) {
+        return 1;
     }
     return 0;
 }

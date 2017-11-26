@@ -261,6 +261,8 @@ namespace levidb8 {
         } catch (const Exception & e) {
             reporter(e, UINT32_MAX);
             return false;
+        } catch (const std::exception &) {
+            return false;
         }
         return true;
     }

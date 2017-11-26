@@ -687,7 +687,7 @@ namespace levidb8 {
         };
 
         std::unique_ptr<Iterator<Slice/* K */, std::pair<Slice/* V */, Meta>>>
-        makeRecordIterator(RandomAccessFile * data_file, uint32_t offset) noexcept {
+        makeRecordIterator(RandomAccessFile * data_file, uint32_t offset) {
             Connector connector(std::make_unique<RawIteratorCheckOnFly>(data_file, offset));
             connector.ensureLoad(1);
             if (isRecordCompress(connector.immut_type())) {

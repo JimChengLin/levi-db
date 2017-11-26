@@ -171,7 +171,7 @@ namespace levidb8 {
         return res;
     }
 
-    std::vector<uint8_t> LogWriter::makeCompressedRecords(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept {
+    std::vector<uint8_t> LogWriter::makeCompressedRecords(const std::vector<std::pair<Slice, Slice>> & kvs) {
         size_t bin_size = 0;
         std::vector<uint8_t> src(sizeof(uint16_t));
         for (const auto & kv:kvs) {

@@ -93,7 +93,7 @@ namespace levidb8 {
     public:
         static std::vector<uint8_t> makeRecord(const Slice & k, const Slice & v) noexcept;
 
-        static std::vector<uint8_t> makeCompressedRecords(const std::vector<std::pair<Slice, Slice>> & kvs) noexcept;
+        static std::vector<uint8_t> makeCompressedRecords(const std::vector<std::pair<Slice, Slice>> & kvs);
     };
 }
 

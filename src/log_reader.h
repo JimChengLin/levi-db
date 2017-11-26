@@ -22,7 +22,7 @@ namespace levidb8 {
         };
 
         std::unique_ptr<Iterator<Slice/* K */, std::pair<Slice/* V */, Meta>>>
-        makeRecordIterator(RandomAccessFile * data_file, uint32_t offset) noexcept;
+        makeRecordIterator(RandomAccessFile * data_file, uint32_t offset);
 
         std::unique_ptr<SimpleIterator<std::pair<Slice/* K */, std::pair<uint32_t/* offset */, Meta>>>>
         makeTableIterator(RandomAccessFile * data_file) noexcept;

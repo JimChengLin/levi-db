@@ -25,7 +25,7 @@ namespace levidb8 {
         scan() const noexcept;
 
     protected:
-        std::unique_ptr<Matcher> offToMatcher(OffsetToData data) const noexcept override;
+        std::unique_ptr<Matcher> offToMatcher(OffsetToData data) const override;
 
         std::unique_ptr<Matcher> sliceToMatcher(const Slice & slice) const noexcept override;
     };

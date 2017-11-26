@@ -149,7 +149,7 @@ namespace levidb8 {
         std::unique_ptr<Iterator<Slice, std::pair<Slice, log_reader::Meta>>> _iter;
 
     public:
-        MatcherOffsetImpl(RandomAccessFile * data_file, OffsetToData data) noexcept
+        MatcherOffsetImpl(RandomAccessFile * data_file, OffsetToData data)
                 : _iter(log_reader::makeRecordIterator(data_file, data.val)) {}
 
         ~MatcherOffsetImpl() noexcept override = default;
@@ -197,7 +197,7 @@ namespace levidb8 {
     };
 
     std::unique_ptr<Matcher>
-    BitDegradeTreeReadLog::offToMatcher(OffsetToData data) const noexcept {
+    BitDegradeTreeReadLog::offToMatcher(OffsetToData data) const {
         return std::make_unique<MatcherOffsetImpl>(_data_file, data);
     }
 

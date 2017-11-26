@@ -35,6 +35,8 @@ void index_iter_thread_test() {
                     } catch (const levidb8::Exception & e) {
                         std::cout << e.toString() << std::endl;
                         return;
+                    } catch (const std::exception &) {
+                        return;
                     }
                 }
             }, i);

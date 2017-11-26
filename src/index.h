@@ -112,7 +112,7 @@ namespace levidb8 {
         void freeNodeUnlocked(OffsetToNode node) noexcept;
 
         // 继承时覆盖
-        virtual std::unique_ptr<Matcher> offToMatcher(OffsetToData data) const noexcept;
+        virtual std::unique_ptr<Matcher> offToMatcher(OffsetToData data) const;
 
         virtual std::unique_ptr<Matcher> sliceToMatcher(const Slice & slice) const noexcept;
     };

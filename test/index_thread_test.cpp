@@ -32,6 +32,8 @@ void index_thread_test() {
                         } catch (const levidb8::Exception & e) {
                             std::cout << e.toString() << std::endl;
                             return;
+                        } catch (const std::exception &) {
+                            return;
                         }
                     }
                 }, i);
@@ -64,6 +66,8 @@ void index_thread_test() {
                         } catch (const levidb8::Exception & e) {
                             std::cout << e.toString() << std::endl;
                             return;
+                        } catch (const std::exception &) {
+                            return;
                         }
                     }
                 }, i);
@@ -91,6 +95,8 @@ void index_thread_test() {
                         tree.remove({reinterpret_cast<const char *>(&val), sizeof(val)}, {});
                     } catch (const levidb8::Exception & e) {
                         std::cout << e.toString() << std::endl;
+                        return;
+                    } catch (const std::exception &) {
                         return;
                     }
                 }, i);
