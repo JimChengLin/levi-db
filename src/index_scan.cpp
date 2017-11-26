@@ -166,7 +166,7 @@ namespace levidb8 {
 
             auto cmp = [node](const uint32_t & a, const uint32_t & b) noexcept {
                 return a < b || (a == b && (node->immut_masks()[&a - node->immut_diffs().cbegin()] & ~(1 << 7)) >
-                                                   (node->immut_masks()[&b - node->immut_diffs().cbegin()] & ~(1 << 7)));
+                                           (node->immut_masks()[&b - node->immut_diffs().cbegin()] & ~(1 << 7)));
             };
 
             while (true) {
@@ -238,6 +238,7 @@ namespace levidb8 {
                 memcpy(arr, s.data(), res.size());
 
                 --arr[i];
+                // coverity[leaked_storage]
                 break;
             } while (true);
 
@@ -265,6 +266,7 @@ namespace levidb8 {
                 auto n = __builtin_ffs(xor_res);
                 arr[i] |= 1 << (n - 1); // 0 to 1
                 arr[i] &= uint8ToChar(UINT8_MAX >> (n - 1) << (n - 1));
+                // coverity[leaked_storage]
                 break;
             } while (true);
 
