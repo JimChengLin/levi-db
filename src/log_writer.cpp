@@ -62,9 +62,14 @@ namespace levidb8 {
         using guard_t = typename std::conditional<LOCK, std::lock_guard<std::mutex>, PlaceHolder>::type;
         guard_t guard(_emit_lock);
 
+        restart:
+        static_assert(kLogBlockSize % kPageSize == 0, "no clash");
         if (_block_offset % kPageSize == 0) {
             _dst->append({"\x00", 1});
             ++_block_offset;
+            if (_block_offset == kLogBlockSize + 1) {
+                _block_offset = 1;
+            }
         }
         if (_dst->immut_length() > kFileAddressLimit) {
             throw LogFullControlledException();
@@ -81,6 +86,10 @@ namespace levidb8 {
                 if (leftover > 0) {
                     static_assert(kLogHeaderSize == 7, "trailing bytes are not enough");
                     _dst->append(Slice("\x00\x00\x00\x00\x00\x00", leftover));
+                    if (kv_begin) {
+                        _block_offset = 0;
+                        goto restart;
+                    }
                 }
                 _block_offset = 0;
             }

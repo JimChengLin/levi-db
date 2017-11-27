@@ -6,7 +6,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 set(CMAKE_CXX_STANDARD 14)
 
 add_compile_options(-msse4.2)
-#add_compile_options(-DLEVI_BENCH) # profile
+
+set(DO_BENCH OFF) # change "OFF" to "ON", if bench
+if (DO_BENCH)
+    add_compile_options(-DLEVI_BENCH)
+endif ()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_compile_options(-DOS_MACOSX)
@@ -17,6 +21,7 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
 endif ()
 
 set(SOURCE_FILES main.cpp
+        bench/db_bench.cpp
         src/compress.cpp src/compress.h
         src/config.h
         src/crc32c.cpp src/crc32c.h
@@ -58,4 +63,14 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
     target_link_libraries(levidb8 Threads::Threads)
+endif ()
+
+if (DO_BENCH)
+    find_package(rocksdb REQUIRED)
+    include_directories(${ROCKSDB_INCLUDE_DIR})
+    target_link_libraries(levidb8 ${ROCKSDB_LIBRARIES})
+
+    find_package(leveldb REQUIRED)
+    include_directories(${LEVELDB_INCLUDE_DIR})
+    target_link_libraries(levidb8 ${LEVELDB_LIBRARIES})
 endif ()

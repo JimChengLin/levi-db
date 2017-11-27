@@ -18,15 +18,12 @@ void index_read_test();
 
 void db_test();
 
+void db_bench();
+
 int main() {
     try {
-//        using ms = std::chrono::milliseconds;
-//        auto start = std::chrono::high_resolution_clock::now();
+#ifndef LEVI_BENCH
         index_test();
-//        auto end = std::chrono::high_resolution_clock::now();
-//        std::cout << "took "
-//                  << std::chrono::duration_cast<ms>(end - start).count()
-//                  << " milliseconds" << std::endl;
         index_thread_test();
         index_iter_test();
         index_iter_thread_test();
@@ -34,6 +31,9 @@ int main() {
         log_test();
         index_read_test();
         db_test();
+#else
+        db_bench();
+#endif
     } catch (const levidb8::Exception & e) {
         std::cout << e.toString() << std::endl;
         return 1;
