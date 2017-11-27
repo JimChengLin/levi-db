@@ -48,7 +48,7 @@ namespace levidb8 {
                 if (_line == 0) {
                     _src_iter->prepare();
                     _buff_out.resize(ZSTD_DStreamOutSize());
-                    _threshold = _buff_out.size() / 2;
+                    _threshold = _buff_out.size() / 3;
 
                     _dstream.reset(ZSTD_createDStream());
                     if (_dstream == nullptr) {

@@ -87,6 +87,7 @@ void db_test() {
                    {k2, "X"}}, {});
         assert(!db->get(k, {}).second);
         assert(db->get(k2, {}).first == "X");
+        db->sync();
     }
     // 再次打开数据库
     {
@@ -121,7 +122,7 @@ void db_test() {
         it->seek("60");
         for (int i = 60; i < 100; ++i) {
             std::string k = std::to_string(i);
-            assert(it->key() == k);
+            assert(it->key() == k && it->value() == k);
             it->next();
         }
     }
