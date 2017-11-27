@@ -5,8 +5,8 @@
 # LEVELDB_FOUND - True if leveldb found.
 
 find_path(LEVELDB_INCLUDE_DIR
-        NAMES db.h
-        HINTS ${LEVELDB_ROOT_DIR}/include/leveldb)
+        NAMES leveldb/db.h
+        HINTS ${LEVELDB_ROOT_DIR}/include/)
 
 find_library(LEVELDB_LIBRARIES
         NAMES leveldb

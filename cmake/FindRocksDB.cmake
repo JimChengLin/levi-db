@@ -5,8 +5,8 @@
 # ROCKSDB_FOUND - True if rocksdb found.
 
 find_path(ROCKSDB_INCLUDE_DIR
-        NAMES db.h
-        HINTS ${ROCKSDB_ROOT_DIR}/include/rocksdb/)
+        NAMES rocksdb/db.h
+        HINTS ${ROCKSDB_ROOT_DIR}/include/)
 
 find_library(ROCKSDB_LIBRARIES
         NAMES rocksdb
