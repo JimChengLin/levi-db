@@ -309,8 +309,8 @@ namespace levidb8 {
         class Connector {
         private:
             std::unique_ptr<RawIterator> _raw_iter;
+            std::unique_ptr<Decompressor> _decompressor;
             std::vector<uint8_t> _buffer;
-            Optional<Decompressor> _decompressor;
 
             uint32_t _offset{kDiskNull};
             char _type{}; // 只需要 compress 和 del
@@ -345,17 +345,18 @@ namespace levidb8 {
                     }
 
                     auto item = _raw_iter->item();
-                    const Slice & page = item.first;
                     if (_offset == kDiskNull) {
                         _offset = item.second.first;
                     }
                     _type = item.second.second;
 
-                    Slice content = isRecordCompress(_type)
-                                    ? (_decompressor.valid()
-                                       ? void()
-                                       : _decompressor.build(), _decompressor->submit(page))
-                                    : page;
+                    Slice content = item.first;
+                    if (isRecordCompress(_type)) {
+                        if (_decompressor == nullptr) {
+                            _decompressor = std::make_unique<Decompressor>();
+                        }
+                        content = _decompressor->submit(content);
+                    }
                     _buffer.insert(_buffer.end(),
                                    reinterpret_cast<const uint8_t *>(content.data()),
                                    reinterpret_cast<const uint8_t *>(content.data() + content.size()));
@@ -369,7 +370,7 @@ namespace levidb8 {
             void reset() {
                 assert(_met_all);
                 _buffer.clear();
-                if (_decompressor.valid()) {
+                if (_decompressor != nullptr) {
                     _decompressor->reset();
                 }
                 _offset = kDiskNull;

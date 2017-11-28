@@ -129,7 +129,7 @@ namespace levidb8 {
         uint64_t res_cmp = mixMarks(_diffs.front(), _masks.front());
 
         const uint32_t * cursor = res;
-        while (++cursor != cend) {
+        while (++cursor < cend) {
             uint64_t cursor_cmp = mixMarks(*cursor, _masks[cursor - _diffs.cbegin()]);
             if (cursor_cmp < res_cmp) {
                 res = cursor;
