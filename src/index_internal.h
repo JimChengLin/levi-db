@@ -102,7 +102,8 @@ namespace levidb8 {
         std::array<uint32_t, kRank> _diffs{};
         std::array<uint8_t, kRank> _masks{};
 
-        std::array<uint8_t, 4> _checksum{{10, 162, 208, 238}};
+        uint16_t _len = 0;
+        uint16_t _min_at = UINT16_MAX;
         std::array<uint8_t, 2> _padding_{};
 
     public:
@@ -116,9 +117,17 @@ namespace levidb8 {
 
         size_t size() const noexcept;
 
-        bool verify() const noexcept;
+        size_t calcSize() const noexcept;
 
-        void updateChecksum() noexcept;
+        size_t minAt() const noexcept;
+
+        size_t calcMinAt() const noexcept;
+
+        void setSize(uint16_t len) noexcept;
+
+        void setMinAt(uint16_t min_at) noexcept;
+
+        void update() noexcept;
     };
 
     static_assert(sizeof(BDNode) == kPageSize, "align for mmap");

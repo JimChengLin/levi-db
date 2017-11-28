@@ -97,6 +97,11 @@ namespace levidb8 {
     }
 
     size_t BDNode::size() const noexcept {
+        assert(_len == calcSize());
+        return _len;
+    }
+
+    size_t BDNode::calcSize() const noexcept {
         if (full()) {
             return _ptrs.size();
         }
@@ -113,13 +118,37 @@ namespace levidb8 {
         return lo;
     }
 
-    bool BDNode::verify() const noexcept {
-        return (_padding_[0] | _padding_[1]) == 0
-               && crc32c::verify(reinterpret_cast<const char *>(this), offsetof(BDNode, _checksum), &_checksum[0]);
+    size_t BDNode::minAt() const noexcept {
+        assert(_min_at == calcMinAt());
+        return _min_at;
     }
 
-    void BDNode::updateChecksum() noexcept {
-        uint32_t checksum = crc32c::value(reinterpret_cast<const char *>(this), offsetof(BDNode, _checksum));
-        memcpy(&_checksum[0], &checksum, sizeof(checksum));
+    size_t BDNode::calcMinAt() const noexcept {
+        const uint32_t * cend = _diffs.cbegin() + _len - 1;
+        const uint32_t * res = _diffs.cbegin();
+        uint64_t res_cmp = mixMarks(_diffs.front(), _masks.front());
+
+        const uint32_t * cursor = res;
+        while (++cursor != cend) {
+            uint64_t cursor_cmp = mixMarks(*cursor, _masks[cursor - _diffs.cbegin()]);
+            if (cursor_cmp < res_cmp) {
+                res = cursor;
+                res_cmp = cursor_cmp;
+            }
+        }
+        return res - _diffs.cbegin();
+    }
+
+    void BDNode::setSize(uint16_t len) noexcept {
+        _len = len;
+    }
+
+    void BDNode::setMinAt(uint16_t min_at) noexcept {
+        _min_at = min_at;
+    }
+
+    void BDNode::update() noexcept {
+        setSize(static_cast<uint16_t>(calcSize()));
+        setMinAt(static_cast<uint16_t>(calcMinAt()));
     }
 }

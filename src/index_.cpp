@@ -1,24 +1,11 @@
-#include <sys/mman.h>
-
 #include "config.h"
 #include "exception.h"
 #include "index_internal.h"
 
 namespace levidb8 {
     BDNode * BitDegradeTree::offToMemNode(OffsetToNode node) const {
-        auto * mem_node = reinterpret_cast<BDNode *>(reinterpret_cast<uintptr_t>(_dst.immut_mmaped_region())
-                                                     + node.val);
-#ifndef __linux__
-        static_assert(MINCORE_INCORE == 1, "*nix conflict");
-#else
-        unsigned
-#endif
-        char vec[1]{};
-        if (mincore(mem_node, kPageSize, vec) != 0) { throw Exception::corruptionException("mincore fail"); };
-        if ((vec[0] & 1) != 1 && !mem_node->verify()) {
-            throw Exception::corruptionException("i-node checksum mismatch");
-        };
-        return mem_node;
+        // 预留
+        return offToMemNodeUnchecked(node);
     }
 
     BDNode * BitDegradeTree::offToMemNodeUnchecked(OffsetToNode node) const noexcept {

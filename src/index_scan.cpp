@@ -164,9 +164,11 @@ namespace levidb8 {
             }
             cend = &node->immut_diffs()[size - 1];
 
+            bool use_cache = true;
             std::array<uint32_t, kRank> calc_cache{};
             while (true) {
-                const uint32_t * min_it = unfairMinElem(cbegin, cend, node, calc_cache);
+                const uint32_t * min_it = use_cache ? cbegin + node->minAt()
+                                                    : unfairMinElem(cbegin, cend, node, calc_cache);
                 cheat:
                 uint32_t diff_at = *min_it;
                 uint8_t trans_mask = transMask(node->immut_masks()[min_it - node->immut_diffs().cbegin()]);
@@ -185,10 +187,11 @@ namespace levidb8 {
                 if (cbegin == cend) {
                     return {min_it - node->immut_diffs().cbegin(), direct};
                 }
-                if (cend == min_it) {
+                if (cend == min_it && !use_cache) {
                     min_it = cbegin + calc_cache[min_it - cbegin - 1];
                     goto cheat;
                 }
+                use_cache = false;
             }
         };
 

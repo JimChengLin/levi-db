@@ -88,7 +88,7 @@ namespace levidb8 {
                     RWLockWriteGuard node_write_guard;
                     if (RWLockReadGuard::tryUpgrade(&node_read_guard, &node_write_guard)) {
                         ptr.setData(v);
-                        cursor->updateChecksum();
+                        cursor->setSize(1);
                         break;
                     }
                     goto restart;
@@ -105,7 +105,6 @@ namespace levidb8 {
                         RWLockWriteGuard node_write_guard;
                         if (RWLockReadGuard::tryUpgrade(&node_read_guard, &node_write_guard)) {
                             ptr.setData(v);
-                            cursor->updateChecksum();
                         } else {
                             goto restart;
                         }
@@ -184,12 +183,10 @@ if (parent != nullptr \
                     if (isSpecialMask(cursor->immut_masks()[idx])) {
                         UPGRADE_CHILD();
                         ptr.setData(v);
-                        cursor->updateChecksum();
                     } else if (matcher->size() == 0) { // compress record case
                         UPGRADE_CHILD();
                         letMaskSpecial(cursor->mut_masks()[idx]);
                         ptr.setData(v);
-                        cursor->updateChecksum();
                     } else {
                         UPGRADE_PARENT();
                         UPGRADE_CHILD();
@@ -222,10 +219,12 @@ if (parent != nullptr \
         }
         cend = &node->immut_diffs()[size - 1];
 
+        bool use_cache = true;
         std::array<uint32_t, kRank> calc_cache{};
         std::unique_ptr<Matcher> matcher = sliceToMatcher(k);
         while (true) {
-            const uint32_t * min_it = unfairMinElem(cbegin, cend, node, calc_cache);
+            const uint32_t * min_it = use_cache ? cbegin + node->minAt()
+                                                : unfairMinElem(cbegin, cend, node, calc_cache);
             cheat:
             uint32_t diff_at = *min_it;
             uint8_t trans_mask = transMask(node->immut_masks()[min_it - node->immut_diffs().cbegin()]);
@@ -245,10 +244,11 @@ if (parent != nullptr \
             if (cbegin == cend) {
                 return {min_it - node->immut_diffs().cbegin(), direct, size};
             }
-            if (cend == min_it) {
+            if (cend == min_it && !use_cache) {
                 min_it = cbegin + calc_cache[min_it - cbegin - 1];
                 goto cheat;
             }
+            use_cache = false;
         }
     }
 
@@ -283,9 +283,11 @@ if (parent != nullptr \
                 const uint32_t * cbegin = cursor->immut_diffs().cbegin();
                 const uint32_t * cend = cursor->immut_diffs().cbegin() + cursor_size - 1;
 
+                bool use_cache = true;
                 std::array<uint32_t, kRank> calc_cache{};
                 while (true) {
-                    const uint32_t * min_it = unfairMinElem(cbegin, cend, cursor, calc_cache);
+                    const uint32_t * min_it = use_cache ? cbegin + cursor->minAt()
+                                                        : unfairMinElem(cbegin, cend, cursor, calc_cache);
                     cheat:
                     uint32_t crit_diff_at = *min_it;
                     uint8_t crit_mask = cursor->immut_masks()[min_it - cursor->immut_diffs().cbegin()];
@@ -316,10 +318,11 @@ if (parent != nullptr \
                         replace_direct = crit_direct;
                         break;
                     }
-                    if (cend == min_it) {
+                    if (cend == min_it && !use_cache) {
                         min_it = cbegin + calc_cache[min_it - cbegin - 1];
                         goto cheat;
                     }
+                    use_cache = false;
                 }
             }
 
@@ -386,7 +389,9 @@ if (parent != nullptr \
         node->mut_diffs()[replace_idx] = diff_at;
         node->mut_masks()[replace_idx] = mask;
         node->mut_ptrs()[ptr_idx].setData(v);
-        node->updateChecksum();
+
+        node->setSize(static_cast<uint16_t>(size + 1));
+        node->setMinAt(static_cast<uint16_t>(node->calcMinAt()));
     }
 
     void BitDegradeTree::makeRoom(BDNode * parent) {
@@ -400,9 +405,11 @@ if (parent != nullptr \
         const uint32_t * cbegin = parent->immut_diffs().cbegin();
         const uint32_t * cend = parent->immut_diffs().cend();
 
+        bool use_cache = true;
         std::array<uint32_t, kRank> calc_cache{};
         while (true) {
-            const uint32_t * min_it = unfairMinElem(cbegin, cend, parent, calc_cache);
+            const uint32_t * min_it = use_cache ? cbegin + parent->minAt()
+                                                : unfairMinElem(cbegin, cend, parent, calc_cache);
             cheat:
             if (min_it - cbegin < cend - min_it) { // right
                 cbegin = min_it + 1;
@@ -413,10 +420,11 @@ if (parent != nullptr \
             if (cend - cbegin <= parent->immut_diffs().size() / 2) {
                 break;
             }
-            if (cend == min_it) {
+            if (cend == min_it && !use_cache) {
                 min_it = cbegin + calc_cache[min_it - cbegin - 1];
                 goto cheat;
             }
+            use_cache = false;
         }
 
         size_t item_num = cend - cbegin;
@@ -437,10 +445,10 @@ if (parent != nullptr \
 
         parent->mut_ptrs()[nth].setNode(offset);
         memset(parent->mut_ptrs().end() - item_num, -1/* all 1 */, ptr_size * item_num);
-        assert(parent->size() == parent->immut_ptrs().size() - item_num);
 
-        parent->updateChecksum();
-        child->updateChecksum();
+        parent->update();
+        child->update();
+        assert(parent->size() == parent->immut_ptrs().size() - item_num);
     }
 
     void BitDegradeTree::nodeRemove(BDNode * node, size_t idx, bool direct, size_t size) noexcept {
@@ -451,7 +459,9 @@ if (parent != nullptr \
         }
         del_gap(node->mut_ptrs(), idx + direct, size);
         node->mut_ptrs()[size - 1].setNull();
-        node->updateChecksum();
+
+        node->setSize(static_cast<uint16_t>(size - 1));
+        node->setMinAt(static_cast<uint16_t>(node->calcMinAt()));
     }
 
 #define add_n_gap(arr, idx, size, n) memmove(&(arr)[(idx) + (n)], &(arr)[(idx)], sizeof((arr)[0]) * ((size) - (idx)))
@@ -463,7 +473,6 @@ if (parent != nullptr \
         if (child_size == 1) {
             OffsetToNode offset = parent->immut_ptrs()[ptr_idx].asNode();
             parent->mut_ptrs()[ptr_idx] = child->immut_ptrs()[0];
-            parent->updateChecksum();
             freeNode(offset);
         } else {
             assert(child_size > 1);
@@ -479,7 +488,7 @@ if (parent != nullptr \
                 cpy_all(parent->mut_masks(), idx, child->immut_masks(), child_size - 1);
                 cpy_all(parent->mut_ptrs(), idx, child->immut_ptrs(), child_size);
 
-                parent->updateChecksum();
+                parent->update();
                 freeNode(offset);
             }
         }

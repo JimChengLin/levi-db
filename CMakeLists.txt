@@ -59,6 +59,12 @@ find_package(zstd REQUIRED)
 include_directories(${ZSTD_INCLUDE_DIR})
 target_link_libraries(levidb8 ${ZSTD_LIBRARIES})
 
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
+    find_package(JeMalloc REQUIRED)
+    include_directories(${JEMALLOC_INCLUDE_DIR})
+    target_link_libraries(levidb8 ${JEMALLOC_LIBRARIES})
+endif ()
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)

@@ -3,6 +3,7 @@
 #include "crc32c.h"
 #include "env_io.h"
 #include "log_reader.h"
+#include "optional.h"
 #include "varint.h"
 
 namespace levidb8 {
@@ -309,7 +310,7 @@ namespace levidb8 {
         private:
             std::unique_ptr<RawIterator> _raw_iter;
             std::vector<uint8_t> _buffer;
-            Decompressor _decompressor;
+            Optional<Decompressor> _decompressor;
 
             uint32_t _offset{kDiskNull};
             char _type{}; // 只需要 compress 和 del
@@ -350,7 +351,11 @@ namespace levidb8 {
                     }
                     _type = item.second.second;
 
-                    Slice content = isRecordCompress(_type) ? _decompressor.submit(page) : page;
+                    Slice content = isRecordCompress(_type)
+                                    ? (_decompressor.valid()
+                                       ? void()
+                                       : _decompressor.build(), _decompressor->submit(page))
+                                    : page;
                     _buffer.insert(_buffer.end(),
                                    reinterpret_cast<const uint8_t *>(content.data()),
                                    reinterpret_cast<const uint8_t *>(content.data() + content.size()));
@@ -364,7 +369,9 @@ namespace levidb8 {
             void reset() {
                 assert(_met_all);
                 _buffer.clear();
-                _decompressor.reset();
+                if (_decompressor.valid()) {
+                    _decompressor->reset();
+                }
                 _offset = kDiskNull;
                 _met_all = false;
             }
