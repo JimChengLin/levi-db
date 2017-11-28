@@ -311,7 +311,7 @@ namespace levidb8 {
             std::vector<uint8_t> _buffer;
             Decompressor _decompressor;
 
-            uint32_t _offset{};
+            uint32_t _offset{kDiskNull};
             char _type{}; // 只需要 compress 和 del
             bool _met_all = false;
 
@@ -345,7 +345,10 @@ namespace levidb8 {
 
                     auto item = _raw_iter->item();
                     const Slice & page = item.first;
-                    std::tie(_offset, _type) = item.second;
+                    if (_offset == kDiskNull) {
+                        _offset = item.second.first;
+                    }
+                    _type = item.second.second;
 
                     Slice content = isRecordCompress(_type) ? _decompressor.submit(page) : page;
                     _buffer.insert(_buffer.end(),
@@ -362,6 +365,7 @@ namespace levidb8 {
                 assert(_met_all);
                 _buffer.clear();
                 _decompressor.reset();
+                _offset = kDiskNull;
                 _met_all = false;
             }
 
