@@ -81,8 +81,4 @@ if (DO_BENCH)
     find_package(RocksDB REQUIRED)
     include_directories(${ROCKSDB_INCLUDE_DIR})
     target_link_libraries(levidb8 ${ROCKSDB_LIBRARIES})
-
-    find_package(LevelDB REQUIRED)
-    include_directories(${LEVELDB_INCLUDE_DIR})
-    target_link_libraries(levidb8 ${LEVELDB_LIBRARIES})
 endif ()
