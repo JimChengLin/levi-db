@@ -1,44 +1,45 @@
 #include <iostream>
 
-#include "src/exception.h"
+#include "include/exception.h"
 
-void index_test();
+void compress_test();
 
-void index_thread_test();
+void db_bench();
+
+void db_test();
 
 void index_iter_test();
 
 void index_iter_thread_test();
 
-void compress_test();
-
-void log_test();
-
 void index_read_test();
 
-void db_test();
+void index_test();
 
-void db_bench();
+void index_thread_test();
+
+void log_test();
 
 int main() {
     try {
 #ifndef LEVI_BENCH
-        index_test();
-        index_thread_test();
+        compress_test();
+        db_test();
         index_iter_test();
         index_iter_thread_test();
-        compress_test();
-        log_test();
         index_read_test();
-        db_test();
+        index_test();
+        index_thread_test();
+        log_test();
 #else
         db_bench();
 #endif
     } catch (const levidb8::Exception & e) {
         std::cout << e.toString() << std::endl;
         return 1;
-    } catch (const std::exception &) {
+    } catch (const std::exception & e) {
         return 1;
     }
+    std::cout << "done." << std::endl;
     return 0;
 }

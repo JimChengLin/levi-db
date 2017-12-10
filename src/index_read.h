@@ -3,31 +3,60 @@
 #define LEVIDB8_INDEX_READ_H
 
 #include "index.h"
+#include "index.hpp"
+#include "index_scan.hpp"
+#include "log_reader.h"
 
 namespace levidb8 {
-    using KVI = Iterator<Slice, Slice>;
+    class MatcherOffsetImpl;
 
-    class BitDegradeTreeReadLog : public BitDegradeTree {
+    class MatcherSliceImpl;
+
+    class RandomAccessFile;
+
+    struct CacheImpl {
+        RandomAccessFile * data_file;
+        RecordCache record_cache;
+    };
+
+    class MatcherOffsetImpl {
     private:
-        RandomAccessFile * _data_file;
+        std::unique_ptr<RecordIterator> _iter;
 
     public:
-        BitDegradeTreeReadLog(const std::string & fname, RandomAccessFile * data_file);
+        MatcherOffsetImpl(OffsetToData data, CacheImpl & cache);
 
-        BitDegradeTreeReadLog(const std::string & fname, OffsetToEmpty empty, RandomAccessFile * data_file);
+        bool operator==(const Slice & another) const;
+
+        Slice toSlice(const USR & usr) const;
+
+        bool isCompress() const;
+    };
+
+    class MatcherSliceImpl {
+    private:
+        Slice _slice;
+
+    public:
+        explicit MatcherSliceImpl(Slice slice) noexcept;
+
+        char operator[](size_t idx) const noexcept;
+
+        size_t size() const noexcept;
+    };
+
+    class BitDegradeTreeRead : public BitDegradeTree<MatcherOffsetImpl, MatcherSliceImpl, CacheImpl> {
+    public:
+        BitDegradeTreeRead(const std::string & fname, RandomAccessFile * data_file);
+
+        BitDegradeTreeRead(const std::string & fname, OffsetToEmpty empty, RandomAccessFile * data_file);
 
         EXPOSE(_empty);
 
-        std::pair<std::string/* res */, bool/* success */>
-        find(const Slice & k) const;
+        bool find(const Slice & k, std::string * value) const;
 
-        std::unique_ptr<KVI>
+        std::unique_ptr<Iterator<Slice/* K */, Slice/* V */, bool/* del */>>
         scan() const noexcept;
-
-    protected:
-        std::unique_ptr<Matcher> offToMatcher(OffsetToData data) const override;
-
-        std::unique_ptr<Matcher> sliceToMatcher(const Slice & slice) const noexcept override;
     };
 }
 

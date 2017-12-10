@@ -38,7 +38,7 @@
 #include <mutex>
 #include <vector>
 
-#include "slice.h"
+#include "../include/slice.h"
 
 namespace levidb8 {
     class LogFullControlledException : public std::exception {
@@ -71,9 +71,9 @@ namespace levidb8 {
 
         uint32_t addCompressedRecords(const Slice & bkvs);
 
-        // addrs 作为参数时表示是否 del
+        // addrs 表示是否 del
         std::vector<uint32_t>
-        addRecordsMayDel(const std::vector<Slice> & bkvs, std::vector<uint32_t> addrs = {});
+        addRecordsMayDel(const Slice * bkvs, size_t n, std::vector<uint32_t> addrs = {});
 
     private:
         enum Type {
@@ -93,7 +93,7 @@ namespace levidb8 {
     public:
         static std::vector<uint8_t> makeRecord(const Slice & k, const Slice & v) noexcept;
 
-        static std::vector<uint8_t> makeCompressedRecords(const std::vector<std::pair<Slice, Slice>> & kvs);
+        static std::vector<uint8_t> makeCompressedRecords(const std::pair<Slice, Slice> * kvs, size_t n);
     };
 }
 

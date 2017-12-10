@@ -8,9 +8,6 @@
 inline auto & mut ## field() noexcept { return field; } \
 inline const auto & immut ## field() const noexcept { return field; }
 
-#define LIKELY(x) __builtin_expect((x), 1)
-#define UNLIKELY(x) __builtin_expect((x), 0)
-
 namespace levidb8 {
     static_assert(sizeof(uint8_t) == sizeof(char), "cannot reinterpret safely");
 

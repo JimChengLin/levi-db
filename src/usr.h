@@ -2,7 +2,7 @@
 #ifndef LEVIDB8_USR_H
 #define LEVIDB8_USR_H
 
-#include "slice.h"
+#include "../include/slice.h"
 #include "util.h"
 
 namespace levidb8 {
@@ -12,10 +12,8 @@ namespace levidb8 {
         std::string _extra;
 
     public:
-        // default
-        UniversalStringRepresentation() noexcept : UniversalStringRepresentation(std::string()) {}
+        UniversalStringRepresentation() = default;
 
-        // copy/move
         UniversalStringRepresentation(std::string src) noexcept
                 : _src(std::move(src)), _extra(_src.size(), uint8ToChar(UINT8_MAX)) {}
 
@@ -24,7 +22,7 @@ namespace levidb8 {
 
         EXPOSE(_extra);
 
-        void reveal(size_t idx, char mask, bool bit) noexcept;
+        void reveal(size_t idx, char mask, bool bit, uint8_t n) noexcept;
 
         void clear() noexcept;
 

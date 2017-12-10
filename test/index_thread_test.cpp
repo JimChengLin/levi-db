@@ -1,20 +1,20 @@
 #include <iostream>
 #include <random>
 
-#include "../src/exception.h"
-#include "../src/index.h"
+#include "../include/exception.h"
+#include "../src/index_debug.h"
 
 void index_thread_test() {
     const std::string fname = "/tmp/bdt";
     static constexpr int test_times = 1000;
     static constexpr int thread_num = 2;
 
-    if (levidb8::env_io::fileExists(fname)) {
+    if (levidb8::env_io::fileExist(fname)) {
         levidb8::env_io::deleteFile(fname);
     }
 
     {
-        levidb8::BitDegradeTree tree(fname);
+        levidb8::BitDegradeTreeDebug tree(fname);
         {
             std::vector<std::thread> jobs;
             for (size_t i = 0; i < thread_num; ++i) {

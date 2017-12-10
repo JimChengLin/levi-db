@@ -26,7 +26,7 @@ namespace levidb8 {
     public:
         const char * what() const noexcept override { return "LeviDB8Exception"; }
 
-        Exception(Exception &&) = default;
+        Exception(Exception &&) noexcept = default;
 
         ~Exception() noexcept override = default;
 
@@ -65,10 +65,7 @@ namespace levidb8 {
         }
 
     private:
-        Code code() const noexcept {
-            assert(_state != nullptr);
-            return static_cast<Code>(_state[4]);
-        }
+        Code code() const noexcept { return static_cast<Code>(_state[4]); }
 
         Exception(Code code, const Slice & msg, const Slice & msg2) noexcept;
     };

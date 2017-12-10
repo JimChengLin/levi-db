@@ -14,8 +14,6 @@ namespace levidb8 {
         uint32_t extend(uint32_t init_crc, const char * data, size_t n) noexcept;
 
         inline uint32_t value(const char * data, size_t n) noexcept { return extend(0, data, n); }
-
-        bool verify(const char * data, size_t n, const uint8_t * checksum) noexcept;
     }
 }
 

@@ -8,7 +8,7 @@
 
 #include <vector>
 
-#include "slice.h"
+#include "../include/slice.h"
 #include "util.h"
 
 namespace levidb8 {
@@ -24,13 +24,11 @@ namespace levidb8 {
 
         uint64_t getFileSize(const std::string & fname);
 
-        bool fileExists(const std::string & fname) noexcept;
+        bool fileExist(const std::string & fname) noexcept;
 
         void deleteFile(const std::string & fname);
 
         void renameFile(const std::string & fname, const std::string & target);
-
-        void truncateFile(const std::string & fname, uint64_t length);
 
         std::vector<std::string>
         getChildren(const std::string & dirname);
@@ -61,9 +59,9 @@ namespace levidb8 {
     class MmapFile {
     private:
         void * _mmaped_region;
-        std::string _filename;
         FileOpen _file;
         uint64_t _length;
+        std::string _filename;
 
     public:
         explicit MmapFile(std::string fname);
@@ -82,14 +80,14 @@ namespace levidb8 {
 
     class AppendableFile {
     private:
-        std::string _filename;
         FileFopen _ffile;
         uint64_t _length;
+        std::string _filename;
 
     public:
-        EXPOSE(_length);
-
         explicit AppendableFile(std::string fname);
+
+        EXPOSE(_length);
 
         void append(const Slice & data);
 
@@ -100,8 +98,8 @@ namespace levidb8 {
 
     class RandomAccessFile {
     private:
-        std::string _filename;
         FileOpen _file;
+        std::string _filename;
 
     public:
         explicit RandomAccessFile(std::string fname);
@@ -111,8 +109,8 @@ namespace levidb8 {
 
     class RandomWriteFile {
     private:
-        std::string _filename;
         FileOpen _file;
+        std::string _filename;
 
     public:
         explicit RandomWriteFile(std::string fname);
@@ -122,15 +120,15 @@ namespace levidb8 {
 
     class SequentialFile {
     private:
-        std::string _filename;
         FileFopen _ffile;
+        std::string _filename;
 
     public:
         explicit SequentialFile(std::string fname);
 
-        Slice read(size_t n, char * scratch) const;
+        Slice read(size_t n, char * scratch);
 
-        Slice readLine() const;
+        Slice readLine();
     };
 }
 

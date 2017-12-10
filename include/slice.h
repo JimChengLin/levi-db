@@ -4,14 +4,12 @@
 
 /*
  * 数据简单封装类
- * 只保存对源数据的指针和长度
- *
- * 可选: pinnableSlice
  */
 
 #include <cassert>
 #include <cstring>
 #include <string>
+#include <type_traits>
 
 namespace levidb8 {
     class Slice {
@@ -23,27 +21,27 @@ namespace levidb8 {
     public:
         Slice() noexcept = default;
 
-        Slice(const Slice & another) noexcept : _data(another._data), _size(another.size()) {}
+        Slice(const Slice & another) noexcept : _data(another._data), _size(another._size) {}
 
         Slice & operator=(const Slice & another) noexcept {
             this->~Slice();
             _data = another._data;
             _size = another._size;
             return *this;
-        };
+        }
 
         Slice(Slice && another) noexcept : _data(another._data), _size(another._size), _owned(another._owned) {
             another._data = "";
             another._size = 0;
             another._owned = false;
-        };
+        }
 
         Slice & operator=(Slice && another) noexcept {
             std::swap(_data, another._data);
             std::swap(_size, another._size);
             std::swap(_owned, another._owned);
             return *this;
-        };
+        }
 
         ~Slice() noexcept {
             if (_owned) {
@@ -55,14 +53,19 @@ namespace levidb8 {
         Slice(const char * d, size_t n) noexcept : _data(d), _size(n) {}
 
         template<typename T>
-        Slice(T * s, size_t n) noexcept
-                :Slice(reinterpret_cast<const char *>(s), n) {
+        Slice(const T * s, size_t n) noexcept
+                : Slice(reinterpret_cast<const char *>(s), n) {
             static_assert(sizeof(T) == sizeof(char), "args mismatch");
         }
 
-        Slice(const std::string & s) noexcept : _data(s.data()), _size(s.size()) {}
+        template<typename T, typename = decltype(T{}.data())>
+        Slice(const T & s) noexcept : Slice(s.data(), s.size()) {}
 
-        Slice(const char * s) noexcept : _data(s), _size(strlen(s)) {};
+        template<typename T, typename = std::enable_if_t<std::is_convertible<T, const char *>::value>>
+        Slice(T s) noexcept : _data(s), _size(strlen(s)) {}
+
+        template<size_t L>
+        explicit Slice(const char (& s)[L]) noexcept : _data(s), _size(L - 1) {}
 
         const char * data() const noexcept { return _data; }
 
@@ -70,31 +73,32 @@ namespace levidb8 {
 
         bool owned() const noexcept { return _owned; }
 
-        std::string toString() const noexcept { return std::string(_data, _size); }
+        std::string toString() const noexcept { return {_data, _size}; }
 
         char operator[](size_t n) const noexcept {
             assert(n < _size);
             return _data[n];
         }
 
-        char back() const noexcept { return _data[_size - 1]; }
+        char back() const noexcept {
+            assert(_size > 0);
+            return _data[_size - 1];
+        }
 
         bool operator==(const Slice & another) const noexcept {
             return _size == another._size && memcmp(_data, another._data, _size) == 0;
-        };
+        }
 
         bool operator!=(const Slice & another) const noexcept { return !operator==(another); }
 
     public:
-        static Slice nullSlice() noexcept {
-            return Slice(nullptr, 0);
-        }
+        static Slice nullSlice() noexcept { return Slice(nullptr, 0); }
 
-        static Slice pinnableSlice(char * d, size_t n) noexcept {
+        static Slice pinnableSlice(const char * d, size_t n) noexcept {
             Slice res(d, n);
             res._owned = true;
             return res;
-        };
+        }
     };
 
     struct SliceComparator {

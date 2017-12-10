@@ -5,10 +5,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "../include/exception.h"
 #include "config.h"
 #include "env_io.h"
-#include "env_thread.h"
-#include "exception.h"
 
 #if defined(OS_MACOSX)
 #define fread_unlocked fread
@@ -32,7 +31,7 @@ namespace levidb8 {
             return static_cast<uint64_t>(sbuf.st_size);
         };
 
-        bool fileExists(const std::string & fname) noexcept {
+        bool fileExist(const std::string & fname) noexcept {
             return access(fname.c_str(), F_OK) == 0;
         };
 
@@ -48,20 +47,15 @@ namespace levidb8 {
             }
         };
 
-        void truncateFile(const std::string & fname, uint64_t length) {
-            if (truncate(fname.c_str(), static_cast<off_t>(length)) != 0) {
-                throw Exception::IOErrorException(fname, error_info);
-            }
-        };
-
         std::vector<std::string>
         getChildren(const std::string & dirname) {
             DIR * d = opendir(dirname.c_str());
             if (d == nullptr) {
                 throw Exception::IOErrorException(dirname, error_info);
             }
+
             std::vector<std::string> res;
-            struct dirent * entry;
+            struct dirent * entry{};
             while ((entry = readdir(d)) != nullptr) {
                 if (not(entry->d_name[0] == '.'
                         && (entry->d_name[1] == '\0' // "."
@@ -71,23 +65,23 @@ namespace levidb8 {
             }
             closedir(d);
             return res;
-        };
+        }
 
         void createDir(const std::string & dirname) {
             if (mkdir(dirname.c_str(), 0755/* 权限 */) != 0) {
                 throw Exception::IOErrorException(dirname, error_info);
             }
-        };
+        }
 
         void deleteDir(const std::string & dirname) {
             if (rmdir(dirname.c_str()) != 0) {
                 throw Exception::IOErrorException(dirname, error_info);
             }
-        };
+        }
     }
 
     FileOpen::FileOpen(const std::string & fname, env_io::OpenMode mode) {
-        int arg = 0;
+        int arg{};
         switch (mode) {
             case env_io::R_M:
                 arg = O_RDONLY;
@@ -109,22 +103,20 @@ namespace levidb8 {
                 break;
         }
 
-        int fd;
         switch (mode) {
             case env_io::W_M:
             case env_io::A_M:
             case env_io::WP_M:
             case env_io::AP_M:
-                fd = open(fname.c_str(), arg, 0644/* 权限 */);
+                _fd = open(fname.c_str(), arg, 0644/* 权限 */);
                 break;
             default:
-                fd = open(fname.c_str(), arg);
+                _fd = open(fname.c_str(), arg);
                 break;
         }
-        if (fd < 0) {
+        if (_fd < 0) {
             throw Exception::IOErrorException(fname, error_info);
         }
-        _fd = fd;
     }
 
     FileOpen::~FileOpen() noexcept {
@@ -134,7 +126,7 @@ namespace levidb8 {
     }
 
     FileFopen::FileFopen(const std::string & fname, env_io::OpenMode mode) {
-        const char * arg = nullptr;
+        const char * arg{};
         switch (mode) {
             case env_io::R_M:
                 arg = "r";
@@ -155,11 +147,10 @@ namespace levidb8 {
                 arg = "a+";
                 break;
         }
-        FILE * f = fopen(fname.c_str(), arg);
-        if (f == nullptr) {
+        _f = fopen(fname.c_str(), arg);
+        if (_f == nullptr) {
             throw Exception::IOErrorException(fname, error_info);
         }
-        _f = f;
     }
 
     FileFopen::~FileFopen() noexcept {
@@ -169,9 +160,9 @@ namespace levidb8 {
     }
 
     MmapFile::MmapFile(std::string fname)
-            : _filename(std::move(fname)),
-              _file(_filename, env_io::fileExists(_filename) ? env_io::RP_M : env_io::WP_M),
-              _length(env_io::getFileSize(_filename)) {
+            : _file(fname, env_io::fileExist(fname) ? env_io::RP_M : env_io::WP_M),
+              _length(env_io::getFileSize(fname)),
+              _filename(std::move(fname)) {
         if (_length == 0) { // 0 长度文件 mmap 会报错
             _length = kPageSize;
             if (ftruncate(_file._fd, static_cast<off_t>(_length)) != 0) {
@@ -215,7 +206,9 @@ namespace levidb8 {
     }
 
     AppendableFile::AppendableFile(std::string fname)
-            : _filename(std::move(fname)), _ffile(_filename, env_io::A_M), _length(env_io::getFileSize(_filename)) {}
+            : _ffile(fname, env_io::A_M),
+              _length(env_io::getFileSize(fname)),
+              _filename(std::move(fname)) {}
 
     void AppendableFile::append(const Slice & data) {
         size_t r = fwrite_unlocked(data.data(), 1, data.size(), _ffile._f);
@@ -239,7 +232,7 @@ namespace levidb8 {
     }
 
     RandomAccessFile::RandomAccessFile(std::string fname)
-            : _filename(std::move(fname)), _file(_filename, env_io::R_M) {}
+            : _file(fname, env_io::R_M), _filename(std::move(fname)) {}
 
     Slice RandomAccessFile::read(uint64_t offset, size_t n, char * scratch) const {
         ssize_t r = pread(_file._fd, scratch, n, static_cast<off_t>(offset));
@@ -250,8 +243,8 @@ namespace levidb8 {
     }
 
     RandomWriteFile::RandomWriteFile(std::string fname)
-            : _filename(std::move(fname)),
-              _file(_filename, env_io::fileExists(_filename) ? env_io::RP_M : env_io::WP_M) {}
+            : _file(fname, env_io::fileExist(fname) ? env_io::RP_M : env_io::WP_M),
+              _filename(std::move(fname)) {}
 
     void RandomWriteFile::write(uint64_t offset, const Slice & data) {
         ssize_t r = pwrite(_file._fd, data.data(), data.size(), static_cast<off_t>(offset));
@@ -261,9 +254,9 @@ namespace levidb8 {
     }
 
     SequentialFile::SequentialFile(std::string fname)
-            : _filename(std::move(fname)), _ffile(_filename, env_io::R_M) {}
+            : _ffile(fname, env_io::R_M), _filename(std::move(fname)) {}
 
-    Slice SequentialFile::read(size_t n, char * scratch) const {
+    Slice SequentialFile::read(size_t n, char * scratch) {
         size_t r = fread_unlocked(scratch, 1, n, _ffile._f);
         if (r < n) {
             if (static_cast<bool>(feof(_ffile._f))) {
@@ -274,16 +267,17 @@ namespace levidb8 {
         return {scratch, r};
     }
 
-    Slice SequentialFile::readLine() const {
+    Slice SequentialFile::readLine() {
         char * line = nullptr;
         size_t len = 0;
         ssize_t read = getline(&line, &len, _ffile._f);
 
-        Slice res;
         if (read != -1) {
-            res = Slice::pinnableSlice(line, static_cast<size_t>(read));
-            assert(res.owned());
+            return Slice::pinnableSlice(line, static_cast<size_t>(read));
         }
-        return res;
+        if (static_cast<bool>(feof(_ffile._f))) {
+            return {};
+        }
+        throw Exception::IOErrorException(_filename, error_info);
     }
 }

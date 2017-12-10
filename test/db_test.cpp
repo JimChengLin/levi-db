@@ -1,13 +1,17 @@
 #include <iostream>
 #include <vector>
 
-#include "../src/db.h"
+#include "../include/db.h"
 #include "../src/env_io.h"
 
 void db_test() {
     const std::string db_name = "/tmp/levi_db";
-    if (levidb8::env_io::fileExists(db_name)) {
+    const std::string tmp_name = db_name + "_tmp";
+    if (levidb8::env_io::fileExist(db_name)) {
         levidb8::destroyDB(db_name);
+    }
+    if (levidb8::env_io::fileExist(tmp_name)) {
+        levidb8::destroyDB(tmp_name);
     }
 
     // 新建数据库
@@ -40,7 +44,7 @@ void db_test() {
         // 逐条读取
         for (size_t i = 0; i < 100; ++i) {
             std::string k = std::to_string(i);
-            auto res = db->get(k, {});
+            auto res = db->get(k);
             assert(res.first == k && res.second);
         }
         // 逐条删除数据
@@ -51,23 +55,24 @@ void db_test() {
         // 确认删除成功
         for (size_t i = 0; i < 100 / 2; ++i) {
             std::string k = std::to_string(i);
-            auto res = db->get(k, {});
+            auto res = db->get(k);
             assert(!res.second);
         }
         for (size_t i = 100 / 2; i < 100; ++i) {
             std::string k = std::to_string(i);
-            auto res = db->get(k, {});
+            auto res = db->get(k);
             assert(res.first == k && res.second);
         }
 
         // batch 写入
         std::string k = "100";
         std::string k2 = "101";
-        db->write({{k,  k},
-                   {k2, k2}}, {});
+        std::pair<levidb8::Slice, levidb8::Slice> src[] = {{k,  k},
+                                                           {k2, k2}};
+        db->write(src, sizeof(src) / sizeof(src[0]), {});
 
 #define CHECK_DATA \
-        auto it = db->scan({}); \
+        auto it = db->scan(); \
         it->seekToFirst(); \
         for (size_t i = 100; i < 102; ++i) { \
             std::string key = std::to_string(i); \
@@ -83,10 +88,11 @@ void db_test() {
         CHECK_DATA;
 
         // batch 删除
-        db->write({{k,  levidb8::Slice::nullSlice()},
-                   {k2, "X"}}, {});
-        assert(!db->get(k, {}).second);
-        assert(db->get(k2, {}).first == "X");
+        std::pair<levidb8::Slice, levidb8::Slice> source[] = {{k,  levidb8::Slice::nullSlice()},
+                                                              {k2, "X"}};
+        db->write(source, sizeof(source) / sizeof(source[0]), {});
+        assert(!db->get(k).second);
+        assert(db->get(k2).first == "X");
         db->sync();
     }
     // 再次打开数据库
@@ -94,8 +100,8 @@ void db_test() {
         auto db = levidb8::DB::open(db_name, {});
         std::string k = "100";
         std::string k2 = "101";
-        assert(!db->get(k, {}).second);
-        assert(db->get(k2, {}).first == "X");
+        assert(!db->get(k).second);
+        assert(db->get(k2).first == "X");
         db->put(k, k, {});
         db->put(k2, k2, {});
         CHECK_DATA;
@@ -108,17 +114,19 @@ void db_test() {
 
         std::string k = "1000" + std::string(UINT8_MAX, 'A');
         std::string k2 = "1011" + std::string(UINT8_MAX, 'B');
-        db->write({{k,  k},
-                   {k2, k2}}, {});
-        assert(db->get(k, {}).second);
-        assert(db->get(k2, {}).second);
+        std::pair<levidb8::Slice, levidb8::Slice> src[] = {{k,  k},
+                                                           {k2, k2}};
+        db->write(src, sizeof(src) / sizeof(src[0]), {});
+        assert(db->get(k).second);
+        assert(db->get(k2).second);
     }
     // repair
     {
-        levidb8::repairDB(db_name, [](const levidb8::Exception &, uint32_t) noexcept {});
+        bool res = levidb8::repairDB(db_name, [](const levidb8::Exception & e, uint32_t) noexcept {});
+        assert(res);
         auto db = levidb8::DB::open(db_name, {});
         // 确认数据
-        auto it = db->scan({});
+        auto it = db->scan();
         it->seek("60");
         for (int i = 60; i < 100; ++i) {
             std::string k = std::to_string(i);
@@ -126,5 +134,6 @@ void db_test() {
             it->next();
         }
     }
+
     std::cout << __FUNCTION__ << std::endl;
 }

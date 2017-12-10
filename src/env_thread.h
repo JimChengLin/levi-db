@@ -6,25 +6,13 @@
  * 线程 API 封装
  */
 
+#include <atomic>
 #include <thread>
 
-#ifndef __clang__
-
-#include <atomic>
-
-#endif
-
 namespace levidb8 {
-    static_assert(std::is_same<std::thread::native_handle_type, pthread_t>::value,
-                  "cannot mix std::thread with pthread");
-
-    namespace env_thread {
-        uint64_t gettid() noexcept;
-    }
-
     class ReadWriteLock {
     private:
-        std::atomic<unsigned> _cnt{0};
+        std::atomic<size_t> _cnt{0};
         std::atomic<bool> _need_write{false};
 
         friend class RWLockReadGuard;

@@ -1,16 +1,16 @@
 #include <array>
 #include <iostream>
-#include <set>
+#include <unordered_set>
 
-#include "../src/exception.h"
-#include "../src/index.h"
+#include "../include/exception.h"
+#include "../src/index_debug.h"
 
 void index_iter_thread_test() {
     const std::string fname = "/tmp/bdt";
     static constexpr int test_times = 1000;
     static constexpr int thread_num = 2;
 
-    if (levidb8::env_io::fileExists(fname)) {
+    if (levidb8::env_io::fileExist(fname)) {
         levidb8::env_io::deleteFile(fname);
     }
 
@@ -18,7 +18,7 @@ void index_iter_thread_test() {
         std::array<std::atomic<int>, thread_num * test_times> done_arr{};
         std::atomic<int> seq_num{0};
 
-        levidb8::BitDegradeTree tree(fname);
+        levidb8::BitDegradeTreeDebug tree(fname);
         std::vector<std::thread> jobs;
         for (size_t i = 0; i < thread_num; ++i) {
             jobs.emplace_back([&tree, &done_arr, &seq_num](size_t n) noexcept {
@@ -45,12 +45,12 @@ void index_iter_thread_test() {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         int done_time = seq_num.fetch_add(1);
 
-        std::set<uint32_t> exist;
-        auto iter = tree.scan();
-        for (iter->seekToFirst();
-             iter->valid();
-             iter->next()) {
-            exist.emplace(iter->value().val);
+        std::unordered_set<uint32_t> exist;
+        levidb8::BitDegradeTreeDebug::BDIterator iter(&tree);
+        for (iter.seekToFirst();
+             iter.valid();
+             iter.next()) {
+            exist.emplace(iter.value().val);
         }
 
         std::vector<uint32_t> expect;

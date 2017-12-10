@@ -3,7 +3,7 @@
 #define LEVIDB8_VARINT_H
 
 /*
- * 变长 uint
+ * 变长 uint32
  */
 
 #include <cstdint>

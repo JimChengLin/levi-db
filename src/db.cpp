@@ -1,16 +1,15 @@
-#include <map>
 #include <vector>
+#include <map>
 
-#include "db.h"
+#include "../include/db.h"
 #include "index_read.h"
 #include "keeper.h"
-#include "log_reader.h"
 #include "log_writer.h"
 #include "optional.h"
 
 namespace levidb8 {
     struct DBMeta {
-        OffsetToEmpty _offset{kDiskNull};
+        OffsetToEmpty offset{kDiskNull};
     };
 
     class DBImpl : public DB {
@@ -18,52 +17,55 @@ namespace levidb8 {
         Optional<AppendableFile> _af;
         Optional<RandomAccessFile> _rf;
         Optional<LogWriter> _writer;
-        Optional<BitDegradeTreeReadLog> _index;
+        Optional<BitDegradeTreeRead> _index;
         Optional<WeakKeeper<DBMeta>> _meta;
 
     public:
         DBImpl(const std::string & name, const OpenOptions & options) {
             std::string prefix = name + '/';
 
-            if (env_io::fileExists(name)) {
-                if (options.error_if_exists) {
+            if (env_io::fileExist(name)) {
+                if (options.error_if_exist) {
                     throw Exception::invalidArgumentException("DB already exist");
                 }
                 // 打开现有数据库
                 std::string data_fname = prefix + "data";
-                if (!env_io::fileExists(data_fname)) {
+                if (!env_io::fileExist(data_fname)) {
                     throw Exception::notFoundException("data file missing", data_fname);
                 }
                 std::string index_fname = prefix + "index";
                 std::string keeper_fname = std::move(prefix += "keeper");
-                if (!env_io::fileExists(index_fname) || !env_io::fileExists(keeper_fname)) { // repair
-                    if (env_io::fileExists(index_fname)) {
+                if (!env_io::fileExist(index_fname) || !env_io::fileExist(keeper_fname)) { // repair
+                    if (env_io::fileExist(index_fname)) {
                         env_io::deleteFile(index_fname);
                     }
-                    if (env_io::fileExists(keeper_fname)) {
+                    if (env_io::fileExist(keeper_fname)) {
                         env_io::deleteFile(keeper_fname);
                     }
-                    _meta.build(std::move(keeper_fname), DBMeta{}, std::string());
+                    _meta.build(std::move(keeper_fname), DBMeta{});
                     _af.build(data_fname);
                     _rf.build(std::move(data_fname));
                     _index.build(std::move(index_fname), _rf.get());
                     _writer.build(_af.get(), _af->immut_length());
 
-                    auto it = log_reader::makeTableIterator(_rf.get());
-                    it->prepare();
+                    auto it = TableIterator::open(_rf.get());
                     while (true) {
                         it->next();
                         if (!it->valid()) {
                             break;
                         }
                         auto item = it->item();
-                        _index->insert(item.first, OffsetToData{item.second.first});
+                        if (it->info().del) {
+                            _index->remove(item.first, OffsetToData{item.second});
+                        } else {
+                            _index->insert(item.first, OffsetToData{item.second});
+                        }
                     }
                 } else {
                     _meta.build(std::move(keeper_fname));
                     _af.build(data_fname);
                     _rf.build(std::move(data_fname));
-                    _index.build(std::move(index_fname), _meta->immut_value()._offset, _rf.get());
+                    _index.build(std::move(index_fname), _meta->immut_value().offset, _rf.get());
                     _writer.build(_af.get(), _af->immut_length());
                 }
             } else {
@@ -77,20 +79,21 @@ namespace levidb8 {
                 _rf.build(std::move(data_fname));
                 _index.build(prefix + "index", _rf.get());
                 _writer.build(_af.get());
-                _meta.build(std::move(prefix += "keeper"), DBMeta{}, std::string());
+                _meta.build(std::move(prefix += "keeper"), DBMeta{});
             }
         }
 
         ~DBImpl() noexcept override {
-            _meta->mut_value()._offset = _index->immut_empty();
-        };
+            _meta->mut_value().offset = _index->immut_empty();
+        }
 
+    public:
         bool put(const Slice & key,
                  const Slice & value,
                  const PutOptions & options) override {
             try {
                 auto bkv = LogWriter::makeRecord(key, value);
-                uint32_t pos = _writer->addRecord({bkv.data(), bkv.size()});
+                uint32_t pos = _writer->addRecord(bkv);
                 _index->insert(key, OffsetToData{pos});
 
                 if (options.sync) {
@@ -98,17 +101,16 @@ namespace levidb8 {
                 }
                 return true;
             } catch (const IndexFullControlledException &) {
-                return false;
             } catch (const LogFullControlledException &) {
-                return false;
             }
+            return false;
         }
 
         bool remove(const Slice & key,
                     const RemoveOptions & options) override {
             try {
                 auto bkv = LogWriter::makeRecord(key, {});
-                uint32_t pos = _writer->addRecordForDel({bkv.data(), bkv.size()});
+                uint32_t pos = _writer->addRecordForDel(bkv);
                 _index->remove(key, OffsetToData{pos});
 
                 if (options.sync) {
@@ -116,19 +118,19 @@ namespace levidb8 {
                 }
                 return true;
             } catch (const IndexFullControlledException &) {
-                return false;
             } catch (const LogFullControlledException &) {
-                return false;
             }
+            return false;
         }
 
-        bool write(const std::vector<std::pair<Slice, Slice>> & kvs,
+        bool write(const std::pair<Slice, Slice> * kvs, size_t n,
                    const WriteOptions & options) override {
-            assert(!kvs.empty());
+            assert(n != 0);
             try {
                 bool compress = options.try_compress;
                 size_t uncompress_size = 0;
-                for (const auto & kv:kvs) {
+                for (size_t i = 0; i < n; ++i) {
+                    const auto & kv = kvs[i];
                     if (kv.second.data() == nullptr) {
                         compress = false;
                         break;
@@ -137,32 +139,33 @@ namespace levidb8 {
                 }
 
                 if (compress) {
-                    auto bkvs = LogWriter::makeCompressedRecords(kvs);
-                    if (bkvs.size() <= uncompress_size - uncompress_size / 8) {
-                        uint32_t pos = _writer->addCompressedRecords({bkvs.data(), bkvs.size()});
-                        for (const auto & kv:kvs) {
-                            _index->insert(kv.first, OffsetToData{pos});
+                    auto bkvs = LogWriter::makeCompressedRecords(kvs, n);
+                    if (bkvs.size() <= uncompress_size - uncompress_size / kWorthCompressRatio) {
+                        uint32_t pos = _writer->addCompressedRecords(bkvs);
+                        for (size_t i = 0; i < n; ++i) {
+                            _index->insert(kvs[i].first, OffsetToData{pos});
                         }
                         return true;
                     }
                 }
 
                 std::vector<std::vector<uint8_t>> bkvs;
-                std::vector<Slice> slice_bkvs;
+                std::vector<Slice> slices;
                 std::vector<uint32_t> addrs;
-                bkvs.reserve(kvs.size());
-                slice_bkvs.reserve(kvs.size());
-                addrs.reserve(kvs.size());
+                bkvs.reserve(n);
+                slices.reserve(n);
+                addrs.reserve(n);
 
-                for (const auto & kv:kvs) {
+                for (size_t i = 0; i < n; ++i) {
+                    const auto & kv = kvs[i];
                     bkvs.emplace_back(LogWriter::makeRecord(kv.first, kv.second));
-                    slice_bkvs.emplace_back(bkvs.back().data(), bkvs.back().size());
+                    slices.emplace_back(bkvs.back());
                     addrs.emplace_back(kv.second.data() == nullptr); // 1 = del
                 }
 
-                addrs = _writer->addRecordsMayDel(slice_bkvs, std::move(addrs));
-                assert(addrs.size() == kvs.size());
-                for (size_t i = 0; i < kvs.size(); ++i) {
+                addrs = _writer->addRecordsMayDel(slices.data(), n, std::move(addrs));
+                assert(addrs.size() == n);
+                for (size_t i = 0; i < n; ++i) {
                     if (kvs[i].second.data() != nullptr) {
                         _index->insert(kvs[i].first, OffsetToData{addrs[i]});
                     } else {
@@ -175,22 +178,26 @@ namespace levidb8 {
                 }
                 return true;
             } catch (const IndexFullControlledException &) {
-                return false;
             } catch (const LogFullControlledException &) {
-                return false;
             }
+            return false;
         }
 
         std::pair<std::string, bool>
-        get(const Slice & key,
-            const ReadOptions & options) const override {
-            return _index->find(key);
+        get(const Slice & key) const override {
+            std::pair<std::string, bool> res;
+            res.second = _index->find(key, &res.first);
+            return res;
         };
 
-        std::unique_ptr<Iterator<Slice, Slice>>
-        scan(const ScanOptions & options) const override {
+        std::unique_ptr<Iterator<Slice, Slice, bool>>
+        scan() const override {
             return _index->scan();
         };
+
+        bool exist(const Slice & key) const override {
+            return _index->find(key, nullptr);
+        }
 
         void sync() override {
             _af->sync();
@@ -198,22 +205,21 @@ namespace levidb8 {
         }
     };
 
-    std::unique_ptr<DB> DB::open(const std::string & name, const OpenOptions & options) {
+    std::unique_ptr<DB>
+    DB::open(const std::string & name, const OpenOptions & options) {
         return std::make_unique<DBImpl>(name, options);
     }
 
-    bool repairDB(const std::string & name,
-                  std::function<void(const Exception &, uint32_t)> reporter) noexcept {
+    bool repairDB(const std::string & name, std::function<void(const Exception &, uint32_t)> reporter) noexcept {
         try {
             {
                 RandomAccessFile rf(name + "/data");
-                auto it = log_reader::makeRecoveryIterator(&rf, reporter);
-                auto temp_db = DB::open(name + "_tmp", {true, true});
+                auto it = RecoveryIterator::open(&rf, reporter);
+                auto tmp_db = DB::open(name + "_tmp", {true, true}/* create, error if exist */);
                 std::map<std::string, std::string, SliceComparator> q;
-                std::vector<std::pair<Slice, Slice>> slice_q;
+                std::vector<std::pair<Slice, Slice>> slices;
                 size_t uncompress_size = 0;
 
-                it->prepare();
                 while (true) {
                     it->next();
                     if (!it->valid()) {
@@ -221,50 +227,51 @@ namespace levidb8 {
                     }
 
                     auto item = it->item();
-                    if (item.second.second.del) {
-                        temp_db->remove(item.first, {});
+                    if (it->info().del) {
+                        tmp_db->remove(item.first, {});
                         auto find_res = q.find(item.first);
                         if (find_res != q.end()) {
                             q.erase(find_res);
-                            uncompress_size -= (item.first.size() + item.second.first.size());
+                            uncompress_size -= (item.first.size() + item.second.size());
                         }
                     } else {
-                        q[item.first.toString()] = item.second.first.toString();
-                        uncompress_size += (item.first.size() + item.second.first.size());
+                        q[item.first.toString()] = item.second.toString();
+                        uncompress_size += (item.first.size() + item.second.size());
                     }
 
                     if (uncompress_size >= kPageSize) {
-                        slice_q.reserve(q.size());
+                        slices.reserve(q.size());
                         for (const auto & kv:q) {
-                            slice_q.emplace_back(kv.first, kv.second);
+                            slices.emplace_back(kv.first, kv.second);
                         }
-                        temp_db->write(slice_q, {});
+                        tmp_db->write(slices.data(), slices.size(), {});
 
                         q.clear();
-                        slice_q.clear();
+                        slices.clear();
                         uncompress_size = 0;
                     }
                 }
+
                 if (uncompress_size != 0) {
-                    slice_q.reserve(q.size());
+                    slices.reserve(q.size());
                     for (const auto & kv:q) {
-                        slice_q.emplace_back(kv.first, kv.second);
+                        slices.emplace_back(kv.first, kv.second);
                     }
-                    temp_db->write(slice_q, {});
+                    tmp_db->write(slices.data(), slices.size(), {});
 
                     q.clear();
-                    slice_q.clear();
+                    slices.clear();
                 }
             }
+
             destroyDB(name);
             env_io::renameFile(name + "_tmp", name);
+            return true;
         } catch (const Exception & e) {
-            reporter(e, UINT32_MAX);
-            return false;
+            reporter(e, kDiskNull);
         } catch (const std::exception &) {
-            return false;
         }
-        return true;
+        return false;
     }
 
     void destroyDB(const std::string & name) {

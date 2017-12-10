@@ -7,16 +7,12 @@
  * https://zhuanlan.zhihu.com/p/27071075
  */
 
-#ifndef __clang__
-
 #include <mutex>
 
-#endif
-
+#include "../include/iterator.h"
 #include "config.h"
 #include "env_io.h"
 #include "env_thread.h"
-#include "iterator.h"
 
 namespace levidb8 {
     struct OffsetToNode {
@@ -39,11 +35,10 @@ namespace levidb8 {
 
     using USR = UniversalStringRepresentation;
 
-    class Matcher;
-
     class IndexFullControlledException : public std::exception {
     };
 
+    template<typename OFFSET_M, typename SLICE_M, typename CACHE>
     class BitDegradeTree {
     protected:
         MmapFile _dst;
@@ -51,8 +46,7 @@ namespace levidb8 {
         mutable ReadWriteLock _expand_lock;
         std::mutex _allocate_lock;
         std::vector<std::unique_ptr<ReadWriteLock>> _node_locks;
-
-        class BitDegradeTreeIterator;
+        mutable CACHE _cache{};
 
     public:
         explicit BitDegradeTree(const std::string & fname);
@@ -60,7 +54,7 @@ namespace levidb8 {
         BitDegradeTree(const std::string & fname, OffsetToEmpty empty);
 
     public:
-        // 返回最接近 k 的结果, 调用者需要二次检查是否真正匹配
+        // 返回最接近 k 的结果, 需要二次检查是否真正匹配
         // kDiskNull 说明未找到
         OffsetToData find(const Slice & k) const;
 
@@ -71,11 +65,10 @@ namespace levidb8 {
 
         void remove(const Slice & k, OffsetToData v);
 
-        // Iterator 的方法有可能抛出异常
-        std::unique_ptr<Iterator<Slice/* usr */, OffsetToData>>
-        scan() const noexcept;
-
         void sync() { _dst.sync(); };
+
+        // 相当于 Iterator<Slice/* usr */, OffsetToData>
+        class BDIterator;
 
     private:
         size_t size(OffsetToNode node) const;
@@ -86,7 +79,7 @@ namespace levidb8 {
         bool combatInsert(const Slice & opponent, OffsetToData from, const Slice & k, OffsetToData v);
 
         void nodeInsert(BDNode * node, size_t replace_idx, bool replace_direct,
-                        bool direct, uint32_t diff_at, uint8_t mask, OffsetToData v,
+                        bool direct, uint16_t diff, OffsetToData v,
                         size_t size) noexcept;
 
         void makeRoom(BDNode * parent);
@@ -96,10 +89,8 @@ namespace levidb8 {
         void tryMerge(BDNode * parent, size_t idx, bool direct, size_t parent_size,
                       BDNode * child, size_t child_size) noexcept;
 
-    protected:
-        BDNode * offToMemNode(OffsetToNode node) const;
-
-        BDNode * offToMemNodeUnchecked(OffsetToNode node) const noexcept;
+    private:
+        BDNode * offToMemNode(OffsetToNode node) const noexcept;
 
         ReadWriteLock * offToNodeLock(OffsetToNode node) const noexcept;
 
@@ -110,11 +101,6 @@ namespace levidb8 {
         void freeNode(OffsetToNode node) noexcept;
 
         void freeNodeUnlocked(OffsetToNode node) noexcept;
-
-        // 继承时覆盖
-        virtual std::unique_ptr<Matcher> offToMatcher(OffsetToData data) const;
-
-        virtual std::unique_ptr<Matcher> sliceToMatcher(const Slice & slice) const noexcept;
     };
 }
 

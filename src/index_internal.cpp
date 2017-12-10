@@ -1,50 +1,16 @@
-#ifndef __linux__
-
-#include <machine/endian.h>
-
-#define PLATFORM_IS_LITTLE_ENDIAN (__DARWIN_BYTE_ORDER == __DARWIN_LITTLE_ENDIAN)
-#else
-
-#include <endian.h>
-
-#define PLATFORM_IS_LITTLE_ENDIAN (__BYTE_ORDER == __LITTLE_ENDIAN)
-#endif
+#include <algorithm>
+#include <nmmintrin.h>
 
 #include "crc32c.h"
 #include "index_internal.h"
 
 namespace levidb8 {
-    static_assert(PLATFORM_IS_LITTLE_ENDIAN, "cannot mix marks");
-
-    const uint32_t *
-    unfairMinElem(const uint32_t * cbegin, const uint32_t * cend, const BDNode * node,
-                  std::array<uint32_t, kRank> & calc_cache) noexcept {
-        assert(cbegin != cend);
-        const uint32_t * res = cbegin;
-        uint64_t res_cmp = mixMarks(*res, node->immut_masks()[res - node->immut_diffs().cbegin()]);
-
-        const uint32_t * cursor = cbegin;
-        while (++cursor != cend) {
-            uint64_t cursor_cmp = mixMarks(*cursor, node->immut_masks()[cursor - node->immut_diffs().cbegin()]);
-
-            if (cursor_cmp < res_cmp) {
-                auto idx = static_cast<uint16_t>(cursor - cbegin);
-                calc_cache[idx - 1] = static_cast<uint16_t>(res - cbegin);
-                res = cursor;
-                res_cmp = cursor_cmp;
-                calc_cache[idx] = idx;
-            }
-        }
-        return res;
-    }
-
     bool BDEmpty::verify() const noexcept {
-        return crc32c::verify(reinterpret_cast<const char *>(this), offsetof(BDEmpty, _checksum), &_checksum[0]);
+        return crc32c::value(reinterpret_cast<const char *>(this), offsetof(BDEmpty, _checksum)) == _checksum;
     }
 
     void BDEmpty::updateChecksum() noexcept {
-        uint32_t checksum = crc32c::value(reinterpret_cast<const char *>(this), offsetof(BDEmpty, _checksum));
-        memcpy(&_checksum[0], &checksum, sizeof(checksum));
+        _checksum = crc32c::value(reinterpret_cast<const char *>(this), offsetof(BDEmpty, _checksum));
     }
 
     bool CritPtr::isNull() const noexcept {
@@ -54,6 +20,11 @@ namespace levidb8 {
     bool CritPtr::isData() const noexcept {
         assert(!isNull());
         return _offset % kPageSize != 0;
+    }
+
+    bool CritPtr::isDataSpecial() const noexcept {
+        assert(isData());
+        return static_cast<bool>((_offset >> 31) & 1);
     }
 
     bool CritPtr::isNode() const noexcept {
@@ -71,6 +42,11 @@ namespace levidb8 {
 
     void CritPtr::setData(OffsetToData data) noexcept {
         setData(data.val);
+    }
+
+    void CritPtr::markDataSpecial() noexcept {
+        assert(!isDataSpecial());
+        _offset |= (1 << 31);
     }
 
     void CritPtr::setNode(uint32_t offset) noexcept {
@@ -97,11 +73,6 @@ namespace levidb8 {
     }
 
     size_t BDNode::size() const noexcept {
-        assert(_len == calcSize());
-        return _len;
-    }
-
-    size_t BDNode::calcSize() const noexcept {
         if (full()) {
             return _ptrs.size();
         }
@@ -118,37 +89,169 @@ namespace levidb8 {
         return lo;
     }
 
-    size_t BDNode::minAt() const noexcept {
-        assert(_min_at == calcMinAt());
-        return _min_at;
+    size_t CritBitPyramid::build(const uint16_t * from, const uint16_t * to) noexcept {
+        size_t size = to - from;
+        size_t level = 0;
+
+        while (true) {
+            const size_t q = size / 8;
+            const size_t r = size % 8;
+            uint16_t * val_from = _val_entry[level];
+            uint8_t * idx_from = _idx_entry[level];
+
+            for (size_t i = 0; i < q; ++i) {
+                __m128i vec = _mm_loadu_si128(reinterpret_cast<const __m128i *>(from));
+                __m128i res = _mm_minpos_epu16(vec);
+                (*val_from++) = static_cast<uint16_t>(_mm_extract_epi16(res, 0));
+                (*idx_from++) = static_cast<uint8_t>(_mm_extract_epi16(res, 1));
+                from += 8;
+            }
+            if (r != 0) {
+                const uint16_t * min_elem = std::min_element(from, to);
+                (*val_from) = *min_elem;
+                (*idx_from) = static_cast<uint8_t>(min_elem - from);
+            }
+
+            size = q + static_cast<size_t>(r != 0);
+            if (size == 1) {
+                break;
+            }
+            from = _val_entry[level++];
+            to = from + size;
+        }
+
+        size_t idx = 0;
+        size_t rank = _idx_entry[level][idx];
+        const size_t lv = level;
+        for (size_t i = 0; i < lv; ++i) {
+            idx = idx * 8 + rank;
+            rank = _idx_entry[--level][idx];
+        }
+        return idx * 8 + rank;
     }
 
-    size_t BDNode::calcMinAt() const noexcept {
-        const uint32_t * cend = _diffs.cbegin() + _len - 1;
-        const uint32_t * res = _diffs.cbegin();
-        uint64_t res_cmp = mixMarks(_diffs.front(), _masks.front());
+    size_t CritBitPyramid::trimLeft(const uint16_t * cbegin, const uint16_t * from, const uint16_t * to) noexcept {
+        int level = -1;
+        size_t pos = from - cbegin;
+        size_t end_pos = to - cbegin;
+        if (end_pos - pos == 1) {
+            return pos;
+        }
+        assert(end_pos > pos + 1);
 
-        const uint32_t * cursor = res;
-        while (++cursor < cend) {
-            uint64_t cursor_cmp = mixMarks(*cursor, _masks[cursor - _diffs.cbegin()]);
-            if (cursor_cmp < res_cmp) {
-                res = cursor;
-                res_cmp = cursor_cmp;
+        restart:
+        if (end_pos - pos > 1) {
+            const size_t q = pos / 8;
+            const size_t r = pos % 8;
+
+            const uint16_t * min_elem = std::min_element(from, std::min(from + (8 - r), to));
+            const size_t idx = (min_elem - from) + r;
+
+            cbegin = _val_entry[++level];
+            from = cbegin + (pos = q);
+            to = cbegin + (end_pos = end_pos / 8 + static_cast<size_t>(end_pos % 8 != 0));
+
+            *const_cast<uint16_t *>(from) = *min_elem;
+            _idx_entry[level][pos] = static_cast<uint8_t>(idx);
+            goto restart;
+        }
+
+        size_t idx = pos;
+        size_t rank = _idx_entry[level][pos];
+        const auto lv = static_cast<size_t>(level);
+        for (size_t i = 0; i < lv; ++i) {
+            idx = idx * 8 + rank;
+            rank = _idx_entry[--level][idx];
+        }
+        return idx * 8 + rank;
+    }
+
+    size_t CritBitPyramid::trimRight(const uint16_t * cbegin, const uint16_t * from, const uint16_t * to) noexcept {
+        int level = -1;
+        size_t pos = from - cbegin;
+        size_t end_pos = to - cbegin;
+        if (end_pos - pos == 1) {
+            return pos;
+        }
+        assert(end_pos > pos + 1);
+
+        restart:
+        if (end_pos - pos > 1) {
+            size_t q = end_pos / 8;
+            size_t r = end_pos % 8;
+            if (r == 0) {
+                --q;
+                r = 8;
+            }
+
+            const uint16_t * start = to - r;
+            const uint16_t * min_elem = std::min_element(std::max(from, start), to);
+            const size_t idx = min_elem - start;
+
+            cbegin = _val_entry[++level];
+            from = cbegin + (pos = pos / 8);
+            to = cbegin + (end_pos = q + 1);
+
+            *const_cast<uint16_t *>(to - 1) = *min_elem;
+            _idx_entry[level][end_pos - 1] = static_cast<uint8_t>(idx);
+            goto restart;
+        }
+
+        size_t idx = pos;
+        size_t rank = _idx_entry[level][pos];
+        const auto lv = static_cast<size_t>(level);
+        for (size_t i = 0; i < lv; ++i) {
+            idx = idx * 8 + rank;
+            rank = _idx_entry[--level][idx];
+        }
+        return idx * 8 + rank;
+    }
+
+    const CritBitNode *
+    parseBDNode(const BDNode * node, size_t & size, std::array<CritBitNode, kRank + 1> & array) noexcept {
+        if (node->immut_ptrs()[0].isNull()) {
+            size = 0;
+            return nullptr;
+        }
+        if (node->immut_ptrs()[1].isNull()) {
+            size = 1;
+            return nullptr;
+        }
+
+        struct CmpObj {
+            uint16_t cmp;
+            uint16_t nth;
+        };
+        CmpObj cmp_stack_[kRank + 1];
+        cmp_stack_[0].nth = kRank;
+        CmpObj * const cmp_stack = cmp_stack_ + 1;
+
+        array[0] = {UINT16_MAX, UINT16_MAX};
+        cmp_stack[0] = {node->immut_diffs()[0], 0};
+        CmpObj * stack_head = cmp_stack;
+
+        for (size = 2; !(size == node->immut_diffs().size() || node->immut_ptrs()[size].isNull()); ++size) {
+            const auto i = static_cast<uint16_t>(size - 1);
+            const uint16_t res_cmp = node->immut_diffs()[i];
+
+            CmpObj * cend = stack_head + 1;
+            CmpObj * h = std::lower_bound(cmp_stack, cend, CmpObj{res_cmp},
+                                          [](const CmpObj & a, const CmpObj & b) noexcept {
+                                              return a.cmp < b.cmp;
+                                          });
+
+            if (h != cend) { // 替换
+                stack_head = h;
+                array[i] = {h->nth, UINT16_MAX};
+                array[(stack_head - 1)->nth].right = i;
+                *stack_head = {res_cmp, i};
+            } else { // 入栈
+                array[i] = {UINT16_MAX, UINT16_MAX};
+                array[stack_head->nth].right = i;
+                *(++stack_head) = {res_cmp, i};
             }
         }
-        return res - _diffs.cbegin();
-    }
 
-    void BDNode::setSize(uint16_t len) noexcept {
-        _len = len;
-    }
-
-    void BDNode::setMinAt(uint16_t min_at) noexcept {
-        _min_at = min_at;
-    }
-
-    void BDNode::update() noexcept {
-        setSize(static_cast<uint16_t>(calcSize()));
-        setMinAt(static_cast<uint16_t>(calcMinAt()));
+        return &array[cmp_stack->nth];
     }
 }

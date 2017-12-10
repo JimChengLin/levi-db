@@ -21,7 +21,7 @@ matrix:
 
     # Clang / Xcode 8
     - os: osx
-      osx_image: xcode8
+      osx_image: xcode8.3
 
     # Valgrind
     - os: linux

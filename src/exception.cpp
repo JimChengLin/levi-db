@@ -1,9 +1,7 @@
-#include "exception.h"
+#include "../include/exception.h"
 
 namespace levidb8 {
     std::string Exception::toString() const noexcept {
-        assert(_state != nullptr);
-
         std::string res;
         switch (code()) {
             case NOT_FOUND:
@@ -21,8 +19,6 @@ namespace levidb8 {
             case IO_ERROR:
                 res = "IO error: ";
                 break;
-            default:
-                assert(false);
         }
 
         uint32_t len;
@@ -32,23 +28,19 @@ namespace levidb8 {
     }
 
     Exception::Exception(Code code, const Slice & msg, const Slice & msg2) noexcept {
-        assert(code != 0);
-
         const size_t len = msg.size();
         const size_t len2 = msg2.size();
-        const size_t size = len + (len2 != 0 ? (2 + len2) : 0);
+        const auto size = static_cast<uint32_t>(len + len2 + (len2 != 0) * 2);
 
-        auto res = std::unique_ptr<char[]>(new char[size + 5]);
-        memcpy(res.get(), &size, sizeof(size));
-        res[4] = static_cast<char>(code);
+        _state = std::unique_ptr<char[]>(new char[size + 5]);
+        memcpy(_state.get(), &size, sizeof(size));
+        _state[4] = static_cast<char>(code);
 
-        memcpy(res.get() + 5, msg.data(), len);
+        memcpy(_state.get() + 5, msg.data(), len);
         if (len2 != 0) {
-            res[5 + len] = ':';
-            res[6 + len] = ' ';
-            memcpy(res.get() + 7 + len, msg2.data(), len2);
+            _state[5 + len] = ':';
+            _state[6 + len] = ' ';
+            memcpy(_state.get() + 7 + len, msg2.data(), len2);
         }
-
-        _state = std::move(res);
     }
 }

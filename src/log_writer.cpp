@@ -1,5 +1,4 @@
 #include "compress.h"
-#include "config.h"
 #include "crc32c.h"
 #include "env_io.h"
 #include "log_writer.h"
@@ -26,16 +25,16 @@ namespace levidb8 {
     }
 
     std::vector<uint32_t>
-    LogWriter::addRecordsMayDel(const std::vector<Slice> & bkvs, std::vector<uint32_t> addrs) {
+    LogWriter::addRecordsMayDel(const Slice * bkvs, size_t n, std::vector<uint32_t> addrs) {
         std::lock_guard<std::mutex> guard(_emit_lock);
-        addrs.resize(bkvs.size());
+        addrs.resize(n);
 
         bool record_begin = true;
-        for (size_t i = 0; i < bkvs.size(); ++i) {
+        for (size_t i = 0; i < n; ++i) {
             const Slice & bkv = bkvs[i];
 
             ConcatType record_type = FULL;
-            const bool record_end = (&bkv == &bkvs.back());
+            const bool record_end = (i == n - 1);
             if (record_begin && record_end) {
             } else if (record_begin) {
                 record_type = FIRST;
@@ -49,6 +48,7 @@ namespace levidb8 {
             addrs[i] = static_cast<bool>(addrs[i]) ? addRecordTpl<ADD_RECORD_FOR_DEL, false>(bkv, record_type)
                                                    : addRecordTpl<ADD_RECORD, false>(bkv, record_type);
         }
+        _dst->flush();
         return addrs;
     }
 
@@ -63,7 +63,7 @@ namespace levidb8 {
         guard_t guard(_emit_lock);
 
         restart:
-        static_assert(kLogBlockSize % kPageSize == 0, "no clash");
+        static_assert(kLogBlockSize % kPageSize == 0, "never clash");
         if (_block_offset % kPageSize == 0) {
             _dst->append({"\x00", 1});
             ++_block_offset;
@@ -71,11 +71,11 @@ namespace levidb8 {
                 _block_offset = 1;
             }
         }
-        if (_dst->immut_length() > kFileAddressLimit) {
+        if (_dst->immut_length() > kLogFileLimit) {
             throw LogFullControlledException();
         }
-        const auto pos = static_cast<uint32_t>(_dst->immut_length());
 
+        const auto pos = static_cast<uint32_t>(_dst->immut_length());
         const char * ptr = bkv.data();
         size_t left = bkv.size();
 
@@ -115,6 +115,10 @@ namespace levidb8 {
             ptr += fragment_length;
             left -= fragment_length;
         } while (left > 0);
+
+        if (LOCK) {
+            _dst->flush();
+        }
         return pos;
     }
 
@@ -159,7 +163,6 @@ namespace levidb8 {
 
         _dst->append(Slice(buf, kLogHeaderSize));
         _dst->append(Slice(ptr, length));
-        _dst->flush();
         _block_offset += kLogHeaderSize + length;
     }
 
@@ -180,17 +183,19 @@ namespace levidb8 {
         return res;
     }
 
-    std::vector<uint8_t> LogWriter::makeCompressedRecords(const std::vector<std::pair<Slice, Slice>> & kvs) {
+    std::vector<uint8_t> LogWriter::makeCompressedRecords(const std::pair<Slice, Slice> * kvs, size_t n) {
         size_t bin_size = 0;
         std::vector<uint8_t> src(sizeof(uint16_t));
-        for (const auto & kv:kvs) {
+        for (size_t i = 0; i < n; ++i) {
+            const auto kv = kvs[i];
             bin_size += kv.first.size();
             char buf[5];
             char * p = encodeVarint32(buf, static_cast<uint32_t>(kv.first.size()));
             src.insert(src.end(), reinterpret_cast<uint8_t *>(buf), reinterpret_cast<uint8_t *>(p));
         }
-        for (const auto & kv:kvs) {
-            assert(kv.second.data() != nullptr); // nullptr means batch-style del, cannot compress
+        for (size_t i = 0; i < n; ++i) {
+            const auto kv = kvs[i];
+            assert(kv.second.data() != nullptr); // nullptr = batch-style del
             bin_size += kv.second.size();
             char buf[5];
             char * p = encodeVarint32(buf, static_cast<uint32_t>(kv.second.size()));
@@ -201,16 +206,18 @@ namespace levidb8 {
         memcpy(&src[0], &meta_size, sizeof(meta_size));
 
         src.reserve(src.size() + bin_size);
-        for (const auto & kv:kvs) {
+        for (size_t i = 0; i < n; ++i) {
+            const auto kv = kvs[i];
             src.insert(src.end(),
                        reinterpret_cast<const uint8_t *>(kv.first.data()),
                        reinterpret_cast<const uint8_t *>(kv.first.data() + kv.first.size()));
         }
-        for (const auto & kv:kvs) {
+        for (size_t i = 0; i < n; ++i) {
+            const auto kv = kvs[i];
             src.insert(src.end(),
                        reinterpret_cast<const uint8_t *>(kv.second.data()),
                        reinterpret_cast<const uint8_t *>(kv.second.data() + kv.second.size()));
         }
-        return compressor::encode({src.data(), src.size()});
+        return compress::encode(src);
     }
 }

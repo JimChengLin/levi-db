@@ -5,7 +5,7 @@
 #include <rocksdb/db.h>
 #include <thread>
 
-#include "../src/db.h"
+#include "../include/db.h"
 #include "../src/env_io.h"
 
 /*
@@ -21,14 +21,14 @@ static constexpr int thread_num = 8;
 /*
  * 读取亚马逊电影评论, 每8行内容加1行空格为1组数据
  */
-class Src {
+class Provider {
 private:
     levidb8::SequentialFile _src;
     std::array<std::string, 9> _q;
     size_t _nth = 0;
 
 public:
-    Src() : _src(src_fname) {};
+    Provider() : _src(src_fname) {};
 
     std::pair<std::string, std::string>
     readItem() {
@@ -49,7 +49,7 @@ public:
 
 void levidb_write_bench() {
     const std::string db_name = "/tmp/levi_bench_db";
-    if (levidb8::env_io::fileExists(db_name)) {
+    if (levidb8::env_io::fileExist(db_name)) {
         levidb8::destroyDB(db_name);
     }
 
@@ -60,7 +60,7 @@ void levidb_write_bench() {
     std::vector<std::thread> jobs;
     for (size_t i = 0; i < thread_num; ++i) {
         jobs.emplace_back([&db](size_t n) {
-            Src src;
+            Provider src;
             for (size_t j = 0; j < test_times; ++j) {
                 if (j % thread_num == n) {
                     auto item = src.readItem();
@@ -79,10 +79,10 @@ void levidb_write_bench() {
 
 void rocksdb_write_bench() {
     const std::string db_name = "/tmp/rocks_bench_db";
-    if (levidb8::env_io::fileExists(db_name)) {
+    if (levidb8::env_io::fileExist(db_name)) {
         rocksdb::DestroyDB(db_name, {});
     }
-    assert(!levidb8::env_io::fileExists(db_name));
+    assert(!levidb8::env_io::fileExist(db_name));
 
     rocksdb::DB * db;
     rocksdb::Options options{};
@@ -93,7 +93,7 @@ void rocksdb_write_bench() {
     std::vector<std::thread> jobs;
     for (size_t i = 0; i < thread_num; ++i) {
         jobs.emplace_back([db](size_t n) {
-            Src src;
+            Provider src;
             for (size_t j = 0; j < test_times; ++j) {
                 if (j % thread_num == n) {
                     auto item = src.readItem();
@@ -118,11 +118,11 @@ void levidb_read_bench() {
     std::vector<std::thread> jobs;
     for (size_t i = 0; i < thread_num; ++i) {
         jobs.emplace_back([&db](size_t n) {
-            Src src;
+            Provider src;
             for (size_t j = 0; j < test_times; ++j) {
                 if (j % thread_num == n) {
                     auto item = src.readItem();
-                    auto res = db->get(item.first, {});
+                    auto res = db->get(item.first);
                     assert(res.first == item.second);
                 } else {
                     src.skipItem();
@@ -145,7 +145,7 @@ void rocksdb_read_bench() {
     std::vector<std::thread> jobs;
     for (size_t i = 0; i < thread_num; ++i) {
         jobs.emplace_back([db](size_t n) {
-            Src src;
+            Provider src;
             for (size_t j = 0; j < test_times; ++j) {
                 if (j % thread_num == n) {
                     auto item = src.readItem();
@@ -169,7 +169,7 @@ void levidb_scan_bench() {
     const std::string db_name = "/tmp/levi_bench_db";
     auto db = levidb8::DB::open(db_name, {});
 
-    auto it = db->scan({});
+    auto it = db->scan();
     size_t cnt = 0;
     for (it->seekToFirst();
          it->valid();

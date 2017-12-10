@@ -2,44 +2,44 @@
 #include <random>
 #include <unordered_set>
 
-#include "../src/index.h"
+#include "../src/index_debug.h"
 
 void index_test() {
     const std::string fname = "/tmp/bdt";
     static constexpr int test_times = 1000;
     static constexpr int test_times_plus = 10000;
 
-    if (levidb8::env_io::fileExists(fname)) {
+    if (levidb8::env_io::fileExist(fname)) {
         levidb8::env_io::deleteFile(fname);
     }
 
     {
-        levidb8::BitDegradeTree tree(fname);
-        for (int i = 2; i < test_times; i += 2) {
+        levidb8::BitDegradeTreeDebug tree(fname);
+        for (size_t i = 2; i < test_times; i += 2) {
             auto val = static_cast<uint32_t>(i);
             tree.insert({reinterpret_cast<const char *>(&val), sizeof(val)}, {val});
-            for (int j = 2; j <= i; j += 2) {
+            for (size_t j = 2; j <= i; j += 2) {
                 val = static_cast<uint32_t>(j);
                 assert(tree.find({reinterpret_cast<const char *>(&val), sizeof(val)}).val == val);
             }
         }
         assert(tree.size() == test_times / 2 - 1);
 
-        for (int i = 2; i < test_times; i += 2) {
+        for (size_t i = 2; i < test_times; i += 2) {
             auto val = static_cast<uint32_t>(i);
             tree.remove({reinterpret_cast<const char *>(&val), sizeof(val)}, {});
             assert(tree.find({reinterpret_cast<const char *>(&val), sizeof(val)}).val != val);
-            for (int j = i + 2; j < test_times; j += 2) {
+            for (size_t j = i + 2; j < test_times; j += 2) {
                 val = static_cast<uint32_t>(j);
                 assert(tree.find({reinterpret_cast<const char *>(&val), sizeof(val)}).val == val);
             }
         }
         assert(tree.size() == 0);
 
-        for (int i = 2; i < test_times; i += 2) {
+        for (size_t i = 2; i < test_times; i += 2) {
             auto val = static_cast<uint32_t>(i);
             tree.insert({reinterpret_cast<const char *>(&val), sizeof(val)}, {val});
-            for (int j = 2; j <= i; j += 2) {
+            for (size_t j = 2; j <= i; j += 2) {
                 val = static_cast<uint32_t>(j);
                 assert(tree.find({reinterpret_cast<const char *>(&val), sizeof(val)}).val == val);
             }
@@ -49,12 +49,12 @@ void index_test() {
     auto seed = std::random_device{}();
     {
         levidb8::env_io::deleteFile(fname);
-        levidb8::BitDegradeTree tree(fname);
+        levidb8::BitDegradeTreeDebug tree(fname);
         std::unordered_set<std::string> ctrl;
         std::default_random_engine gen(seed);
 
-        for (int i = 0; i < test_times_plus; ++i) {
-            auto val = std::uniform_int_distribution<uint32_t>(0, UINT32_MAX)(gen);
+        for (size_t i = 0; i < test_times_plus; ++i) {
+            auto val = std::uniform_int_distribution<uint32_t>(0, UINT32_MAX >> 1)(gen);
             if (val == levidb8::kDiskNull || val % levidb8::kPageSize == 0) {
                 continue;
             }

@@ -3,17 +3,10 @@
 #define LEVIDB8_DB_H
 
 /*
- * 对外 DB 接口
+ * DB 接口
  */
 
 #include <functional>
-#include <memory>
-
-#ifndef __clang__
-
-#include <vector>
-
-#endif
 
 #include "exception.h"
 #include "iterator.h"
@@ -34,17 +27,18 @@ namespace levidb8 {
         virtual bool remove(const Slice & key,
                             const RemoveOptions & options) = 0;
 
-        // kvs 必须有序
-        // nullSlice as value = del
-        virtual bool write(const std::vector<std::pair<Slice, Slice>> & kvs,
+        // kvs 必须升序排列
+        // nullSlice 作为 value = del
+        virtual bool write(const std::pair<Slice, Slice> * kvs, size_t n,
                            const WriteOptions & options) = 0;
 
-        virtual std::pair<std::string, bool>
-        get(const Slice & key,
-            const ReadOptions & options/* 预留 */) const = 0;
+        virtual std::pair<std::string, bool/* success */>
+        get(const Slice & key) const = 0;
 
-        virtual std::unique_ptr<Iterator<Slice/* K */, Slice/* V */>>
-        scan(const ScanOptions & options/* 预留 */) const = 0;
+        virtual std::unique_ptr<Iterator<Slice/* K */, Slice/* V */, bool/* del */>>
+        scan() const = 0;
+
+        virtual bool exist(const Slice & key) const = 0;
 
         virtual void sync() = 0;
 
@@ -52,10 +46,11 @@ namespace levidb8 {
         static std::unique_ptr<DB>
         open(const std::string & name,
              const OpenOptions & options);
+
     };
 
     bool repairDB(const std::string & name,
-                  std::function<void(const Exception &, uint32_t)> reporter) noexcept;
+                  std::function<void(const Exception &, uint32_t/* pos */)> reporter) noexcept;
 
     void destroyDB(const std::string & name);
 }

@@ -20,17 +20,9 @@ namespace levidb8 {
         bool try_compress = true;
     };
 
-    struct ReadOptions {
-
-    };
-
-    struct ScanOptions {
-
-    };
-
     struct OpenOptions {
         bool create_if_missing = false;
-        bool error_if_exists = false;
+        bool error_if_exist = false;
     };
 }
 

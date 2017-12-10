@@ -6,10 +6,8 @@
  * 迭代器接口
  */
 
-#include "slice.h"
-
 namespace levidb8 {
-    template<typename K, typename V>
+    template<typename K, typename V, typename I = bool>
     class Iterator {
     public:
         Iterator() noexcept = default;
@@ -23,9 +21,7 @@ namespace levidb8 {
 
         virtual void seekToLast() = 0;
 
-        virtual void seek(const Slice & target) = 0;
-
-        virtual void seekForPrev(const Slice & target) = 0;
+        virtual void seek(const K & target) = 0;
 
         virtual void next() = 0;
 
@@ -34,23 +30,8 @@ namespace levidb8 {
         virtual K key() const = 0;
 
         virtual V value() const = 0;
-    };
 
-    template<typename T>
-    class SimpleIterator {
-    public:
-        SimpleIterator() noexcept = default;
-
-    public:
-        virtual ~SimpleIterator() noexcept = default;
-
-        virtual void prepare() = 0;
-
-        virtual void next() = 0;
-
-        virtual bool valid() const = 0;
-
-        virtual T item() const = 0;
+        virtual I info() const { return {}; }
     };
 }
 
