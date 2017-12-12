@@ -365,6 +365,9 @@ if (parent != nullptr \
                         std::tie(probe_idx, probe_direct, std::ignore) = pos;
 
                         CritPtr probe_ptr = probe->immut_ptrs()[probe_idx + static_cast<size_t>(probe_direct)];
+                        if (probe_ptr.isNull()) {
+                            return false;
+                        }
                         if (probe_ptr.isNode()) {
                             probe_read_guard = RWLockReadGuard(offToNodeLock(probe_ptr.asNode()));
                             probe = offToMemNode(probe_ptr.asNode());

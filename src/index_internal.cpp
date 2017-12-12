@@ -157,6 +157,7 @@ namespace levidb8 {
         }
 
         size_t idx = pos;
+        // coverity[negative_returns]
         size_t rank = _idx_entry[level][pos];
         const auto lv = static_cast<size_t>(level);
         for (size_t i = 0; i < lv; ++i) {
@@ -198,6 +199,7 @@ namespace levidb8 {
         }
 
         size_t idx = pos;
+        // coverity[negative_returns]
         size_t rank = _idx_entry[level][pos];
         const auto lv = static_cast<size_t>(level);
         for (size_t i = 0; i < lv; ++i) {
@@ -209,13 +211,11 @@ namespace levidb8 {
 
     const CritBitNode *
     parseBDNode(const BDNode * node, size_t & size, std::array<CritBitNode, kRank + 1> & array) noexcept {
-        if (node->immut_ptrs()[0].isNull()) {
-            size = 0;
-            return nullptr;
-        }
+        assert(!node->immut_ptrs()[0].isNull());
         if (node->immut_ptrs()[1].isNull()) {
             size = 1;
-            return nullptr;
+            array[0] = {UINT16_MAX, UINT16_MAX};
+            return &array[0];
         }
 
         struct CmpObj {
@@ -230,7 +230,7 @@ namespace levidb8 {
         cmp_stack[0] = {node->immut_diffs()[0], 0};
         CmpObj * stack_head = cmp_stack;
 
-        for (size = 2; !(size == node->immut_diffs().size() || node->immut_ptrs()[size].isNull()); ++size) {
+        for (size = 2; !(size == node->immut_ptrs().size() || node->immut_ptrs()[size].isNull()); ++size) {
             const auto i = static_cast<uint16_t>(size - 1);
             const uint16_t res_cmp = node->immut_diffs()[i];
 
@@ -251,7 +251,7 @@ namespace levidb8 {
                 *(++stack_head) = {res_cmp, i};
             }
         }
-
+        assert(size == node->size());
         return &array[cmp_stack->nth];
     }
 }
