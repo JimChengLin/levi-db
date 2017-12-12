@@ -135,7 +135,7 @@ namespace levidb8 {
 
         Slice key() const override {
             if (not(_record_offset == _iter.value().val && _record_iter != nullptr)) {
-                _record_offset = _iter.value().val;
+                _record_offset = unmaskOffsetToData(_iter.value());
                 _record_iter = RecordIterator::open(_cache->data_file, _record_offset, _cache->record_cache);
             } else if (_record_iter->valid() && compatible(_record_iter->key(), _iter.key())) {
                 return _record_iter->key();
@@ -154,7 +154,7 @@ namespace levidb8 {
 
         Slice value() const override {
             if (not(_record_offset == _iter.value().val && _record_iter != nullptr)) {
-                _record_offset = _iter.value().val;
+                _record_offset = unmaskOffsetToData(_iter.value());
                 _record_iter = RecordIterator::open(_cache->data_file, _record_offset, _cache->record_cache);
             } else if (_record_iter->valid() && compatible(_record_iter->key(), _iter.key())) {
                 return _record_iter->value();
