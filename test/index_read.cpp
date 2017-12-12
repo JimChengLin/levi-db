@@ -68,6 +68,7 @@ void index_read_test() {
         for (iter->seekToFirst();
              iter->valid();
              iter->next()) {
+            assert(iter->key().size() != 0);
             ++cnt;
         }
         assert(cnt == 100 + 3);

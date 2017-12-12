@@ -53,7 +53,7 @@ namespace levidb8 {
 
         virtual void restart(Connector && connector) = 0;
 
-        virtual bool metAll() const = 0;
+        virtual bool isStatic() const = 0;
     };
 
     class RawIteratorNoTypeCheck : public RawIterator {
@@ -75,9 +75,8 @@ namespace levidb8 {
 
         void next() override {
             restart:
-            bool pad =
-                    (_cursor % kPageSize == 0 &&
-                     (isRecordLast(_type) || isRecordFull(_type)) && _page.size() != 0);
+            bool pad = (_cursor % kPageSize == 0
+                        && (isRecordLast(_type) || isRecordFull(_type)) && _page.size() != 0);
             _cursor += static_cast<uint32_t>(pad);
             size_t block_offset = _cursor % kLogBlockSize;
             size_t remaining_bytes = kLogBlockSize - block_offset;
@@ -129,6 +128,8 @@ namespace levidb8 {
         void restart(RandomAccessFile * data_file, uint32_t offset) override {
             _dst = data_file;
             _cursor = offset;
+            _type = 0;
+            _eof = false;
         }
     };
 
@@ -491,7 +492,7 @@ namespace levidb8 {
             _done = true;
         }
 
-        bool metAll() const override { return _connector._met_all; }
+        bool isStatic() const override { return _connector._met_all && _k_len != 0; }
     };
 
     class CompressedRecordsIterator : public KeyValueIterator {
@@ -601,7 +602,7 @@ namespace levidb8 {
             _cursor = _rep.cend();
         }
 
-        bool metAll() const override { return _connector._met_all; }
+        bool isStatic() const override { return _connector._met_all && !_rep.empty(); }
     };
 
     class TableIteratorImpl : public TableIterator {
@@ -796,8 +797,7 @@ namespace levidb8 {
         explicit RecordIteratorCacheNormalImpl(
                 std::shared_ptr<RecordCache::DataUnit> unit) noexcept
                 : _unit(std::move(unit)),
-                  _normal_iter(static_cast<NormalRecordIterator *>(_unit->iter.get())) {
-        }
+                  _normal_iter(static_cast<NormalRecordIterator *>(_unit->iter.get())) {}
 
         ~RecordIteratorCacheNormalImpl() noexcept override = default;
 
@@ -842,8 +842,7 @@ namespace levidb8 {
         explicit RecordIteratorCacheCompressImpl(
                 std::shared_ptr<RecordCache::DataUnit> unit) noexcept
                 : _unit(std::move(unit)),
-                  _compress_iter(
-                          static_cast<CompressedRecordsIterator *>(_unit->iter.get())),
+                  _compress_iter(static_cast<CompressedRecordsIterator *>(_unit->iter.get())),
                   _cursor(_compress_iter->_rep.cend()) {}
 
         ~RecordIteratorCacheCompressImpl() noexcept override = default;
@@ -876,14 +875,12 @@ namespace levidb8 {
 
         Slice key() const override {
             const auto k_from_to = _cursor->first;
-            _compress_iter->_connector.ensureLoad(k_from_to.second);
             return {&_compress_iter->_connector._buffer[k_from_to.first],
                     k_from_to.second - k_from_to.first};
         }
 
         Slice value() const override {
             const auto v_from_to = _cursor->second;
-            _compress_iter->_connector.ensureLoad(v_from_to.second);
             return {&_compress_iter->_connector._buffer[v_from_to.first],
                     v_from_to.second - v_from_to.first};
         }
@@ -906,7 +903,7 @@ namespace levidb8 {
                   _compress(compress) {}
 
         ~RecordIteratorImpl() override {
-            if (_iter->metAll()) {
+            if (_iter->isStatic() && __builtin_popcountll(reinterpret_cast<uintptr_t>(this)) % 2 == 0) {
                 size_t pos = std::hash<uint32_t>()(_offset) % _record_cache->data_cache.size();
                 auto ptr = std::make_shared<RecordCache::DataUnit>();
                 ptr->iter = std::move(_iter);
@@ -950,6 +947,7 @@ namespace levidb8 {
     std::unique_ptr<RecordIterator>
     RecordIterator::open(RandomAccessFile * data_file, uint32_t offset,
                          RecordCache & cache) {
+        assert(offset < kLogFileLimit);
         {
             const size_t pos = std::hash<uint32_t>()(offset) % cache.data_cache.size();
             auto ptr = std::atomic_load(&cache.data_cache[pos]);

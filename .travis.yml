@@ -1,5 +1,4 @@
 language: cpp
-dist: trusty
 sudo: require
 
 matrix:
@@ -13,13 +12,13 @@ matrix:
           packages:
             - g++-6
       env:
-        - COVERAGE="on"
+        - COVERAGE="ON"
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
       after_success:
         - pip install --user cpp-coveralls
         - coveralls -r .. --gcov-options '\-lp'
 
-    # Clang / Xcode 8
+    # Clang
     - os: osx
       osx_image: xcode8.3
 
@@ -35,7 +34,7 @@ matrix:
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
       script:
-        - make levidb8 -j2 && valgrind --leak-check=full --error-exitcode=99 ./levidb8
+        - make levidb8 -j2 && valgrind --leak-check=full --error-exitcode=1995 ./levidb8
 
     # Coverity
     - os: linux

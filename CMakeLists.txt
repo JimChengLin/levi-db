@@ -8,16 +8,16 @@ set(CMAKE_CXX_STANDARD 14)
 add_compile_options(-msse4.2)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    add_compile_options(-DOS_MACOSX)
+    add_definitions(-DOS_MACOSX)
 endif ()
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "on")
+if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "$ENV{COVERAGE}" STREQUAL "ON")
     list(APPEND CMAKE_CXX_FLAGS "-fprofile-arcs -ftest-coverage")
 endif ()
 
 set(DO_BENCH OFF) # change "OFF" to "ON", if bench
 if (DO_BENCH)
-    add_compile_options(-DLEVI_BENCH)
+    add_definitions(-DLEVI_BENCH)
 endif ()
 
 set(LEVI_SOURCE_FILES
