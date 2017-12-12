@@ -87,11 +87,14 @@ void index_thread_test() {
                     auto seed = std::random_device{}();
                     std::default_random_engine gen(seed);
                     auto val = std::uniform_int_distribution<uint32_t>(start, limit)(gen);
+                    val = val % levidb8::kPageSize == 0 ? val + 1 : val;
                     try {
                         tree.find({reinterpret_cast<const char *>(&val), sizeof(val)});
                         val = std::uniform_int_distribution<uint32_t>(start, limit)(gen);
+                        val = val % levidb8::kPageSize == 0 ? val + 1 : val;
                         tree.insert({reinterpret_cast<const char *>(&val), sizeof(val)}, {val});
                         val = std::uniform_int_distribution<uint32_t>(start, limit)(gen);
+                        val = val % levidb8::kPageSize == 0 ? val + 1 : val;
                         tree.remove({reinterpret_cast<const char *>(&val), sizeof(val)}, {});
                     } catch (const levidb8::Exception & e) {
                         std::cout << e.toString() << std::endl;

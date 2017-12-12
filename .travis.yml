@@ -55,7 +55,7 @@ matrix:
             description: "levi-db"
           notification_email: zuodd@qq.com
           build_command_prepend: "cov-configure --comptype gcc --compiler gcc-6 --template && cd .. && cmake . -DCMAKE_BUILD_TYPE=Debug"
-          build_command: "make -j2"
+          build_command: "make levidb8 -j2"
           branch_pattern: master
       before_install:
         - eval "${MATRIX_EVAL}"

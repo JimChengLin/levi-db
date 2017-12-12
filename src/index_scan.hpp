@@ -15,12 +15,13 @@ namespace levidb8 {
         USR _usr;
         std::string _key;
         BDNode _node_clone;
-        std::array<CritBitNode, kRank + 1> _crit_nodes;
         const CritBitNode * _head{};
+        std::array<CritBitNode, kRank + 1> _crit_nodes;
         int _cursor{};
         bool _valid = false;
 
     public:
+        // coverity[uninit_member]
         explicit BDIterator(const BitDegradeTree * index) noexcept : _index(index) {}
 
         bool valid() const noexcept {
@@ -82,33 +83,34 @@ namespace levidb8 {
 
         void loadToKey(const Slice & k) {
             _usr.clear();
-            RWLockReadGuard read_guard(&_index->_expand_lock);
+            {
+                RWLockReadGuard read_guard(&_index->_expand_lock);
+                RWLockReadGuard node_read_guard(_index->offToNodeLock(_root));
+                const BDNode * cursor = _index->offToMemNode(_root);
+                while (true) {
+                    auto pos = _index->findBestMatch(cursor, k, &_usr);
+                    size_t idx;
+                    bool direct;
+                    std::tie(idx, direct, std::ignore) = pos;
 
-            RWLockReadGuard node_read_guard(_index->offToNodeLock(_root));
-            const BDNode * cursor = _index->offToMemNode(_root);
-            while (true) {
-                auto pos = _index->findBestMatch(cursor, k, &_usr);
-                size_t idx;
-                bool direct;
-                std::tie(idx, direct, std::ignore) = pos;
-
-                _cursor = static_cast<int>(idx + direct);
-                CritPtr ptr = cursor->immut_ptrs()[_cursor];
-                if (ptr.isNull()) {
-                    _valid = false;
-                    break;
-                }
-                if (ptr.isNode()) {
-                    node_read_guard = RWLockReadGuard(_index->offToNodeLock(ptr.asNode()));
-                    cursor = _index->offToMemNode(ptr.asNode());
-                } else {
-                    _node_clone = *cursor;
-                    _valid = true;
-                    break;
+                    _cursor = static_cast<int>(idx + direct);
+                    CritPtr ptr = cursor->immut_ptrs()[_cursor];
+                    if (ptr.isNull()) {
+                        _valid = false;
+                        break;
+                    }
+                    if (ptr.isNode()) {
+                        node_read_guard = RWLockReadGuard(_index->offToNodeLock(ptr.asNode()));
+                        cursor = _index->offToMemNode(ptr.asNode());
+                    } else {
+                        _node_clone = *cursor;
+                        _valid = true;
+                        break;
+                    }
                 }
             }
 
-            size_t _ = 0;
+            size_t _;
             _head = parseBDNode(&_node_clone, _, _crit_nodes);
         }
 
@@ -129,13 +131,11 @@ namespace levidb8 {
         }
 
         void configureUsrForNext() noexcept {
-            largerKey();
-            configureUsr<false>();
+            configureUsr<false>(largerKey());
         }
 
         void configureUsrForPrev() noexcept {
-            smallerKey();
-            configureUsr<true>();
+            configureUsr<true>(smallerKey());
         }
 
     private:
@@ -190,29 +190,30 @@ namespace levidb8 {
         template<bool RIGHT_FIRST>
         void loadToTarget(const Slice & target) {
             _usr.clear();
-            RWLockReadGuard read_guard(&_index->_expand_lock);
+            {
+                RWLockReadGuard read_guard(&_index->_expand_lock);
+                RWLockReadGuard node_read_guard(_index->offToNodeLock(_root));
+                const BDNode * cursor = _index->offToMemNode(_root);
+                while (true) {
+                    auto pos = findBestMatch<RIGHT_FIRST>(cursor, target, &_usr);
+                    size_t idx;
+                    bool direct;
+                    std::tie(idx, direct) = pos;
 
-            RWLockReadGuard node_read_guard(_index->offToNodeLock(_root));
-            const BDNode * cursor = _index->offToMemNode(_root);
-            while (true) {
-                auto pos = findBestMatch<RIGHT_FIRST>(cursor, target, &_usr);
-                size_t idx;
-                bool direct;
-                std::tie(idx, direct) = pos;
-
-                _cursor = static_cast<int>(idx + direct);
-                CritPtr ptr = cursor->immut_ptrs()[_cursor];
-                if (ptr.isNull()) {
-                    _valid = false;
-                    break;
-                }
-                if (ptr.isNode()) {
-                    node_read_guard = RWLockReadGuard(_index->offToNodeLock(ptr.asNode()));
-                    cursor = _index->offToMemNode(ptr.asNode());
-                } else {
-                    _node_clone = *cursor;
-                    _valid = true;
-                    break;
+                    _cursor = static_cast<int>(idx + direct);
+                    CritPtr ptr = cursor->immut_ptrs()[_cursor];
+                    if (ptr.isNull()) {
+                        _valid = false;
+                        break;
+                    }
+                    if (ptr.isNode()) {
+                        node_read_guard = RWLockReadGuard(_index->offToNodeLock(ptr.asNode()));
+                        cursor = _index->offToMemNode(ptr.asNode());
+                    } else {
+                        _node_clone = *cursor;
+                        _valid = true;
+                        break;
+                    }
                 }
             }
 
@@ -221,7 +222,7 @@ namespace levidb8 {
         }
 
         template<bool RIGHT_FIRST>
-        void configureUsr() noexcept {
+        void configureUsr(const Slice & key) noexcept {
             const CritBitNode * cursor = _head;
             while (true) {
                 const uint16_t min_val = _node_clone.immut_diffs()[cursor - _crit_nodes.cbegin()];
@@ -230,8 +231,8 @@ namespace levidb8 {
                 const uint8_t mask = static_cast<uint8_t>(1) << shift;
 
                 // left or right?
-                uint8_t crit_byte = _key.size() > diff_at ? charToUint8(_key[diff_at])
-                                                          : static_cast<uint8_t>(RIGHT_FIRST ? UINT8_MAX : 0);
+                uint8_t crit_byte = key.size() > diff_at ? charToUint8(key[diff_at])
+                                                         : static_cast<uint8_t>(RIGHT_FIRST ? UINT8_MAX : 0);
                 auto direct = static_cast<bool>((1 + (crit_byte | static_cast<uint8_t>(~mask))) >> 8);
                 _usr.reveal(diff_at, uint8ToChar(mask), direct, shift);
 
@@ -256,10 +257,7 @@ namespace levidb8 {
             do {
                 --i;
                 if ((_usr.immut_extra()[i] & _usr.immut_src()[i]) == 0) {
-                    if (i == 0) {
-                        assert(metMin());
-                        break;
-                    }
+                    assert(i != 0);
                     continue;
                 }
 
@@ -267,10 +265,12 @@ namespace levidb8 {
                 memcpy(&_key[0], _usr.immut_src().data(), _key.size());
 
                 --_key[i];
+                for (size_t j = 0; j < _key.size(); ++j) {
+                    _key[j] |= ~_usr.immut_extra()[j];
+                }
                 // coverity[leaked_storage]
                 break;
             } while (true);
-
             return _key;
         }
 
@@ -280,10 +280,7 @@ namespace levidb8 {
                 --i;
                 char xor_res;
                 if ((xor_res = (_usr.immut_extra()[i] ^ _usr.immut_src()[i])) == 0) {
-                    if (i == 0) {
-                        assert(metMax());
-                        break;
-                    }
+                    assert(i != 0);
                     continue;
                 }
 
@@ -296,7 +293,6 @@ namespace levidb8 {
                 // coverity[leaked_storage]
                 break;
             } while (true);
-
             return _key;
         }
 

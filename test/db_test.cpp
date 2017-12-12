@@ -30,7 +30,9 @@ void db_test() {
         try {
             levidb8::OpenOptions options{};
             options.create_if_missing = true;
+            options.error_if_exist = true;
             auto db = levidb8::DB::open(db_name, options);
+            assert(false);
         } catch (const levidb8::Exception & e) {
             assert(e.isInvalidArgument());
         }
