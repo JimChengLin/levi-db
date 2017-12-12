@@ -282,7 +282,7 @@ if (parent != nullptr \
         auto mask = static_cast<uint8_t>(1 << shift);
         auto direct = static_cast<bool>((1 + (static_cast<uint8_t>(~mask) | charToUint8(k_m[diff_at]))) >> 8);
 
-        uint16_t cmp = static_cast<uint8_t>((~shift & 0b111) | (diff_at << 3));
+        uint16_t cmp = static_cast<uint16_t>(~shift & 0b111) | (diff_at << 3);
         RWLockReadGuard node_read_guard(offToNodeLock(_root));
         BDNode * cursor = offToMemNode(_root);
         while (true) {
