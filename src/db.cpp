@@ -91,6 +91,7 @@ namespace levidb8 {
         bool put(const Slice & key,
                  const Slice & value,
                  const PutOptions & options) override {
+            assert(key.size() <= kLenKeyLimit);
             try {
                 auto bkv = LogWriter::makeRecord(key, value);
                 uint32_t pos = _writer->addRecord(bkv);
@@ -108,6 +109,7 @@ namespace levidb8 {
 
         bool remove(const Slice & key,
                     const RemoveOptions & options) override {
+            assert(key.size() <= kLenKeyLimit);
             try {
                 auto bkv = LogWriter::makeRecord(key, {});
                 uint32_t pos = _writer->addRecordForDel(bkv);
@@ -158,6 +160,7 @@ namespace levidb8 {
 
                 for (size_t i = 0; i < n; ++i) {
                     const auto & kv = kvs[i];
+                    assert(kv.first.size() <= kLenKeyLimit);
                     bkvs.emplace_back(LogWriter::makeRecord(kv.first, kv.second));
                     slices.emplace_back(bkvs.back());
                     addrs.emplace_back(kv.second.data() == nullptr); // 1 = del
@@ -185,6 +188,7 @@ namespace levidb8 {
 
         std::pair<std::string, bool>
         get(const Slice & key) const override {
+            assert(key.size() <= kLenKeyLimit);
             std::pair<std::string, bool> res;
             res.second = _index->find(key, &res.first);
             return res;
@@ -196,6 +200,7 @@ namespace levidb8 {
         };
 
         bool exist(const Slice & key) const override {
+            assert(key.size() <= kLenKeyLimit);
             return _index->find(key, nullptr);
         }
 

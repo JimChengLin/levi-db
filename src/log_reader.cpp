@@ -983,12 +983,13 @@ namespace levidb8 {
             decltype(p.load()) e;
             if ((e = p.load(std::memory_order_acquire)) != nullptr) {
                 if (p.compare_exchange_strong(e, nullptr)) {
-                    Connector connector = static_cast<KeyValueIterator *>(e)->yieldConnector();
+                    auto * ptr = static_cast<KeyValueIterator *>(e);
+                    Connector connector = ptr->yieldConnector();
                     connector.restart(data_file, offset);
                     connector.ensureLoad(1);
-                    static_cast<KeyValueIterator *>(e)->restart(std::move(connector));
+                    ptr->restart(std::move(connector));
                     return std::make_unique<RecordIteratorImpl>(
-                            std::unique_ptr<KeyValueIterator>(static_cast<KeyValueIterator *>(e)),
+                            std::unique_ptr<KeyValueIterator>(ptr),
                             &cache, offset, compress);
                 }
             }
