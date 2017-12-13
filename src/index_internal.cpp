@@ -60,7 +60,7 @@ namespace levidb8 {
 
     OffsetToData CritPtr::asData() const noexcept {
         assert(isData());
-        return {_offset};
+        return {_offset & (~(1 << 31))};
     }
 
     OffsetToNode CritPtr::asNode() const noexcept {
@@ -89,8 +89,20 @@ namespace levidb8 {
         return lo;
     }
 
+    static inline const uint16_t * smartMinElem(const uint16_t * from, const uint16_t * to) noexcept {
+        if (to - from < 8) {
+            return std::min_element(from, to);
+        }
+        __m128i vec = _mm_loadu_si128(reinterpret_cast<const __m128i *>(from));
+        __m128i res = _mm_minpos_epu16(vec);
+        return from + _mm_extract_epi16(res, 1);
+    }
+
     size_t CritBitPyramid::build(const uint16_t * from, const uint16_t * to) noexcept {
         size_t size = to - from;
+        if (size <= 8) {
+            return smartMinElem(from, to) - from;
+        }
         size_t level = 0;
 
         while (true) {
@@ -134,17 +146,17 @@ namespace levidb8 {
         int level = -1;
         size_t pos = from - cbegin;
         size_t end_pos = to - cbegin;
-        if (end_pos - pos == 1) {
-            return pos;
+        assert(end_pos >= pos + 1);
+        if (end_pos - pos <= 8) {
+            return smartMinElem(from, to) - cbegin;
         }
-        assert(end_pos > pos + 1);
 
         restart:
         if (end_pos - pos > 1) {
             const size_t q = pos / 8;
             const size_t r = pos % 8;
 
-            const uint16_t * min_elem = std::min_element(from, std::min(from + (8 - r), to));
+            const uint16_t * min_elem = smartMinElem(from, std::min(from + (8 - r), to));
             const size_t idx = (min_elem - from) + r;
 
             cbegin = _val_entry[++level];
@@ -171,10 +183,10 @@ namespace levidb8 {
         int level = -1;
         size_t pos = from - cbegin;
         size_t end_pos = to - cbegin;
-        if (end_pos - pos == 1) {
-            return pos;
+        assert(end_pos >= pos + 1);
+        if (end_pos - pos <= 8) {
+            return smartMinElem(from, to) - cbegin;
         }
-        assert(end_pos > pos + 1);
 
         restart:
         if (end_pos - pos > 1) {
@@ -186,7 +198,7 @@ namespace levidb8 {
             }
 
             const uint16_t * start = to - r;
-            const uint16_t * min_elem = std::min_element(std::max(from, start), to);
+            const uint16_t * min_elem = smartMinElem(std::max(from, start), to);
             const size_t idx = min_elem - start;
 
             cbegin = _val_entry[++level];

@@ -26,9 +26,12 @@ namespace levidb8 {
 
     struct RecordCache {
         struct DataUnit {
+            RecordCache * record_cache{};
             std::unique_ptr<Iterator<Slice, Slice, LogMeta>> iter;
             uint32_t offset{};
             bool compress{};
+
+            ~DataUnit() noexcept;
         };
 
         std::array<std::atomic<Iterator<Slice, Slice, LogMeta> *>, kReaderObjCacheNum> normal_obj_cache{};

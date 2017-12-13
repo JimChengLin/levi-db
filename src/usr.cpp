@@ -20,7 +20,7 @@ namespace levidb8 {
     }
 
     void UniversalStringRepresentation::clear() noexcept {
-        _src.clear();
-        _extra.clear();
+        _src.assign(1, static_cast<char>(0));
+        _extra.assign(1, static_cast<char>(0));
     }
 }

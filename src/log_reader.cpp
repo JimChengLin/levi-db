@@ -779,7 +779,23 @@ namespace levidb8 {
         return std::make_unique<RecoveryIteratorImpl>(data_file, std::move(reporter));
     }
 
+    RecordCache::DataUnit::~DataUnit() noexcept {
+        for (auto & ptr : (compress ? record_cache->compress_obj_cache
+                                    : record_cache->normal_obj_cache)) {
+            if (ptr.load(std::memory_order_acquire) == nullptr) {
+                decltype(ptr.load()) e = nullptr;
+                if (ptr.compare_exchange_strong(e, iter.get())) {
+                    iter.release();
+                    break;
+                }
+            }
+        }
+    }
+
     RecordCache::~RecordCache() noexcept {
+        for (auto & ptr:data_cache) {
+            ptr.reset();
+        }
         for (auto * cache : {&compress_obj_cache, &normal_obj_cache}) {
             for (size_t i = 0; i < cache->size(); ++i) {
                 delete cache->operator[](i).load(std::memory_order_acquire);
@@ -903,9 +919,10 @@ namespace levidb8 {
                   _compress(compress) {}
 
         ~RecordIteratorImpl() override {
-            if (_iter->isStatic() && __builtin_popcountll(reinterpret_cast<uintptr_t>(this)) % 2 == 0) {
+            if (_iter->isStatic()) {
                 size_t pos = std::hash<uint32_t>()(_offset) % _record_cache->data_cache.size();
                 auto ptr = std::make_shared<RecordCache::DataUnit>();
+                ptr->record_cache = _record_cache;
                 ptr->iter = std::move(_iter);
                 ptr->offset = _offset;
                 ptr->compress = _compress;

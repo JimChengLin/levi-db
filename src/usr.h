@@ -12,7 +12,8 @@ namespace levidb8 {
         std::string _extra;
 
     public:
-        UniversalStringRepresentation() = default;
+        UniversalStringRepresentation() noexcept : _src(1, static_cast<char>(0)),
+                                                   _extra(1, static_cast<char>(0)) {};
 
         UniversalStringRepresentation(std::string src) noexcept
                 : _src(std::move(src)), _extra(_src.size(), uint8ToChar(UINT8_MAX)) {}

@@ -222,12 +222,6 @@ if (parent != nullptr \
 
         size_t size = node->size();
         if (size <= 1) {
-            if (reveal_info != nullptr) {
-                reveal_info->mut_src().resize(1);
-                reveal_info->mut_src().front() = 0;
-                reveal_info->mut_extra().resize(1);
-                reveal_info->mut_extra().front() = 0;
-            }
             return {0, false, size};
         }
         cend = &node->immut_diffs()[size - 1];
@@ -459,8 +453,8 @@ if (parent != nullptr \
     }
 
     template<typename OFFSET_M, typename SLICE_M, typename CACHE>
-    void
-    BitDegradeTree<OFFSET_M, SLICE_M, CACHE>::nodeRemove(BDNode * node, size_t idx, bool direct, size_t size) noexcept {
+    void BitDegradeTree<OFFSET_M, SLICE_M, CACHE>::
+    nodeRemove(BDNode * node, size_t idx, bool direct, size_t size) noexcept {
         assert(size >= 1);
         if (size > 1) {
             del_gap(node->mut_diffs(), idx, size - 1);
@@ -473,28 +467,22 @@ if (parent != nullptr \
 #define cpy_all(dst, idx, src, size) memcpy(&(dst)[(idx)], &(src)[0], sizeof((src)[0]) * (size));
 
     template<typename OFFSET_M, typename SLICE_M, typename CACHE>
-    void
-    BitDegradeTree<OFFSET_M, SLICE_M, CACHE>::tryMerge(BDNode * parent, size_t idx, bool direct, size_t parent_size,
-                                                       BDNode * child, size_t child_size) noexcept {
+    void BitDegradeTree<OFFSET_M, SLICE_M, CACHE>::
+    tryMerge(BDNode * parent, size_t idx, bool direct, size_t parent_size,
+             BDNode * child, size_t child_size) noexcept {
         size_t ptr_idx = idx + static_cast<size_t>(direct);
-        if (child_size == 1) {
+        assert(child_size > 1);
+        if (parent->immut_ptrs().size() - parent_size + 1 >= child_size) {
             OffsetToNode offset = parent->immut_ptrs()[ptr_idx].asNode();
-            parent->mut_ptrs()[ptr_idx] = child->immut_ptrs()[0];
+            idx += static_cast<size_t>(direct);
+
+            add_n_gap(parent->mut_diffs(), idx, parent_size - 1, child_size - 1);
+            add_n_gap(parent->mut_ptrs(), idx + 1, parent_size, child_size - 1);
+
+            cpy_all(parent->mut_diffs(), idx, child->immut_diffs(), child_size - 1);
+            cpy_all(parent->mut_ptrs(), idx, child->immut_ptrs(), child_size);
+
             freeNode(offset);
-        } else {
-            assert(child_size > 1);
-            if (parent->immut_ptrs().size() - parent_size + 1 >= child_size) {
-                OffsetToNode offset = parent->immut_ptrs()[ptr_idx].asNode();
-                idx += static_cast<size_t>(direct);
-
-                add_n_gap(parent->mut_diffs(), idx, parent_size - 1, child_size - 1);
-                add_n_gap(parent->mut_ptrs(), idx + 1, parent_size, child_size - 1);
-
-                cpy_all(parent->mut_diffs(), idx, child->immut_diffs(), child_size - 1);
-                cpy_all(parent->mut_ptrs(), idx, child->immut_ptrs(), child_size);
-
-                freeNode(offset);
-            }
         }
     }
 

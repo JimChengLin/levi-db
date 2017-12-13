@@ -97,7 +97,7 @@ namespace levidb8 {
                     CritPtr ptr = cursor->immut_ptrs()[_cursor];
                     if (ptr.isNull()) {
                         _valid = false;
-                        break;
+                        return;
                     }
                     if (ptr.isNode()) {
                         node_read_guard = RWLockReadGuard(_index->offToNodeLock(ptr.asNode()));
@@ -147,10 +147,6 @@ namespace levidb8 {
 
             size_t size = node->size();
             if (size <= 1) {
-                reveal_info->mut_src().resize(1);
-                reveal_info->mut_src().front() = 0;
-                reveal_info->mut_extra().resize(1);
-                reveal_info->mut_extra().front() = 0;
                 return {0, false};
             }
             cend = &node->immut_diffs()[size - 1];
@@ -204,7 +200,7 @@ namespace levidb8 {
                     CritPtr ptr = cursor->immut_ptrs()[_cursor];
                     if (ptr.isNull()) {
                         _valid = false;
-                        break;
+                        return;
                     }
                     if (ptr.isNode()) {
                         node_read_guard = RWLockReadGuard(_index->offToNodeLock(ptr.asNode()));
@@ -268,7 +264,6 @@ namespace levidb8 {
                 for (size_t j = 0; j < _key.size(); ++j) {
                     _key[j] |= ~_usr.immut_extra()[j];
                 }
-                // coverity[leaked_storage]
                 break;
             } while (true);
             return _key;
@@ -290,7 +285,6 @@ namespace levidb8 {
                 auto n = __builtin_ffs(xor_res) - 1;
                 _key[i] |= 1 << n; // 0 to 1
                 _key[i] &= uint8ToChar(UINT8_MAX << n);
-                // coverity[leaked_storage]
                 break;
             } while (true);
             return _key;

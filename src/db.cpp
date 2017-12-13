@@ -231,8 +231,8 @@ namespace levidb8 {
                         tmp_db->remove(item.first, {});
                         auto find_res = q.find(item.first);
                         if (find_res != q.end()) {
+                            uncompress_size -= (find_res->first.size() + find_res->second.size());
                             q.erase(find_res);
-                            uncompress_size -= (item.first.size() + item.second.size());
                         }
                     } else {
                         q[item.first.toString()] = item.second.toString();

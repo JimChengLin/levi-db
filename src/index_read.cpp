@@ -1,10 +1,6 @@
 #include "index_read.h"
 
 namespace levidb8 {
-    inline static uint32_t unmaskOffsetToData(OffsetToData data) noexcept {
-        return data.val & (~(1 << 31));
-    }
-
     static bool compatible(const Slice & key, const Slice & target) noexcept {
         for (size_t i = 0; i < target.size(); ++i) {
             char k = 0;
@@ -24,7 +20,7 @@ namespace levidb8 {
     }
 
     MatcherOffsetImpl::MatcherOffsetImpl(OffsetToData data, CacheImpl & cache)
-            : _iter(RecordIterator::open(cache.data_file, unmaskOffsetToData(data), cache.record_cache)) {}
+            : _iter(RecordIterator::open(cache.data_file, data.val, cache.record_cache)) {}
 
     // precise search
     bool MatcherOffsetImpl::operator==(const Slice & another) const {
@@ -77,7 +73,7 @@ namespace levidb8 {
     bool BitDegradeTreeRead::find(const Slice & k, std::string * value) const {
         OffsetToData data = BitDegradeTree::find(k);
         if (data.val != kDiskNull) {
-            auto iter = RecordIterator::open(_cache.data_file, unmaskOffsetToData(data), _cache.record_cache);
+            auto iter = RecordIterator::open(_cache.data_file, data.val, _cache.record_cache);
             if (iter->info().del) {
                 return false;
             }
@@ -135,7 +131,7 @@ namespace levidb8 {
 
         Slice key() const override {
             if (not(_record_offset == _iter.value().val && _record_iter != nullptr)) {
-                _record_offset = unmaskOffsetToData(_iter.value());
+                _record_offset = _iter.value().val;
                 _record_iter = RecordIterator::open(_cache->data_file, _record_offset, _cache->record_cache);
             } else if (_record_iter->valid() && compatible(_record_iter->key(), _iter.key())) {
                 return _record_iter->key();
@@ -154,7 +150,7 @@ namespace levidb8 {
 
         Slice value() const override {
             if (not(_record_offset == _iter.value().val && _record_iter != nullptr)) {
-                _record_offset = unmaskOffsetToData(_iter.value());
+                _record_offset = _iter.value().val;
                 _record_iter = RecordIterator::open(_cache->data_file, _record_offset, _cache->record_cache);
             } else if (_record_iter->valid() && compatible(_record_iter->key(), _iter.key())) {
                 return _record_iter->value();

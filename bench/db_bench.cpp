@@ -14,6 +14,9 @@
  */
 
 static constexpr char src_fname[] = "/Users/yuanjinlin/Desktop/movies.txt"; // 修改成正确的测试数据路径
+static constexpr char levidb_name[] = "/tmp/levi_bench_db";
+static constexpr char rocksdb_name[] = "/tmp/rocks_bench_db";
+
 static constexpr int repeat_times = 3;
 static constexpr int test_times = 100000;
 static constexpr int thread_num = 8;
@@ -35,8 +38,11 @@ public:
         for (size_t i = 0; i < _q.size(); ++i) {
             _q[i] = _src.readLine().toString();
         }
-        return {{_q[0] + _q[1] + std::to_string(_nth++)},
-                {_q[2] + _q[3] + _q[4] + _q[5] + _q[6] + _q[7]}};
+        std::string k = std::to_string(_nth++) + _q[0] + _q[1];
+        if (k.size() > UINT8_MAX) {
+            k.resize(UINT8_MAX);
+        }
+        return {std::move(k), _q[2] + _q[3] + _q[4] + _q[5] + _q[6] + _q[7]};
     };
 
     void skipItem() {
@@ -48,7 +54,7 @@ public:
 };
 
 void levidb_write_bench() {
-    const std::string db_name = "/tmp/levi_bench_db";
+    const std::string db_name = levidb_name;
     if (levidb8::env_io::fileExist(db_name)) {
         levidb8::destroyDB(db_name);
     }
@@ -78,7 +84,7 @@ void levidb_write_bench() {
 }
 
 void rocksdb_write_bench() {
-    const std::string db_name = "/tmp/rocks_bench_db";
+    const std::string db_name = rocksdb_name;
     if (levidb8::env_io::fileExist(db_name)) {
         rocksdb::DestroyDB(db_name, {});
     }
@@ -112,7 +118,7 @@ void rocksdb_write_bench() {
 }
 
 void levidb_read_bench() {
-    const std::string db_name = "/tmp/levi_bench_db";
+    const std::string db_name = levidb_name;
     auto db = levidb8::DB::open(db_name, {});
 
     std::vector<std::thread> jobs;
@@ -137,7 +143,7 @@ void levidb_read_bench() {
 }
 
 void rocksdb_read_bench() {
-    const std::string db_name = "/tmp/rocks_bench_db";
+    const std::string db_name = rocksdb_name;
     rocksdb::DB * db;
     auto s = rocksdb::DB::Open({}, db_name, &db);
     assert(s.ok());
@@ -166,7 +172,7 @@ void rocksdb_read_bench() {
 }
 
 void levidb_scan_bench() {
-    const std::string db_name = "/tmp/levi_bench_db";
+    const std::string db_name = levidb_name;
     auto db = levidb8::DB::open(db_name, {});
 
     auto it = db->scan();
@@ -180,7 +186,7 @@ void levidb_scan_bench() {
 }
 
 void rocksdb_scan_bench() {
-    const std::string db_name = "/tmp/rocks_bench_db";
+    const std::string db_name = rocksdb_name;
     rocksdb::DB * db;
     auto s = rocksdb::DB::Open({}, db_name, &db);
     assert(s.ok());
