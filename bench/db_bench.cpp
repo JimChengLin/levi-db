@@ -245,6 +245,9 @@ void scan_bench() {
 }
 
 void db_bench() {
+    if (!levidb8::env_io::fileExist(src_fname)) {
+        throw levidb8::Exception::invalidArgumentException("data set missing");
+    }
     for (size_t i = 0; i < repeat_times; ++i) {
         write_bench();
         read_bench();

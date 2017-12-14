@@ -111,20 +111,23 @@ namespace levidb8 {
             uint16_t * val_from = _val_entry[level];
             uint8_t * idx_from = _idx_entry[level];
 
-            for (size_t i = 0; i < q; ++i) {
+            while (to - from >= 8) {
                 __m128i vec = _mm_loadu_si128(reinterpret_cast<const __m128i *>(from));
                 __m128i res = _mm_minpos_epu16(vec);
                 (*val_from++) = static_cast<uint16_t>(_mm_extract_epi16(res, 0));
                 (*idx_from++) = static_cast<uint8_t>(_mm_extract_epi16(res, 1));
                 from += 8;
             }
+
             if (r != 0) {
+                size = q + 1;
                 const uint16_t * min_elem = std::min_element(from, to);
                 (*val_from) = *min_elem;
                 (*idx_from) = static_cast<uint8_t>(min_elem - from);
+            } else {
+                size = q;
             }
 
-            size = q + static_cast<size_t>(r != 0);
             if (size == 1) {
                 break;
             }
@@ -134,22 +137,21 @@ namespace levidb8 {
 
         size_t idx = 0;
         size_t rank = _idx_entry[level][idx];
-        const size_t lv = level;
-        for (size_t i = 0; i < lv; ++i) {
+        do {
             idx = idx * 8 + rank;
             rank = _idx_entry[--level][idx];
-        }
+        } while (level != 0);
         return idx * 8 + rank;
     }
 
     size_t CritBitPyramid::trimLeft(const uint16_t * cbegin, const uint16_t * from, const uint16_t * to) noexcept {
-        int level = -1;
         size_t pos = from - cbegin;
         size_t end_pos = to - cbegin;
         assert(end_pos >= pos + 1);
         if (end_pos - pos <= 8) {
             return smartMinElem(from, to) - cbegin;
         }
+        int level = -1;
 
         restart:
         if (end_pos - pos > 1) {
@@ -171,22 +173,21 @@ namespace levidb8 {
         size_t idx = pos;
         // coverity[negative_returns]
         size_t rank = _idx_entry[level][pos];
-        const auto lv = static_cast<size_t>(level);
-        for (size_t i = 0; i < lv; ++i) {
+        do {
             idx = idx * 8 + rank;
             rank = _idx_entry[--level][idx];
-        }
+        } while (level != 0);
         return idx * 8 + rank;
     }
 
     size_t CritBitPyramid::trimRight(const uint16_t * cbegin, const uint16_t * from, const uint16_t * to) noexcept {
-        int level = -1;
         size_t pos = from - cbegin;
         size_t end_pos = to - cbegin;
         assert(end_pos >= pos + 1);
         if (end_pos - pos <= 8) {
             return smartMinElem(from, to) - cbegin;
         }
+        int level = -1;
 
         restart:
         if (end_pos - pos > 1) {
@@ -213,11 +214,10 @@ namespace levidb8 {
         size_t idx = pos;
         // coverity[negative_returns]
         size_t rank = _idx_entry[level][pos];
-        const auto lv = static_cast<size_t>(level);
-        for (size_t i = 0; i < lv; ++i) {
+        do {
             idx = idx * 8 + rank;
             rank = _idx_entry[--level][idx];
-        }
+        } while (level != 0);
         return idx * 8 + rank;
     }
 
