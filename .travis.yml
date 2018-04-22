@@ -3,7 +3,7 @@ sudo: require
 
 matrix:
   include:
-    # GCC with coverage
+    # GCC with Coverage
     - os: linux
       addons:
         apt:
@@ -18,11 +18,23 @@ matrix:
         - pip install --user cpp-coveralls
         - coveralls -r .. --gcov-options '\-lp'
 
-    # Clang
+    # Clang with Sanitizer
     - os: osx
       before_script:
         - cd ${TRAVIS_BUILD_DIR}
-        - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++
+        - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DFSANITIZE=address
+    - os: osx
+      before_script:
+        - cd ${TRAVIS_BUILD_DIR}
+        - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DFSANITIZE=leak
+    - os: osx
+      before_script:
+        - cd ${TRAVIS_BUILD_DIR}
+        - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DFSANITIZE=thread
+    - os: osx
+      before_script:
+        - cd ${TRAVIS_BUILD_DIR}
+        - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DFSANITIZE=undefined
 
     # Valgrind
     - os: linux

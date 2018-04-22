@@ -1,0 +1,5 @@
+#pragma once
+#ifndef LEVIDB_MANIFESTER_H
+#define LEVIDB_MANIFESTER_H
+
+#endif //LEVIDB_MANIFESTER_H
