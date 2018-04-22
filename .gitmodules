@@ -1,0 +1,9 @@
+[submodule "sig_tree"]
+	path = sig_tree
+	url = https://github.com/JimChengLin/sig_tree.git
+[submodule "logream"]
+	path = logream
+	url = https://github.com/JimChengLin/logream.git
+[submodule "posix_env"]
+	path = posix_env
+	url = https://github.com/JimChengLin/posix_env.git
