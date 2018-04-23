@@ -20,10 +20,11 @@ include_directories(posix_env/src)
 include_directories(sig_tree/src)
 
 set(LEVIDB_SOURCE_FILES ${LOGREAM_SOURCE_FILES} ${POSIX_ENV_SOURCE_FILES}
-        include/compacter.h
+        include/compactor.h
         include/db.h
         include/iterator.h
-        include/manifester.h
+        include/manifestor.h
+        include/options.h
         include/slice.h
         src/db_impl.cpp src/db_impl.h
         src/file_writer.cpp src/file_writer.h
