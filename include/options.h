@@ -13,7 +13,7 @@ namespace levidb {
     struct GetOptions {
     };
 
-    struct GetIterOptions {
+    struct GetIteratorOptions {
     };
 
     struct AddOptions {

@@ -24,8 +24,10 @@ set(LEVIDB_SOURCE_FILES ${LOGREAM_SOURCE_FILES} ${POSIX_ENV_SOURCE_FILES}
         include/db.h
         include/iterator.h
         include/manifestor.h
+        include/manifestor_rocksdb.h
         include/options.h
         include/slice.h
+        src/concurrent_index.cpp src/concurrent_index.h
         src/db_impl.cpp src/db_impl.h
         src/file_writer.cpp src/file_writer.h
         src/index.cpp src/index.h

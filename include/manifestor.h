@@ -1,6 +1,6 @@
 #pragma once
-#ifndef LEVIDB_MANIFESTER_H
-#define LEVIDB_MANIFESTER_H
+#ifndef LEVIDB_MANIFESTOR_H
+#define LEVIDB_MANIFESTOR_H
 
 /*
  * Metadata 存储接口
@@ -50,4 +50,4 @@ namespace levidb {
     };
 }
 
-#endif //LEVIDB_MANIFESTER_H
+#endif //LEVIDB_MANIFESTOR_H

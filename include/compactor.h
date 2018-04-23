@@ -1,6 +1,6 @@
 #pragma once
-#ifndef LEVIDB_COMPACTER_H
-#define LEVIDB_COMPACTER_H
+#ifndef LEVIDB_COMPACTOR_H
+#define LEVIDB_COMPACTOR_H
 
 /*
  * Compaction 过滤接口
@@ -22,4 +22,4 @@ namespace levidb {
     };
 }
 
-#endif //LEVIDB_COMPACTER_H
+#endif //LEVIDB_COMPACTOR_H
