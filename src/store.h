@@ -31,6 +31,9 @@ namespace levidb {
 
         static std::unique_ptr<Store>
         OpenForReadWrite(const std::string & fname);
+
+        static std::unique_ptr<Store>
+        OpenForCompressedWrite(const std::string & fname);
     };
 }
 
