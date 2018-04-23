@@ -32,3 +32,7 @@ set(LEVIDB_SOURCE_FILES ${LOGREAM_SOURCE_FILES} ${POSIX_ENV_SOURCE_FILES}
         )
 
 add_executable(levidb main.cpp ${LEVIDB_SOURCE_FILES})
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(levidb Threads::Threads)
