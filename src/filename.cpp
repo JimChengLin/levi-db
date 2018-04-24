@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include "filename.h"
 
 namespace levidb {
@@ -14,21 +16,21 @@ namespace levidb {
     bool IsPlainStore(const std::string & fname) {
         assert(IsStore(fname));
         return fname.size() >= sizeof(kPlainStoreSuffix) &&
-               std::equal(fname.cend() - (sizeof(kPlainStoreSuffix) - 1), fname.cend(), kPlainStoreSuffix);
+                std::equal(fname.cend() - (sizeof(kPlainStoreSuffix) - 1), fname.cend(), kPlainStoreSuffix);
     }
 
     static constexpr char kIndexPrefix[] = "index_";
 
     bool IsIndex(const std::string & fname) {
         return fname.size() >= sizeof(kIndexPrefix) &&
-               std::equal(fname.cbegin(), fname.cbegin() + (sizeof(kIndexPrefix) - 1), kIndexPrefix);
+                std::equal(fname.cbegin(), fname.cbegin() + (sizeof(kIndexPrefix) - 1), kIndexPrefix);
     }
 
     static constexpr char kStorePrefix[] = "store_";
 
     bool IsStore(const std::string & fname) {
         return fname.size() >= sizeof(kStorePrefix) &&
-               std::equal(fname.cbegin(), fname.cbegin() + (sizeof(kStorePrefix) - 1), kStorePrefix);
+                std::equal(fname.cbegin(), fname.cbegin() + (sizeof(kStorePrefix) - 1), kStorePrefix);
     }
 
     size_t GetStoreSeq(const std::string & fname) {

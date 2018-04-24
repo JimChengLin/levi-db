@@ -28,7 +28,7 @@ namespace levidb {
             std::string buf;
             if (Get(k, &buf)) {
                 assert(buf.size() == sizeof(*v));
-                memcpy(v, buf.data(), buf.size());
+                memcpy(v, buf.data(), sizeof(*v));
                 return true;
             }
             return false;
@@ -42,7 +42,7 @@ namespace levidb {
             std::string buf;
             if (Get(k, &buf)) {
                 assert(buf.size() == sizeof(*v));
-                memcpy(v, buf.data(), buf.size());
+                memcpy(v, buf.data(), sizeof(*v));
                 return true;
             }
             return false;

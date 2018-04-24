@@ -7,7 +7,7 @@
  *
  * 注意:
  * 1. 所有方法 **线程安全**
- * 2. std::unique_ptr<Iterator> 对象 **线程不安全**
+ * 2. std::unique_ptr<Iterator> **线程不安全**
  * 3. 索引无法区分 "abc\0\0" 与 "abc\0"
  */
 

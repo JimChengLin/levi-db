@@ -155,21 +155,23 @@ namespace levidb {
         }
     };
 
-    class CompressedWriterHelper : public logream::Writer::Helper {
+    class BufferedWriterHelper : public logream::Writer::Helper {
     private:
         enum {
-            kEmitLimit = 4 * 1024 * 1024
+            kBufLimit = 4 * 1024 * 1024
         };
 
         std::unique_ptr<penv::WritableFile> file_;
         std::string buf_;
 
     public:
-        explicit CompressedWriterHelper(std::unique_ptr<penv::WritableFile> && file)
+        explicit BufferedWriterHelper(std::unique_ptr<penv::WritableFile> && file)
                 : file_(std::move(file)) {}
 
-        ~CompressedWriterHelper() override {
-            file_->Write(buf_);
+        ~BufferedWriterHelper() override {
+            if (!buf_.empty()) {
+                file_->Write(buf_);
+            }
         };
 
     public:
@@ -178,7 +180,7 @@ namespace levidb {
             if (file_size + buf_.size() + s.size() >= Store::kMaxSize) {
                 throw StoreFullException();
             }
-            if (buf_.size() > kEmitLimit) {
+            if (buf_.size() >= kBufLimit) {
                 file_->PrepareWrite(file_size, buf_.size());
                 file_->Write(buf_);
                 buf_.clear();
@@ -202,6 +204,8 @@ namespace levidb {
                   reader_(&reader_helper_),
                   writer_helper_(std::move(w_file)),
                   writer_(&writer_helper_, 0) {}
+
+        ~ReadWriteStore() override = default;
 
     public:
         size_t Add(const Slice & s, bool sync) override {
@@ -231,8 +235,8 @@ namespace levidb {
 
     class CompressedWriteStore : public Store {
     private:
-        CompressedWriterHelper writer_helper_;
-        logream::WriterLite writer_;
+        BufferedWriterHelper writer_helper_;
+        logream::WriterCompress writer_;
 
     public:
         explicit CompressedWriteStore(std::unique_ptr<penv::WritableFile> && file)
