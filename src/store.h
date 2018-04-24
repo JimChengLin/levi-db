@@ -6,11 +6,19 @@
  * logream 封装
  */
 
+#include <exception>
 #include <memory>
 
 #include "../include/slice.h"
 
 namespace levidb {
+    class StoreFullException : public std::exception {
+    public:
+        const char * what() const noexcept override {
+            return "no enough space for storage";
+        }
+    };
+
     class Store {
     public:
         Store() = default;
@@ -18,6 +26,10 @@ namespace levidb {
         virtual ~Store() = default;
 
     public:
+        enum {
+            kMaxSize = 2 * 1024 * 1024 * 1024
+        };
+
         virtual size_t Add(const Slice & s, bool sync) = 0;
 
         virtual size_t Get(size_t id, std::string * s) const = 0;
