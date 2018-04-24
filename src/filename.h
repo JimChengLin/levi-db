@@ -20,13 +20,13 @@ namespace levidb {
 
     bool IsStore(const std::string & fname);
 
-    uint32_t GetStoreSeq(const std::string & fname);
+    size_t GetStoreSeq(const std::string & fname);
 
-    uint32_t GetStoreLv(const std::string & fname);
+    size_t GetStoreLv(const std::string & fname);
 
-    void IndexFilename(uint32_t nth, std::string * fname);
+    void IndexFilename(size_t nth, std::string * fname);
 
-    void StoreFilename(uint32_t seq, uint32_t lv, std::string * fname);
+    void StoreFilename(size_t seq, size_t lv, bool compress, std::string * fname);
 }
 
 #endif //LEVIDB_FILENAME_H

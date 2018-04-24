@@ -21,7 +21,7 @@ namespace levidb {
     public:
         virtual bool Get(const Slice & k, std::string * v) const = 0;
 
-        virtual bool GetInternal(const Slice & k, uint64_t v) const = 0;
+        virtual bool GetInternal(const Slice & k, uint64_t * v) const = 0;
 
         virtual bool Add(const Slice & k, const Slice & v, bool overwrite) = 0;
 
