@@ -7,6 +7,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2")
 
 if (NOT "${FSANITIZE}" STREQUAL "")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=${FSANITIZE}")
+    message("fsanitize=${FSANITIZE}")
 endif ()
 
 if ("$ENV{COVERAGE}" STREQUAL "ON")
