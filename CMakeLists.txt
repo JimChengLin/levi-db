@@ -30,11 +30,10 @@ set(LEVIDB_SOURCE_FILES ${LOGREAM_SOURCE_FILES} ${POSIX_ENV_SOURCE_FILES}
         include/slice.h
         src/concurrent_index.cpp src/concurrent_index.h
         src/db_impl.cpp src/db_impl.h
-        src/fd_manager.cpp src/fd_manager.h
-        src/file_writer.cpp src/file_writer.h
         src/filename.cpp src/filename.h
         src/index.cpp src/index.h
         src/store.cpp src/store.h
+        src/store_manager.cpp src/store_manager.h
         )
 
 add_executable(levidb main.cpp ${LEVIDB_SOURCE_FILES})

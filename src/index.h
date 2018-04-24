@@ -9,7 +9,7 @@
 #include <memory>
 
 #include "../include/iterator.h"
-#include "fd_manager.h"
+#include "store_manager.h"
 
 namespace levidb {
     class Index {
@@ -20,6 +20,8 @@ namespace levidb {
 
     public:
         virtual bool Get(const Slice & k, std::string * v) const = 0;
+
+        virtual bool GetInternal(const Slice & k, uint64_t v) const = 0;
 
         virtual bool Add(const Slice & k, const Slice & v, bool overwrite) = 0;
 
@@ -32,7 +34,7 @@ namespace levidb {
 
     public:
         static std::unique_ptr<Index>
-        Open(const std::string & fname, FDManager * manager);
+        Open(const std::string & fname, StoreManager * manager);
     };
 }
 

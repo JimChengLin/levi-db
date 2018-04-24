@@ -1,6 +1,6 @@
 #pragma once
-#ifndef LEVIDB_FD_MANAGER_H
-#define LEVIDB_FD_MANAGER_H
+#ifndef LEVIDB_STORE_MANAGER_H
+#define LEVIDB_STORE_MANAGER_H
 
 /*
  * Store 缓存层
@@ -14,7 +14,7 @@
 namespace levidb {
     class DBImpl;
 
-    class FDManager {
+    class StoreManager {
     private:
         DBImpl * db_;
 
@@ -27,4 +27,4 @@ namespace levidb {
     };
 }
 
-#endif //LEVIDB_FD_MANAGER_H
+#endif //LEVIDB_STORE_MANAGER_H
