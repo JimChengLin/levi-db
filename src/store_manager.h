@@ -8,7 +8,9 @@
  */
 
 #include <memory>
+#include <mutex>
 
+#include "lru_cache.h"
 #include "store.h"
 
 namespace levidb {
@@ -16,7 +18,25 @@ namespace levidb {
 
     class StoreManager {
     private:
-        DBImpl * db_;
+        enum {
+            kMaxEntries = 128
+        };
+
+        DBImpl * const db_;
+        std::mutex mutex_;
+        std::string backup_;
+        LRUCache<size_t, std::shared_ptr<Store>, kMaxEntries> cache_;
+        size_t seq_;
+        std::shared_ptr<Store> curr_;
+
+    public:
+        explicit StoreManager(DBImpl * db)
+                : db_(db),
+                  seq_(0) {}
+
+        StoreManager(const StoreManager &) = delete;
+
+        StoreManager & operator=(const StoreManager &) = delete;
 
     public:
         std::shared_ptr<Store>

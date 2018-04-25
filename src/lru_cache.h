@@ -44,7 +44,7 @@ namespace levidb {
 #endif
                 }
                 cache_items_list_.emplace_front(k, std::forward<T>(v));
-                cache_items_map_[k] = cache_items_list_.begin();
+                cache_items_map_.emplace(k, cache_items_list_.begin());
             } else {
                 it->second->second = std::forward<T>(v);
                 cache_items_list_.splice(cache_items_list_.begin(), cache_items_list_, it->second);
