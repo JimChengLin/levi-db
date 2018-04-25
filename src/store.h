@@ -26,8 +26,8 @@ namespace levidb {
         virtual ~Store() = default;
 
     public:
-        enum {
-            kMaxSize = 2 * 1024 * 1024 * 1024
+        enum : size_t {
+            kMaxSize = static_cast<size_t>(2) * 1024 * 1024 * 1024
         };
 
         virtual size_t Add(const Slice & s, bool sync) = 0;

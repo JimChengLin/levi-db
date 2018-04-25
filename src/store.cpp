@@ -226,13 +226,6 @@ namespace levidb {
         }
     };
 
-    std::unique_ptr<Store>
-    Store::OpenForReadWrite(const std::string & fname) {
-        auto r_file = penv::Env::Default()->OpenRandomAccessFie(fname);
-        auto w_file = penv::Env::Default()->OpenWritableFile(fname);
-        return std::make_unique<ReadWriteStore>(std::move(r_file), std::move(w_file));
-    }
-
     class CompressedWriteStore : public Store {
     private:
         BufferedWriterHelper writer_helper_;
@@ -256,6 +249,13 @@ namespace levidb {
             return 0;
         }
     };
+
+    std::unique_ptr<Store>
+    Store::OpenForReadWrite(const std::string & fname) {
+        auto r_file = penv::Env::Default()->OpenRandomAccessFie(fname);
+        auto w_file = penv::Env::Default()->OpenWritableFile(fname);
+        return std::make_unique<ReadWriteStore>(std::move(r_file), std::move(w_file));
+    }
 
     std::unique_ptr<Store>
     Store::OpenForCompressedWrite(const std::string & fname) {

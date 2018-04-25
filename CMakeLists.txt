@@ -32,6 +32,7 @@ set(LEVIDB_SOURCE_FILES ${LOGREAM_SOURCE_FILES} ${POSIX_ENV_SOURCE_FILES}
         src/db_impl.cpp src/db_impl.h
         src/filename.cpp src/filename.h
         src/index.cpp src/index.h
+        src/lru_cache.h
         src/store.cpp src/store.h
         src/store_manager.cpp src/store_manager.h
         )
