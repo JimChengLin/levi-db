@@ -12,6 +12,8 @@ namespace levidb {
         bool IsCompressed(size_t seq) const;
 
         size_t UniqueSeq();
+
+        void RegisterStore(size_t seq);
     };
 }
 

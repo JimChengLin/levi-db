@@ -18,8 +18,15 @@ namespace levidb {
         typedef typename std::pair<K, V> key_value_pair_t;
         typedef typename std::list<key_value_pair_t>::iterator list_iterator_t;
 
-        std::list<key_value_pair_t> cache_items_list_;
-        std::unordered_map<K, list_iterator_t> cache_items_map_;
+        mutable std::list<key_value_pair_t> cache_items_list_;
+        mutable std::unordered_map<K, list_iterator_t> cache_items_map_;
+
+    public:
+        LRUCache() = default;
+
+        LRUCache(const LRUCache &) = delete;
+
+        LRUCache & operator=(const LRUCache &) = delete;
 
     public:
         template<typename T>
@@ -56,8 +63,7 @@ namespace levidb {
             if (it == cache_items_map_.cend()) {
                 return false;
             } else {
-                const_cast<LRUCache *>(this)->
-                        cache_items_list_.splice(cache_items_list_.begin(), cache_items_list_, it->second);
+                cache_items_list_.splice(cache_items_list_.begin(), cache_items_list_, it->second);
                 *v = it->second->second;
                 return true;
             }

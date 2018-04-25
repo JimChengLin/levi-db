@@ -10,26 +10,6 @@
 #include "manifestor.h"
 
 namespace levidb {
-    struct GetOptions {
-    };
-
-    struct GetIteratorOptions {
-    };
-
-    struct AddOptions {
-        bool sync = false;
-    };
-
-    struct DelOptions {
-        bool sync = false;
-    };
-
-    struct CompactOptions {
-    };
-
-    struct SyncOptions {
-    };
-
     struct OpenOptions {
         Compactor * compactor = nullptr;
         Manifestor * manifestor = nullptr;

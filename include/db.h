@@ -25,24 +25,21 @@ namespace levidb {
 
     public:
         virtual bool /* k exists? */
-        Get(const Slice & k, std::string * v,
-            const GetOptions & options) const = 0;
+        Get(const Slice & k, std::string * v) const = 0;
 
         virtual std::unique_ptr<Iterator>
-        GetIterator(const GetIteratorOptions & options) const = 0;
+        GetIterator() const = 0;
 
         virtual bool /* k exists? */
-        Add(const Slice & k, const Slice & v,
-            const AddOptions & options) = 0;
+        Add(const Slice & k, const Slice & v) = 0;
 
         virtual bool /* k exists? */
-        Del(const Slice & k,
-            const DelOptions & options) = 0;
+        Del(const Slice & k) = 0;
 
         virtual bool /* can do more? */
-        Compact(const CompactOptions & options) = 0;
+        Compact() = 0;
 
-        virtual void Sync(const SyncOptions & options) = 0;
+        virtual void Sync() = 0;
 
     public:
         static std::shared_ptr<DB>

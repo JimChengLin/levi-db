@@ -32,6 +32,8 @@ namespace levidb {
         virtual std::unique_ptr<Iterator>
         GetIterator() const = 0;
 
+        virtual void Sync() = 0;
+
         virtual void RetireStore() = 0;
 
     public:

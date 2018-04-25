@@ -136,7 +136,7 @@ namespace levidb {
     private:
         std::unique_ptr<penv::WritableFile> file_;
 
-        friend class ReadWriteStore;
+        friend class ReadWriteStore; // for Sync
 
     public:
         explicit WriterHelper(std::unique_ptr<penv::WritableFile> && file)
@@ -213,7 +213,7 @@ namespace levidb {
             size_t pos = writer_.Add(s.data(), &n);
             if (sync) {
 #if defined(PENV_OS_LINUX)
-                writer_helper_.file_->RangeSync(pos,n);
+                writer_helper_.file_->RangeSync(pos, n);
 #else
                 writer_helper_.file_->Sync();
 #endif

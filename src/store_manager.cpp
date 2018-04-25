@@ -23,6 +23,7 @@ namespace levidb {
             seq_ = db_->UniqueSeq();
             StoreFilename(seq_, 0, false, &backup_);
             curr_ = Store::OpenForReadWrite(backup_);
+            db_->RegisterStore(seq_);
         }
         *seq = seq_;
         return curr_;
