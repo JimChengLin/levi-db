@@ -9,7 +9,6 @@
 
 #include <list>
 #include <unordered_map>
-#include <utility>
 
 namespace levidb {
     template<typename K, typename V, size_t MAX>
@@ -34,8 +33,7 @@ namespace levidb {
             auto it = cache_items_map_.find(k);
             if (it == cache_items_map_.end()) {
                 if (size() >= MAX) {
-                    auto last = cache_items_list_.end();
-                    --last;
+                    auto last = --cache_items_list_.end();
 #if defined(__cpp_lib_node_extract)
                     auto nh = cache_items_map_.extract(last->first);
                     nh.key() = k;

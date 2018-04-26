@@ -5,3 +5,10 @@
   <img alt="Coverity Scan Build Status"
        src="https://scan.coverity.com/projects/13175/badge.svg"/>
 </a>
+
+### Task List:
+- [] Repair tools
+- [] Improve index iterator seek algorithm
+- [] May \[add, del\] when iterate(in-memory snapshot)
+- [] May sync when \[add, del\]
+- [] Transation support

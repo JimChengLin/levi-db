@@ -30,9 +30,19 @@ namespace levidb {
             kMaxSize = static_cast<size_t>(2) * 1024 * 1024 * 1024
         };
 
-        virtual size_t Add(const Slice & s, bool sync) = 0;
+        virtual size_t Add(const Slice & s, bool sync) {
+            assert(false);
+            return 0;
+        }
 
-        virtual size_t Get(size_t id, std::string * s) const = 0;
+        virtual size_t Get(size_t id, std::string * s) const {
+            assert(false);
+            return 0;
+        }
+
+        virtual void Sync() {
+            assert(false);
+        };
 
     public:
         static std::unique_ptr<Store>

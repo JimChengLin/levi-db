@@ -54,11 +54,6 @@ namespace levidb {
         ~SequentialStore() override = default;
 
     public:
-        size_t Add(const Slice & s, bool sync) override {
-            assert(false);
-            return 0;
-        }
-
         size_t Get(size_t id, std::string * s) const override {
             return reader_.Get(id, s);
         }
@@ -77,11 +72,6 @@ namespace levidb {
         ~CompressedRandomStore() override = default;
 
     public:
-        size_t Add(const Slice & s, bool sync) override {
-            assert(false);
-            return 0;
-        }
-
         size_t Get(size_t id, std::string * s) const override {
             return reader_.Get(id, s);
         }
@@ -100,11 +90,6 @@ namespace levidb {
         ~PlainRandomStore() override = default;
 
     public:
-        size_t Add(const Slice & s, bool sync) override {
-            assert(false);
-            return 0;
-        }
-
         size_t Get(size_t id, std::string * s) const override {
             return reader_.Get(id, s);
         }
@@ -136,13 +121,15 @@ namespace levidb {
     private:
         std::unique_ptr<penv::WritableFile> file_;
 
-        friend class ReadWriteStore; // for Sync
+        friend class ReadWriteStore;
 
     public:
         explicit WriterHelper(std::unique_ptr<penv::WritableFile> && file)
                 : file_(std::move(file)) {}
 
-        ~WriterHelper() override = default;
+        ~WriterHelper() override {
+            file_->Sync();
+        }
 
     public:
         void Write(const logream::Slice & s) override {
@@ -172,6 +159,7 @@ namespace levidb {
             if (!buf_.empty()) {
                 file_->Write(buf_);
             }
+            file_->Sync();
         };
 
     public:
@@ -224,6 +212,10 @@ namespace levidb {
         size_t Get(size_t id, std::string * s) const override {
             return reader_.Get(id, s);
         }
+
+        void Sync() override {
+            writer_helper_.file_->Sync();
+        }
     };
 
     class CompressedWriteStore : public Store {
@@ -242,11 +234,6 @@ namespace levidb {
         size_t Add(const Slice & s, bool sync) override {
             size_t n = s.size();
             return writer_.Add(s.data(), &n);
-        }
-
-        size_t Get(size_t id, std::string * s) const override {
-            assert(false);
-            return 0;
         }
     };
 

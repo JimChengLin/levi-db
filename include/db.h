@@ -24,17 +24,15 @@ namespace levidb {
         virtual ~DB() = default;
 
     public:
-        virtual bool /* k exists? */
+        virtual bool /* success? */
         Get(const Slice & k, std::string * v) const = 0;
 
         virtual std::unique_ptr<Iterator>
         GetIterator() const = 0;
 
-        virtual bool /* k exists? */
-        Add(const Slice & k, const Slice & v) = 0;
+        virtual void Add(const Slice & k, const Slice & v) = 0;
 
-        virtual bool /* k exists? */
-        Del(const Slice & k) = 0;
+        virtual void Del(const Slice & k) = 0;
 
         virtual bool /* can do more? */
         Compact() = 0;

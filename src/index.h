@@ -39,6 +39,10 @@ namespace levidb {
     public:
         static std::unique_ptr<Index>
         Open(const std::string & fname, StoreManager * manager);
+
+        static std::unique_ptr<Index>
+        Reopen(const std::string & fname, StoreManager * manager,
+               size_t alloc, int64_t recycle);
     };
 }
 

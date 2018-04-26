@@ -23,11 +23,11 @@ namespace levidb {
         };
 
         DBImpl * const db_;
-        std::mutex mutex_;
-        std::string backup_;
         LRUCache<size_t, std::shared_ptr<Store>, kMaxEntries> cache_;
         size_t seq_;
         std::shared_ptr<Store> curr_;
+        std::string backup_;
+        std::mutex mutex_;
 
     public:
         explicit StoreManager(DBImpl * db)

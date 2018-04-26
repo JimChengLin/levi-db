@@ -32,12 +32,15 @@ set(LEVIDB_SOURCE_FILES ${LOGREAM_SOURCE_FILES} ${POSIX_ENV_SOURCE_FILES}
         src/db_impl.cpp src/db_impl.h
         src/filename.cpp src/filename.h
         src/index.cpp src/index.h
+        src/index_format.h
         src/lru_cache.h
         src/store.cpp src/store.h
         src/store_manager.cpp src/store_manager.h
         )
 
-add_executable(levidb main.cpp ${LEVIDB_SOURCE_FILES})
+add_executable(levidb main.cpp ${LEVIDB_SOURCE_FILES}
+        test/db_test.cpp
+        )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
