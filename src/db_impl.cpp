@@ -14,7 +14,7 @@ namespace levidb {
 
     }
 
-    void DBImpl::RegisterStore(size_t seq) {
+    void DBImpl::Register(size_t seq) {
 
     }
 

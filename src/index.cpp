@@ -194,7 +194,7 @@ namespace levidb {
     public:
         IndexImpl(std::unique_ptr<penv::MmapFile> && file, StoreManager * manager)
                 : helper_(this),
-                  allocator_(std::move(file)),
+                  allocator_((file->Hint(penv::MmapFile::RANDOM), std::move(file))),
                   tree_(&helper_, &allocator_),
                   manager_(manager),
                   seq_(),
@@ -203,7 +203,7 @@ namespace levidb {
         IndexImpl(std::unique_ptr<penv::MmapFile> && file, StoreManager * manager,
                   size_t alloc, int64_t recycle)
                 : helper_(this),
-                  allocator_(std::move(file), alloc, recycle),
+                  allocator_((file->Hint(penv::MmapFile::RANDOM), std::move(file)), alloc, recycle),
                   tree_(&helper_, &allocator_, 0),
                   manager_(manager),
                   seq_(),

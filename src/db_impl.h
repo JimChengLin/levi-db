@@ -6,14 +6,16 @@
 
 namespace levidb {
     class DBImpl : public DB {
-    public:
+    private:
         size_t GetLv(size_t seq) const;
 
         bool IsCompressed(size_t seq) const;
 
         size_t UniqueSeq();
 
-        void RegisterStore(size_t seq);
+        void Register(size_t seq);
+
+        friend class StoreManager;
     };
 }
 

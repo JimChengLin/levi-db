@@ -22,7 +22,7 @@ namespace levidb {
             kMaxEntries = 128
         };
 
-        DBImpl * const db_;
+        DBImpl * db_;
         LRUCache<size_t, std::shared_ptr<Store>, kMaxEntries> cache_;
         size_t seq_;
         std::shared_ptr<Store> curr_;

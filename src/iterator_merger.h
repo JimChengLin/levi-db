@@ -12,7 +12,7 @@
 #include "../include/iterator.h"
 
 namespace levidb {
-    class MergedIterator : public Iterator {
+    class IteratorMerger : public Iterator {
     private:
         std::vector<std::unique_ptr<Iterator>> iters_;
         Iterator * cursor_;
@@ -24,12 +24,12 @@ namespace levidb {
         Direction direction_;
 
     public:
-        explicit MergedIterator(std::vector<std::unique_ptr<Iterator>> && iters)
+        explicit IteratorMerger(std::vector<std::unique_ptr<Iterator>> && iters)
                 : iters_(std::move(iters)),
                   cursor_(nullptr),
                   direction_(kForward) {}
 
-        ~MergedIterator() override = default;
+        ~IteratorMerger() override = default;
 
     public:
         bool Valid() const override;

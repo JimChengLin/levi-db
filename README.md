@@ -8,13 +8,15 @@
 
 ### Task List:
 - [ ] Repair tools
-- [ ] Improve index iterator seek algorithm
+- [ ] Improve \[index iterator seek, AddInternal\] algorithm
 - [ ] May \[add, del\] when iterate(in-memory snapshot)
 - [ ] May sync when \[add, del\]
 - [ ] Richer operation info
+- [ ] Use entropy encoder
 - [ ] Transation support
+- [ ] Persistent snapshot(backup)
 
-### Thanks
+### Thanks:
 - LevelDB
 - RocksDB
 - Divsufsort

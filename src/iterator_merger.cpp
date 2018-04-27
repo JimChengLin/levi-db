@@ -1,11 +1,11 @@
 #include "iterator_merger.h"
 
 namespace levidb {
-    bool MergedIterator::Valid() const {
+    bool IteratorMerger::Valid() const {
         return cursor_ != nullptr;
     }
 
-    void MergedIterator::SeekToFirst() {
+    void IteratorMerger::SeekToFirst() {
         for (auto & iter:iters_) {
             iter->SeekToFirst();
         }
@@ -13,7 +13,7 @@ namespace levidb {
         direction_ = kForward;
     }
 
-    void MergedIterator::SeekToLast() {
+    void IteratorMerger::SeekToLast() {
         for (auto & iter:iters_) {
             iter->SeekToLast();
         }
@@ -21,7 +21,7 @@ namespace levidb {
         direction_ = kReverse;
     }
 
-    void MergedIterator::Seek(const Slice & target) {
+    void IteratorMerger::Seek(const Slice & target) {
         for (auto & iter:iters_) {
             iter->Seek(target);
         }
@@ -29,13 +29,13 @@ namespace levidb {
         direction_ = kForward;
     }
 
-    void MergedIterator::Next() {
+    void IteratorMerger::Next() {
         assert(Valid());
 
         if (direction_ != kForward) {
             Slice k = Key();
             for (auto & iter:iters_) {
-                if (iter != cursor_) {
+                if (iter.get() != cursor_) {
                     iter->Seek(k);
                 }
                 if (iter->Valid() && k == iter->Key()) {
@@ -49,13 +49,13 @@ namespace levidb {
         FindSmallest();
     }
 
-    void MergedIterator::Prev() {
+    void IteratorMerger::Prev() {
         assert(Valid());
 
         if (direction_ != kReverse) {
             Slice k = Key();
             for (auto & iter:iters_) {
-                if (iter != cursor_) {
+                if (iter.get() != cursor_) {
                     iter->Seek(k);
                 }
                 if (iter->Valid()) {
@@ -71,17 +71,17 @@ namespace levidb {
         FindLargest();
     }
 
-    Slice MergedIterator::Key() const {
+    Slice IteratorMerger::Key() const {
         assert(Valid());
         return cursor_->Key();
     }
 
-    Slice MergedIterator::Value() const {
+    Slice IteratorMerger::Value() const {
         assert(Valid());
         return cursor_->Value();
     }
 
-    void MergedIterator::FindSmallest() {
+    void IteratorMerger::FindSmallest() {
         Iterator * smallest = nullptr;
         for (auto & iter:iters_) {
             if (iter->Valid()) {
@@ -95,7 +95,7 @@ namespace levidb {
         cursor_ = smallest;
     }
 
-    void MergedIterator::FindLargest() {
+    void IteratorMerger::FindLargest() {
         Iterator * largest = nullptr;
         for (auto & iter:iters_) {
             if (iter->Valid()) {
