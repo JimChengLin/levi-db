@@ -11,4 +11,11 @@
 - [ ] Improve index iterator seek algorithm
 - [ ] May \[add, del\] when iterate(in-memory snapshot)
 - [ ] May sync when \[add, del\]
+- [ ] Richer operation info
 - [ ] Transation support
+
+### Thanks
+- LevelDB
+- RocksDB
+- Divsufsort
+- CritBitTree
