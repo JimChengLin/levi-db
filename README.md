@@ -7,8 +7,8 @@
 </a>
 
 ### Task List:
-- [] Repair tools
-- [] Improve index iterator seek algorithm
-- [] May \[add, del\] when iterate(in-memory snapshot)
-- [] May sync when \[add, del\]
-- [] Transation support
+- [ ] Repair tools
+- [ ] Improve index iterator seek algorithm
+- [ ] May \[add, del\] when iterate(in-memory snapshot)
+- [ ] May sync when \[add, del\]
+- [ ] Transation support
