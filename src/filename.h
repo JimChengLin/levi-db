@@ -10,8 +10,6 @@
 #include <string>
 
 namespace levidb {
-    constexpr char kManifestFilename[] = "MANIFEST";
-
     bool IsCompressedStore(const std::string & fname);
 
     bool IsPlainStore(const std::string & fname);
@@ -24,9 +22,11 @@ namespace levidb {
 
     size_t GetStoreLv(const std::string & fname);
 
-    void IndexFilename(size_t nth, std::string * fname);
+    void IndexFilename(size_t nth, const std::string & dirname,
+                       std::string * fname);
 
-    void StoreFilename(size_t seq, size_t lv, bool compress, std::string * fname);
+    void StoreFilename(size_t seq, size_t lv, bool compress, const std::string & dirname,
+                       std::string * fname);
 }
 
 #endif //LEVIDB_FILENAME_H

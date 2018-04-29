@@ -9,7 +9,7 @@ namespace levidb {
         std::shared_ptr<Store> result;
         if (cache_.Get(seq, &result)) {
         } else {
-            StoreFilename(seq, db_->GetLv(seq), db_->IsCompressed(seq), &backup_);
+            StoreFilename(seq, db_->GetLv(seq), db_->IsCompressed(seq), db_->GetName(), &backup_);
             result = Store::OpenForRandomRead(backup_);
             cache_.Add(seq, result);
         }
@@ -21,7 +21,7 @@ namespace levidb {
         std::lock_guard guard(mutex_);
         if (curr_ == nullptr || prev == curr_) {
             seq_ = db_->UniqueSeq();
-            StoreFilename(seq_, 0, false, &backup_);
+            StoreFilename(seq_, 0, false, db_->GetName(), &backup_);
             curr_ = Store::OpenForReadWrite(backup_);
             db_->Register(seq_);
         }

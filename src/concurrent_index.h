@@ -12,7 +12,11 @@ namespace levidb {
     private:
         std::vector<std::unique_ptr<Index>> indexes_;
 
+        friend class DBImpl;
+
     public:
+        ConcurrentIndex() = default;
+
         explicit ConcurrentIndex(std::vector<std::unique_ptr<Index>> && indexes)
                 : indexes_(std::move(indexes)) {}
 

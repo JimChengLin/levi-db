@@ -6,12 +6,10 @@
  * 运行时参数
  */
 
-#include "compactor.h"
 #include "manifestor.h"
 
 namespace levidb {
     struct OpenOptions {
-        Compactor * compactor = nullptr;
         Manifestor * manifestor = nullptr;
         bool create_if_missing = false;
         bool error_if_exist = false;

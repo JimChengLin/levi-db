@@ -21,11 +21,9 @@ include_directories(posix_env/src)
 include_directories(sig_tree/src)
 
 set(LEVIDB_SOURCE_FILES ${LOGREAM_SOURCE_FILES} ${POSIX_ENV_SOURCE_FILES}
-        include/compactor.h
         include/db.h
         include/iterator.h
         include/manifestor.h
-        include/manifestor_rocksdb.h
         include/options.h
         include/slice.h
         src/concurrent_index.cpp src/concurrent_index.h
@@ -40,7 +38,6 @@ set(LEVIDB_SOURCE_FILES ${LOGREAM_SOURCE_FILES} ${POSIX_ENV_SOURCE_FILES}
         )
 
 add_executable(levidb main.cpp ${LEVIDB_SOURCE_FILES}
-        test/db_test.cpp
         )
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)

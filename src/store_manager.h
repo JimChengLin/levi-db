@@ -30,6 +30,8 @@ namespace levidb {
         std::mutex mutex_;
 
     public:
+        StoreManager() : db_(nullptr), seq_(0) {};
+
         explicit StoreManager(DBImpl * db)
                 : db_(db),
                   seq_(0) {}

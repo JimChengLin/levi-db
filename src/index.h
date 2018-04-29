@@ -36,6 +36,9 @@ namespace levidb {
 
         virtual void RetireStore() = 0;
 
+        virtual std::pair<size_t, int64_t>
+        AllocatorInfo() const = 0;
+
     public:
         static std::unique_ptr<Index>
         Open(const std::string & fname, StoreManager * manager);

@@ -4,7 +4,7 @@
 
 #include <utility>
 
-#include "allocator.h"
+#include "page_size.h"
 
 namespace levidb {
     inline bool IsNode(uint64_t rep) {
@@ -26,11 +26,11 @@ namespace levidb {
         return (rep & (~(static_cast<size_t>(1) << 63))) * sgt::kPageSize;
     }
 
-    uint64_t KVRep(uint32_t seq, uint32_t id) {
+    inline uint64_t KVRep(uint32_t seq, uint32_t id) {
         return (static_cast<uint64_t>(seq) << 32) | id;
     }
 
-    uint64_t NodeRep(size_t offset) {
+    inline uint64_t NodeRep(size_t offset) {
         assert(offset % sgt::kPageSize == 0);
         return (static_cast<uint64_t>(1) << 63) | (offset / sgt::kPageSize);
     }

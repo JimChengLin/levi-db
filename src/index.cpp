@@ -124,6 +124,8 @@ namespace levidb {
         size_t alloc_;
         int64_t recycle_;
 
+        friend class IndexImpl;
+
     public:
         explicit Allocator(std::unique_ptr<penv::MmapFile> && file)
                 : file_(std::move(file)),
@@ -269,6 +271,11 @@ namespace levidb {
             std::lock_guard guard(mutex_);
             curr_ = manager_->OpenStoreForReadWrite(&seq_, curr_);
         }
+
+        std::pair<size_t, int64_t>
+        AllocatorInfo() const override {
+            return {allocator_.alloc_, allocator_.recycle_};
+        };
     };
 
     class IteratorImpl : public Iterator {
