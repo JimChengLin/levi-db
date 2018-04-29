@@ -1,3 +1,4 @@
+#include <climits>
 #include <thread>
 
 #include "env.h"
@@ -47,7 +48,7 @@ namespace levidb {
             options_.manifestor->Set(temp + kRecycle, recycle);
         }
         options_.manifestor->Set(kSeq, static_cast<int64_t>(UniqueSeq()));
-        options_.manifestor->Set(kClose, 1ll);
+        options_.manifestor->Set(kClose, 1);
     }
 
     bool DBImpl::Get(const Slice & k, std::string * v) const {
@@ -159,7 +160,7 @@ namespace levidb {
     std::shared_ptr<DB>
     DB::Open(const std::string & name,
              const OpenOptions & options) {
-        options.manifestor->Set(kClose, 0ll);
+        options.manifestor->Set(kClose, 0);
         if (penv::Env::Default()->FileExists(name)) {
             int64_t close;
             options.manifestor->Get(kClose, &close);

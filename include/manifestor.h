@@ -34,11 +34,11 @@ namespace levidb {
             return false;
         }
 
-        virtual void Set(const Slice & k, double v) {
+        virtual void SetFloat(const Slice & k, double v) {
             Set(k, {reinterpret_cast<char *>(&v), sizeof(v)});
         }
 
-        virtual bool Get(const Slice & k, double * v) const {
+        virtual bool GetFloat(const Slice & k, double * v) const {
             std::string buf;
             if (Get(k, &buf)) {
                 assert(buf.size() == sizeof(*v));

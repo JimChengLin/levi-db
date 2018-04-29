@@ -15,7 +15,6 @@
 - [ ] Richer operation info
 - [ ] Use entropy encoder
 - [ ] Safer exception handle, e.g. StoreIterator
-- [ ] Smarter compaction
 - [ ] Transation support
 - [ ] Persistent snapshot(backup)
 
