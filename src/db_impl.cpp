@@ -20,7 +20,6 @@ namespace levidb {
               stores_(1),
               manager_(this),
               index_(OpenIndexes()) {
-        LoadOrSetInitInfo();
     }
 
     DBImpl::DBImpl(const std::string & name,
@@ -31,7 +30,6 @@ namespace levidb {
               stores_(1),
               manager_(this),
               index_(ReopenIndexes()) {
-        LoadOrSetInitInfo();
     }
 
     DBImpl::DBImpl(const std::string & name,
@@ -109,6 +107,7 @@ namespace levidb {
 
     std::vector<std::unique_ptr<Index>>
     DBImpl::OpenIndexes() {
+        LoadOrSetInitInfo();
         std::string temp;
         std::vector<std::unique_ptr<Index>> result;
         int64_t hardware_concurrency = std::thread::hardware_concurrency();
@@ -122,6 +121,7 @@ namespace levidb {
 
     std::vector<std::unique_ptr<Index>>
     DBImpl::ReopenIndexes() {
+        LoadOrSetInitInfo();
         std::string temp;
         std::vector<std::unique_ptr<Index>> result;
         int64_t hardware_concurrency;

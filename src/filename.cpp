@@ -79,10 +79,10 @@ namespace levidb {
     void StoreFilename(size_t seq, size_t lv, bool compress, const std::string & dirname,
                        std::string * fname) {
         char buf[128];
-        int n = snprintf(buf, sizeof(buf), "store_%zu_%zu", seq, lv);
+        int n = snprintf(buf, sizeof(buf), "store_%zu_%zu%s", seq, lv,
+                         compress ? kCompressedStoreSuffix : kPlainStoreSuffix);
         fname->assign(dirname);
         fname->append(buf, static_cast<size_t>(n));
-        fname->append(compress ? kCompressedStoreSuffix : kPlainStoreSuffix);
         assert(IsCompressedStore(*fname) || IsPlainStore(*fname));
     }
 }
