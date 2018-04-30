@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 project(levidb)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
+
 set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.2")
@@ -40,7 +42,19 @@ set(LEVIDB_SOURCE_FILES ${LOGREAM_SOURCE_FILES} ${POSIX_ENV_SOURCE_FILES}
 add_executable(levidb main.cpp ${LEVIDB_SOURCE_FILES}
         bench/db_bench.cpp
         )
+add_library(levidb-shared SHARED ${LEVIDB_SOURCE_FILES})
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-target_link_libraries(levidb Threads::Threads)
+list(APPEND LIBS Threads::Threads)
+
+set(DO_BENCH OFF) # change "OFF" to "ON" if bench
+if (DO_BENCH)
+    add_definitions(-DLEVIDB_BENCH)
+    find_package(RocksDB REQUIRED)
+    include_directories(${ROCKSDB_INCLUDE_DIR})
+    list(APPEND LIBS ${ROCKSDB_LIBRARIES})
+endif ()
+
+target_link_libraries(levidb ${LIBS})
+target_link_libraries(levidb-shared ${LIBS})

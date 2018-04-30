@@ -16,7 +16,7 @@
 - [ ] Use entropy encoder
 - [ ] Safer exception handle
 - [ ] Transation support
-- [ ] Persistent snapshot(backup)
+- [ ] Persistent snapshot(hot backup)
 
 ### Thanks:
 - LevelDB
