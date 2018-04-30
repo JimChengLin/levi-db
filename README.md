@@ -7,14 +7,14 @@
 </a>
 
 ### Task List:
-- [ ] URGENCY: basic compaction
+- [ ] URGENCY - basic compaction
 - [ ] Repair tools
 - [ ] Improve \[index iterator seek, AddInternal\] algorithm
 - [ ] May \[add, del\] when iterate(in-memory snapshot)
 - [ ] May sync when \[add, del\]
 - [ ] Richer operation info
 - [ ] Use entropy encoder
-- [ ] Safer exception handle, e.g. StoreIterator
+- [ ] Safer exception handle
 - [ ] Transation support
 - [ ] Persistent snapshot(backup)
 

@@ -7,7 +7,6 @@
  * 防止频繁调用 system call - open
  */
 
-#include <memory>
 #include <mutex>
 
 #include "lru_cache.h"
@@ -30,7 +29,9 @@ namespace levidb {
         std::mutex mutex_;
 
     public:
-        StoreManager() : db_(nullptr), seq_(0) {};
+        StoreManager()
+                : db_(nullptr),
+                  seq_(0) {};
 
         explicit StoreManager(DBImpl * db)
                 : db_(db),

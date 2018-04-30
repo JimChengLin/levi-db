@@ -33,20 +33,6 @@ namespace levidb {
             }
             return false;
         }
-
-        virtual void SetFloat(const Slice & k, double v) {
-            Set(k, {reinterpret_cast<char *>(&v), sizeof(v)});
-        }
-
-        virtual bool GetFloat(const Slice & k, double * v) const {
-            std::string buf;
-            if (Get(k, &buf)) {
-                assert(buf.size() == sizeof(*v));
-                memcpy(v, buf.data(), sizeof(*v));
-                return true;
-            }
-            return false;
-        }
     };
 }
 

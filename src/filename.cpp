@@ -3,8 +3,6 @@
 #include "filename.h"
 
 namespace levidb {
-    static constexpr char kCompressedStoreSuffix[] = ".cprs";
-
     static std::string_view GetFilename(const std::string & fname) {
         auto i = fname.rfind('/');
         if (i++ == std::string::npos) {
@@ -12,6 +10,8 @@ namespace levidb {
         }
         return {fname.data() + i, fname.size() - i};
     }
+
+    static constexpr char kCompressedStoreSuffix[] = ".cprs";
 
     bool IsCompressedStore(const std::string & fname) {
         assert(IsStore(fname));
@@ -73,14 +73,16 @@ namespace levidb {
         int n = snprintf(buf, sizeof(buf), "index_%zu", nth);
         fname->assign(dirname);
         fname->append(buf, static_cast<size_t>(n));
+        assert(IsIndex(*fname));
     }
 
     void StoreFilename(size_t seq, size_t lv, bool compress, const std::string & dirname,
                        std::string * fname) {
         char buf[128];
-        int n = snprintf(buf, sizeof(buf), "store_%zu_%zu%s", seq, lv,
-                         compress ? kCompressedStoreSuffix : kPlainStoreSuffix);
+        int n = snprintf(buf, sizeof(buf), "store_%zu_%zu", seq, lv);
         fname->assign(dirname);
         fname->append(buf, static_cast<size_t>(n));
+        fname->append(compress ? kCompressedStoreSuffix : kPlainStoreSuffix);
+        assert(IsCompressedStore(*fname) || IsPlainStore(*fname));
     }
 }

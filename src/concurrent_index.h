@@ -2,7 +2,6 @@
 #ifndef LEVIDB_CONCURRENT_INDEX_H
 #define LEVIDB_CONCURRENT_INDEX_H
 
-#include <memory>
 #include <vector>
 
 #include "index.h"

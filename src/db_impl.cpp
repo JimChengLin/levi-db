@@ -1,4 +1,3 @@
-#include <climits>
 #include <thread>
 
 #include "env.h"
@@ -18,6 +17,7 @@ namespace levidb {
                    open_t)
             : name_(name.back() == '/' ? name : (name + '/')),
               options_(options),
+              stores_(1),
               manager_(this),
               index_(OpenIndexes()) {
         LoadOrSetInitInfo();
@@ -28,6 +28,7 @@ namespace levidb {
                    reopen_t)
             : name_(name.back() == '/' ? name : (name + '/')),
               options_(options),
+              stores_(1),
               manager_(this),
               index_(ReopenIndexes()) {
         LoadOrSetInitInfo();
@@ -36,6 +37,7 @@ namespace levidb {
     DBImpl::DBImpl(const std::string & name,
                    const OpenOptions & options,
                    repair_t) {
+        assert(false);
     }
 
     DBImpl::~DBImpl() {
@@ -86,7 +88,7 @@ namespace levidb {
             }
         }
         assert(false);
-        return SIZE_T_MAX;
+        return 0;
     }
 
     bool DBImpl::IsCompressed(size_t seq) const {
@@ -148,11 +150,11 @@ namespace levidb {
                 size_t s = GetStoreSeq(child);
                 size_t l = GetStoreLv(child);
                 bool c = IsCompressedStore(child);
-                if (stores_.size() < l) {
+                if (stores_.size() <= l) {
                     stores_.resize(l + 1);
                 }
                 stores_[l].emplace_back(s);
-                stores_map_[s] = {c};
+                stores_map_.emplace(s, StoreInfo{c});
             }
         }
     }
@@ -160,16 +162,17 @@ namespace levidb {
     std::shared_ptr<DB>
     DB::Open(const std::string & name,
              const OpenOptions & options) {
+        int64_t close = 0;
+        options.manifestor->Get(kClose, &close);
         options.manifestor->Set(kClose, 0);
         if (penv::Env::Default()->FileExists(name)) {
-            int64_t close;
-            options.manifestor->Get(kClose, &close);
             if (close) {
                 return std::make_shared<DBImpl>(name, options, reopen_t());
             } else {
                 return std::make_shared<DBImpl>(name, options, repair_t());
             }
         } else {
+            penv::Env::Default()->CreateDir(name);
             return std::make_shared<DBImpl>(name, options, open_t());
         }
     }

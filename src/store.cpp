@@ -172,9 +172,8 @@ namespace levidb {
                 file_->PrepareWrite(file_size, buf_.size());
                 file_->Write(buf_);
                 buf_.clear();
-            } else {
-                buf_.append(s.data(), s.size());
             }
+            buf_.append(s.data(), s.size());
         }
     };
 
@@ -239,8 +238,8 @@ namespace levidb {
 
     std::unique_ptr<Store>
     Store::OpenForReadWrite(const std::string & fname) {
-        auto r_file = penv::Env::Default()->OpenRandomAccessFie(fname);
         auto w_file = penv::Env::Default()->OpenWritableFile(fname);
+        auto r_file = penv::Env::Default()->OpenRandomAccessFie(fname);
         return std::make_unique<ReadWriteStore>(std::move(r_file), std::move(w_file));
     }
 

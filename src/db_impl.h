@@ -26,12 +26,12 @@ namespace levidb {
         const std::string name_;
         const OpenOptions options_;
 
-        StoreManager manager_;
-        ConcurrentIndex index_;
-
         std::atomic<size_t> seq_;
         std::vector<std::vector<size_t>> stores_;
         std::unordered_map<size_t, StoreInfo> stores_map_;
+
+        StoreManager manager_;
+        ConcurrentIndex index_;
 
     public:
         DBImpl(const std::string & name,
