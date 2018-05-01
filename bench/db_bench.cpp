@@ -38,10 +38,12 @@ namespace levidb::db_bench {
         std::string k_;
         std::string v_;
         std::string line_;
+        size_t cnt;
 
     public:
         explicit TextProvider(std::ifstream && f)
-                : f_(std::move(f)) {}
+                : f_(std::move(f)),
+                  cnt(0) {}
 
         std::pair<Slice, Slice>
         ReadItem() {
@@ -51,11 +53,15 @@ namespace levidb::db_bench {
                 std::getline(f_, line_);
                 k_.append(line_);
             }
+            if (k_.size() > 1000) {
+                k_.resize(1000);
+            }
             for (auto & c: k_) {
                 if (c == '\0') {
                     ++c;
                 }
             }
+            k_.append(std::to_string(cnt++));
             for (size_t i = 0; i < 7; ++i) {
                 std::getline(f_, line_);
                 v_.append(line_);
@@ -67,6 +73,7 @@ namespace levidb::db_bench {
             for (size_t i = 0; i < 9; ++i) {
                 std::getline(f_, line_);
             }
+            ++cnt;
         }
     };
 
@@ -80,7 +87,7 @@ std::cout << #name " took " << std::chrono::duration_cast<std::chrono::milliseco
 
         constexpr char kPathDB[] = "/tmp/levi-db";
         constexpr char kPathRocksDB[] = "/tmp/rocks-db";
-        constexpr unsigned int kTestTimes = 100000;
+        constexpr unsigned int kTestTimes = 1000000;
         constexpr unsigned int kThreadNum = 4;
 
         auto * env = penv::Env::Default();
@@ -144,19 +151,20 @@ std::cout << #name " took " << std::chrono::duration_cast<std::chrono::milliseco
                 }
                 TIME_END;
                 PRINT_TIME(levidb - Get);
-                std::cout << "levidb get " << total << std::endl;
+                std::cout << "levidb_get_size: " << total << std::endl;
             }
             {
                 TIME_START;
                 size_t total = 0;
-                for (auto iter = db->GetIterator();
+                auto iter = db->GetIterator();
+                for (iter->SeekToFirst();
                      iter->Valid();
                      iter->Next()) {
                     total += iter->Key().size() + iter->Value().size();
                 }
                 TIME_END;
                 PRINT_TIME(levidb - Iterate);
-                std::cout << "levidb iterate " << total << std::endl;
+                std::cout << "levidb_iterate_size: " << total << std::endl;
             }
         }
 #if defined(LEVIDB_BENCH)
@@ -211,20 +219,21 @@ std::cout << #name " took " << std::chrono::duration_cast<std::chrono::milliseco
                 }
                 TIME_END;
                 PRINT_TIME(rocksdb - Get);
-                std::cout << "rocksdb get " << total << std::endl;
+                std::cout << "rocksdb_get_size: " << total << std::endl;
             }
             {
                 TIME_START;
                 size_t total = 0;
-                auto iter = db->NewIterator({});
-                for (; iter->Valid();
-                       iter->Next()) {
+                auto * iter = db->NewIterator({});
+                for (iter->SeekToFirst();
+                     iter->Valid();
+                     iter->Next()) {
                     total += iter->key().size() + iter->value().size();
                 }
+                delete iter;
                 TIME_END;
                 PRINT_TIME(rocksdb - Iterate);
-                std::cout << "rocksdb iterate " << total << std::endl;
-                delete iter;
+                std::cout << "rocksdb_iterate_size: " << total << std::endl;
             }
             delete db;
         }
