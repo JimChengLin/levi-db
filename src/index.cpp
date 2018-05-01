@@ -355,7 +355,10 @@ namespace levidb {
         auto store = helper_->index_->seq_ != seq ? helper_->index_->manager_->OpenStoreForRandomRead(seq)
                                                   : helper_->index_->curr_;
         helper_->backup_.clear();
-        store->Get(id, &helper_->backup_);
+        auto pos = store->Get(id, &helper_->backup_);
+        if (pos == 0) {
+            throw std::logic_error(__PRETTY_FUNCTION__);
+        }
         s_ = helper_->backup_;
         logream::GetVarint32(&s_, &k_len_);
     }
