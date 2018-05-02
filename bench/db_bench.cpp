@@ -33,17 +33,17 @@ namespace levidb::db_bench {
     };
 
     class TextProvider {
-    public:
+    private:
         std::ifstream f_;
         std::string k_;
         std::string v_;
         std::string line_;
-        size_t cnt;
+        size_t cnt_;
 
     public:
         explicit TextProvider(std::ifstream && f)
                 : f_(std::move(f)),
-                  cnt(0) {}
+                  cnt_(0) {}
 
         std::pair<Slice, Slice>
         ReadItem() {
@@ -61,7 +61,7 @@ namespace levidb::db_bench {
                     ++c;
                 }
             }
-            k_.append(std::to_string(cnt++));
+            k_.append(std::to_string(cnt_++));
             for (size_t i = 0; i < 7; ++i) {
                 std::getline(f_, line_);
                 v_.append(line_);
@@ -73,7 +73,7 @@ namespace levidb::db_bench {
             for (size_t i = 0; i < 9; ++i) {
                 std::getline(f_, line_);
             }
-            ++cnt;
+            ++cnt_;
         }
     };
 
