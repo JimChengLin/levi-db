@@ -7,13 +7,15 @@
 </a>
 
 ### Task List:
-- [ ] URGENCY - basic compaction
+- [ ] URGENCY - compaction
 - [ ] Repair tools
+- [ ] Use MemTable
 - [ ] Improve \[index iterator seek, AddInternal\] algorithm
 - [ ] May \[add, del\] when iterate(in-memory snapshot)
 - [ ] May sync when \[add, del\]
 - [ ] Richer operation info
 - [ ] Use entropy encoder
+- [ ] Add Iterator::Prefetch
 - [ ] Safer exception handle
 - [ ] Transation support
 - [ ] Persistent snapshot(hot backup)

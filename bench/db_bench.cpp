@@ -47,6 +47,7 @@ namespace levidb::db_bench {
 
         std::pair<Slice, Slice>
         ReadItem() {
+#if !defined(LEVIDB_RW_BENCH)
             k_.clear();
             v_.clear();
             for (size_t i = 0; i < 2; ++i) {
@@ -67,13 +68,30 @@ namespace levidb::db_bench {
                 v_.append(line_);
             }
             return {{k_.c_str(), k_.size() + 1}, v_};
+#else
+            k_.clear();
+            v_.clear();
+            size_t h = std::hash<size_t>()(cnt_++);
+            for (size_t i = 0; i < 3; ++i) {
+                h *= 3;
+                k_.append(reinterpret_cast<char *>(&h), sizeof(h));
+                h *= 3;
+                v_.append(reinterpret_cast<char *>(&h), sizeof(h));
+            }
+            k_.append(std::to_string(h));
+            return {{k_.c_str(), k_.size() + 1}, v_};
+#endif
         };
 
         void SkipItem() {
+#if !defined(LEVIDB_RW_BENCH)
             for (size_t i = 0; i < 9; ++i) {
                 std::getline(f_, line_);
             }
             ++cnt_;
+#else
+            ++cnt_;
+#endif
         }
     };
 
@@ -87,13 +105,15 @@ std::cout << #name " took " << std::chrono::duration_cast<std::chrono::milliseco
 
         constexpr char kPathDB[] = "/tmp/levi-db";
         constexpr char kPathRocksDB[] = "/tmp/rocks-db";
-        constexpr unsigned int kTestTimes = 1000000;
+        constexpr unsigned int kTestTimes = 10000000;
         constexpr unsigned int kThreadNum = 8;
 
         auto * env = penv::Env::Default();
+#if !defined(LEVIDB_RW_BENCH)
         if (!env->FileExists(kPathText)) {
             return;
         }
+#endif
         if (env->FileExists(kPathDB)) {
             env->DeleteAll(kPathDB);
         }

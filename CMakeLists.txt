@@ -49,12 +49,19 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 list(APPEND LIBS Threads::Threads)
 
-set(DO_BENCH OFF) # change "OFF" to "ON" if bench
-if (DO_BENCH)
+set(BENCH OFF) # change "OFF" to "ON" if bench
+if (BENCH)
     add_definitions(-DLEVIDB_BENCH)
     find_package(RocksDB REQUIRED)
     include_directories(${ROCKSDB_INCLUDE_DIR})
     list(APPEND LIBS ${ROCKSDB_LIBRARIES})
+
+    # The default benchmark will read several GB data from disk
+    # The data can be generated in memory(no disk reading) if RW_BENCH is "ON"
+    set(RW_BENCH OFF)
+    if (RW_BENCH)
+        add_definitions(-DLEVIDB_RW_BENCH)
+    endif ()
 endif ()
 
 target_link_libraries(levidb ${LIBS})
