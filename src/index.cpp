@@ -286,11 +286,13 @@ namespace levidb {
     private:
         IndexImpl * index_;
         sgt::SignatureTreeTpl<KVTrans>::IteratorImpl iter_;
+        mutable bool load_;
 
     public:
         explicit IteratorImpl(IndexImpl * index)
                 : index_(index),
-                  iter_(index->tree_.GetIterator()) {}
+                  iter_(index->tree_.GetIterator()),
+                  load_(false) {}
 
         ~IteratorImpl() override = default;
 
@@ -300,47 +302,59 @@ namespace levidb {
         }
 
         void SeekToFirst() override {
-            std::lock_guard guard(index_->mutex_);
             iter_.SeekToFirst();
+            load_ = false;
         }
 
         void SeekToLast() override {
-            std::lock_guard guard(index_->mutex_);
             iter_.SeekToLast();
+            load_ = false;
         }
 
         void Seek(const Slice & target) override {
             std::lock_guard guard(index_->mutex_);
             iter_.Seek(target);
-            if (Valid() && SliceComparator()(Key(), target)) {
+            if (iter_.Valid() && SliceComparator()(iter_.Key(), target)) {
                 do {
-                    Next();
-                } while (Valid() && SliceComparator()(Key(), target));
-            } else if (Valid() && SliceComparator()(target, Key())) {
+                    iter_.Next();
+                } while (iter_.Valid() && SliceComparator()(iter_.Key(), target));
+            } else if (iter_.Valid() && SliceComparator()(target, iter_.Key())) {
                 int i = 0;
                 for (auto mirror = iter_;
                      mirror.Valid() && SliceComparator()(target, mirror.Key());
                      mirror.Prev(), ++i) {
                 }
                 for (--i; i > 0; --i) {
-                    Prev();
+                    iter_.Prev();
                 }
             }
         }
 
         void Next() override {
             iter_.Next();
+            load_ = false;
         }
 
         void Prev() override {
             iter_.Prev();
+            load_ = false;
         }
 
         Slice Key() const override {
+            if (!load_) {
+                load_ = true;
+                std::lock_guard guard(index_->mutex_);
+                return iter_.Key();
+            }
             return iter_.Key();
         }
 
         Slice Value() const override {
+            if (!load_) {
+                load_ = true;
+                std::lock_guard guard(index_->mutex_);
+                return iter_.Value();
+            }
             return iter_.Value();
         }
     };

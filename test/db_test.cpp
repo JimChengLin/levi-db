@@ -103,14 +103,22 @@ namespace levidb::db_test {
                 }
             }
             {
-                size_t num = 0;
-                auto iter = db->GetIterator();
-                for (iter->SeekToFirst();
-                     iter->Valid();
-                     iter->Next()) {
-                    ++num;
+                size_t result[2] = {0};
+                std::vector<std::thread> jobs;
+                for (size_t i = 0; i < 2; ++i) {
+                    jobs.emplace_back([&](size_t nth) {
+                        auto iter = db->GetIterator();
+                        for (iter->SeekToFirst();
+                             iter->Valid();
+                             iter->Next()) {
+                            result[nth] += iter->Key().size() + iter->Value().size();
+                        }
+                    }, i);
                 }
-                assert(num == kTestTimes);
+                for (auto & job:jobs) {
+                    job.join();
+                }
+                assert(result[0] == result[1]);
             }
         }
         std::cout << __PRETTY_FUNCTION__ << " - OK" << std::endl;

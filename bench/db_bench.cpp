@@ -88,7 +88,7 @@ std::cout << #name " took " << std::chrono::duration_cast<std::chrono::milliseco
         constexpr char kPathDB[] = "/tmp/levi-db";
         constexpr char kPathRocksDB[] = "/tmp/rocks-db";
         constexpr unsigned int kTestTimes = 1000000;
-        constexpr unsigned int kThreadNum = 4;
+        constexpr unsigned int kThreadNum = 8;
 
         auto * env = penv::Env::Default();
         if (!env->FileExists(kPathText)) {
