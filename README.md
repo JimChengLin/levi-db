@@ -6,7 +6,7 @@
 - [ ] URGENCY - compaction
 - [ ] Repair tools
 - [ ] Use MemTable
-- [ ] Improve \[index iterator seek, AddInternal\] algorithm
+- [ ] Improve \[iterator \[Seek, Next\], AddInternal, StoreAdd\] algorithm
 - [ ] May \[add, del\] when iterate(in-memory snapshot)
 - [ ] May sync when \[add, del\]
 - [ ] Richer operation info
